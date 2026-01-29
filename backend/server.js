@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import authRoutes from './src/routes/auth.js';
 import patientRoutes from './src/routes/patient.js';
 import bookingRoutes from './src/routes/booking.js';
+import adminAuthRoutes from './src/routes/adminAuth.js';
+import adminRoutes from './src/routes/admin.js';
 import pool from './src/config/database.js';
 
 dotenv.config();
@@ -51,6 +53,8 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/patient', patientRoutes);
 app.use('/api/booking', bookingRoutes);
+app.use('/api/admin/auth', adminAuthRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

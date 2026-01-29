@@ -7,11 +7,16 @@ import { ChooseSchedule } from '@/pages/ChooseSchedule'
 import { PatientDetails } from '@/pages/PatientDetails'
 import { Payment } from '@/pages/Payment'
 import { Confirmation } from '@/pages/Confirmation'
+import { AdminLogin } from '@/pages/AdminLogin'
+import { AdminDashboard } from '@/pages/AdminDashboard'
+import { AdminServices } from '@/pages/AdminServices'
+import { AdminSchedule } from '@/pages/AdminSchedule'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Patient Booking Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/verify-code" element={<VerifyCode />} />
@@ -20,6 +25,12 @@ function App() {
         <Route path="/patient-details" element={<PatientDetails />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/confirmation" element={<Confirmation />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/services" element={<AdminServices />} />
+        <Route path="/admin/schedule" element={<AdminSchedule />} />
       </Routes>
     </BrowserRouter>
   )

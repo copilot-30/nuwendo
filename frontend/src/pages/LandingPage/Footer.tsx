@@ -71,6 +71,11 @@ export function Footer() {
 
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Nowendo. All rights reserved.</p>
+          <p className="mt-2">
+            <a href="/admin/login" className="text-muted-foreground hover:text-foreground transition-colors">
+              Admin Login
+            </a>
+          </p>
         </div>
       </div>
     </footer>
