@@ -1,0 +1,375 @@
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { validationResult } from 'express-validator';
+import pool from '../config/database.js';
+import { generateVerificationCode, sendVerificationEmail } from '../services/emailService.js';
+
+// Generate JWT Token
+const generateToken = (userId, email) => {
+  return jwt.sign(
+    { userId, email },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '7d' }
+  );
+};
+
+// Step 1: Send verification code to email
+export const sendVerificationCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+
+    const { email } = req.body;
+
+    // Check if user already exists
+    const existingUser = await pool.query(
+      'SELECT * FROM users WHERE email = $1 AND password_hash IS NOT NULL',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User already exists with this email' 
+      });
+    }
+
+    // Generate 6-digit code
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Check if email already has a pending verification
+    const pendingUser = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (pendingUser.rows.length > 0) {
+      // Update existing record
+      await pool.query(
+        `UPDATE users 
+         SET verification_code = $1, verification_code_expires = $2 
+         WHERE email = $3`,
+        [code, expiresAt, email]
+      );
+    } else {
+      // Create new pending user
+      await pool.query(
+        `INSERT INTO users (email, verification_code, verification_code_expires) 
+         VALUES ($1, $2, $3)`,
+        [email, code, expiresAt]
+      );
+    }
+
+    // Send verification email
+    await sendVerificationEmail(email, code);
+
+    res.json({
+      success: true,
+      message: 'Verification code sent to your email',
+      data: {
+        email,
+        expiresIn: 600 // seconds
+      }
+    });
+  } catch (error) {
+    console.error('Send verification code error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error sending verification code' 
+    });
+  }
+};
+
+// Step 2: Verify code
+export const verifyCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+
+    const { email, code } = req.body;
+
+    // Find user with matching email and code
+    const result = await pool.query(
+      `SELECT * FROM users 
+       WHERE email = $1 AND verification_code = $2`,
+      [email, code]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid verification code' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if code expired
+    if (new Date() > new Date(user.verification_code_expires)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Verification code has expired. Please request a new one.' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Code verified successfully',
+      data: {
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Verify code error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error verifying code' 
+    });
+  }
+};
+
+// Step 3: Complete registration with password
+export const completeRegistration = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+
+    const { email, code, password, firstName, lastName } = req.body;
+
+    // Verify code again
+    const result = await pool.query(
+      `SELECT * FROM users 
+       WHERE email = $1 AND verification_code = $2`,
+      [email, code]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid verification code' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if code expired
+    if (new Date() > new Date(user.verification_code_expires)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Verification code has expired' 
+      });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Update user with password and mark as verified
+    const updatedUser = await pool.query(
+      `UPDATE users 
+       SET password_hash = $1, 
+           first_name = $2, 
+           last_name = $3, 
+           is_verified = TRUE,
+           verification_code = NULL,
+           verification_code_expires = NULL
+       WHERE id = $4
+       RETURNING id, email, first_name, last_name, created_at`,
+      [passwordHash, firstName, lastName, user.id]
+    );
+
+    const completedUser = updatedUser.rows[0];
+
+    // Generate token
+    const token = generateToken(completedUser.id, completedUser.email);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration completed successfully',
+      data: {
+        token,
+        user: {
+          id: completedUser.id,
+          email: completedUser.email,
+          firstName: completedUser.first_name,
+          lastName: completedUser.last_name,
+          createdAt: completedUser.created_at
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Complete registration error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error completing registration' 
+    });
+  }
+};
+
+// Login user
+export const login = async (req, res) => {
+  try {
+    // Validate request
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+
+    const { email, password } = req.body;
+
+    // Check if user exists
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password' 
+      });
+    }
+
+    // Update last login
+    await pool.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+
+    // Generate token
+    const token = generateToken(user.id, user.email);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          isVerified: user.is_verified,
+          lastLogin: user.last_login
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during login' 
+    });
+  }
+};
+
+// Get current user profile
+export const getProfile = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, email, first_name, last_name, is_verified, created_at, last_login 
+       FROM users WHERE id = $1`,
+      [req.user.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        isVerified: user.is_verified,
+        createdAt: user.created_at,
+        lastLogin: user.last_login
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error fetching profile' 
+    });
+  }
+};
+
+// Update user profile
+export const updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName } = req.body;
+
+    const result = await pool.query(
+      `UPDATE users 
+       SET first_name = $1, last_name = $2 
+       WHERE id = $3 
+       RETURNING id, email, first_name, last_name`,
+      [firstName, lastName, req.user.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error updating profile' 
+    });
+  }
+};

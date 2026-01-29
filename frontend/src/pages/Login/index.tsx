@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { login as loginApi } from '@/services/api'
 
 export function Login() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -18,19 +20,15 @@ export function Login() {
     setError('')
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // TODO: Replace with actual API call
-    if (email && password) {
-      console.log('Login attempt:', { email, password })
-      // Redirect to dashboard or home after successful login
-      // navigate('/dashboard')
-    } else {
-      setError('Please enter both email and password')
+    try {
+      await loginApi(email, password)
+      // Redirect to dashboard after successful login
+      navigate('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
