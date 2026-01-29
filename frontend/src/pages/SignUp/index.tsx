@@ -33,7 +33,7 @@ export function SignUp() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Sign Up</CardTitle>
+          <CardTitle className="text-3xl font-bold">Book an Appointment</CardTitle>
           <CardDescription className="text-lg">
             Enter your email to get started
           </CardDescription>
@@ -86,7 +86,7 @@ export function SignUp() {
             </Button>
 
             <div className="text-center text-sm text-gray-600">
-              By signing up, you agree to our{' '}
+              By continuing, you agree to our{' '}
               <a href="#" className="text-blue-600 hover:underline">
                 Terms of Service
               </a>{' '}
@@ -97,9 +97,8 @@ export function SignUp() {
             </div>
 
             <div className="text-center text-sm">
-              Already have an account?{' '}
-              <Link to="/login" className="text-blue-600 hover:underline font-medium">
-                Log in
+              <Link to="/" className="text-blue-600 hover:underline">
+                ← Back to Home
               </Link>
             </div>
           </form>

@@ -221,3 +221,100 @@ export const getMedicalRecords = async () => {
 
   return data;
 };
+
+// =============== BOOKING FUNNEL API ===============
+
+// Service type
+export interface Service {
+  id: number;
+  name: string;
+  description: string;
+  duration_minutes: number;
+  price: string;
+  category: string;
+}
+
+// Time slot type
+export interface TimeSlot {
+  id: number;
+  start_time: string;
+  end_time: string;
+}
+
+// Get all services
+export const getServices = async (): Promise<{ success: boolean; services: Service[] }> => {
+  const response = await fetch(`${API_URL}/booking/services`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch services');
+  }
+
+  return data;
+};
+
+// Get available time slots for a date
+export const getAvailableSlots = async (date: string): Promise<{ success: boolean; availableSlots: TimeSlot[] }> => {
+  const response = await fetch(`${API_URL}/booking/slots?date=${date}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch available slots');
+  }
+
+  return data;
+};
+
+// Create a booking
+export interface BookingData {
+  email: string;
+  serviceId: number;
+  bookingDate: string;
+  bookingTime: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  notes?: string;
+  paymentMethod: string;
+  paymentReference: string;
+}
+
+export const createBooking = async (bookingData: BookingData) => {
+  const response = await fetch(`${API_URL}/booking/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bookingData)
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to create booking');
+  }
+
+  return data;
+};
+
+// Get booking details
+export const getBookingDetails = async (id: number) => {
+  const response = await fetch(`${API_URL}/booking/${id}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch booking details');
+  }
+
+  return data;
+};

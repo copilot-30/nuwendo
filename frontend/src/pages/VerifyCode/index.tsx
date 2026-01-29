@@ -51,8 +51,8 @@ export function VerifyCode() {
     
     try {
       await verifyCode(email, code)
-      // Navigate to password setup page with email and code
-      navigate('/setup-password', { state: { email, code } })
+      // Navigate to choose service page with email and code
+      navigate('/choose-service', { state: { email, code } })
     } catch (err: any) {
       setError(err.message || 'Invalid verification code')
     } finally {

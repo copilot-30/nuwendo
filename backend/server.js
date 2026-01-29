@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './src/routes/auth.js';
 import patientRoutes from './src/routes/patient.js';
+import bookingRoutes from './src/routes/booking.js';
 import pool from './src/config/database.js';
 
 dotenv.config();
@@ -49,6 +50,7 @@ app.get('/api/health', async (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/patient', patientRoutes);
+app.use('/api/booking', bookingRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
