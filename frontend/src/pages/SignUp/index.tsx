@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Mail, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export function SignUp() {
   const [email, setEmail] = useState('')
@@ -112,9 +113,9 @@ export function SignUp() {
 
               <div className="text-center text-sm">
                 Already have an account?{' '}
-                <a href="#" className="text-blue-600 hover:underline font-medium">
+                <Link to="/login" className="text-blue-600 hover:underline font-medium">
                   Log in
-                </a>
+                </Link>
               </div>
             </form>
           )}
