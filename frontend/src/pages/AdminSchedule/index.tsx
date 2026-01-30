@@ -13,7 +13,9 @@ import {
   Save,
   X,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Monitor,
+  Building2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -24,6 +26,7 @@ interface TimeSlot {
   day_of_week: number
   start_time: string
   end_time: string
+  appointment_type: 'online' | 'on-site'
   is_active: boolean
   created_at: string
   updated_at: string | null
@@ -42,6 +45,7 @@ export function AdminSchedule() {
     day_of_week: 1,
     start_time: '09:00',
     end_time: '10:00',
+    appointment_type: 'on-site' as 'online' | 'on-site',
     is_active: true
   })
 
@@ -57,6 +61,18 @@ export function AdminSchedule() {
     }
     fetchTimeSlots()
   }, [navigate])
+
+  // Auto-calculate end_time when start_time changes (1 hour duration)
+  useEffect(() => {
+    if (formData.start_time) {
+      const [hours, minutes] = formData.start_time.split(':').map(Number)
+      const endHours = (hours + 1) % 24
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+      if (formData.end_time !== endTime) {
+        setFormData(prev => ({ ...prev, end_time: endTime }))
+      }
+    }
+  }, [formData.start_time])
 
   const fetchTimeSlots = async () => {
     try {
@@ -183,6 +199,7 @@ export function AdminSchedule() {
       day_of_week: 1,
       start_time: '09:00',
       end_time: '10:00',
+      appointment_type: 'on-site',
       is_active: true
     })
     setEditingSlot(null)
@@ -194,6 +211,7 @@ export function AdminSchedule() {
       day_of_week: slot.day_of_week,
       start_time: slot.start_time,
       end_time: slot.end_time,
+      appointment_type: slot.appointment_type,
       is_active: slot.is_active
     })
     setEditingSlot(slot)
@@ -206,6 +224,15 @@ export function AdminSchedule() {
     const ampm = hour >= 12 ? 'PM' : 'AM'
     const displayHour = hour % 12 || 12
     return `${displayHour}:${minutes} ${ampm}`
+  }
+
+  // Get the appointment type for a specific day (all slots on a day must match)
+  const getDayAppointmentType = (dayIndex: number): 'online' | 'on-site' | null => {
+    const daySlotsActive = slotsByDay[dayIndex]?.filter(s => s.is_active)
+    if (daySlotsActive && daySlotsActive.length > 0) {
+      return daySlotsActive[0].appointment_type
+    }
+    return null
   }
 
   // Group slots by day
@@ -303,15 +330,66 @@ export function AdminSchedule() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="end_time">End Time *</Label>
+                    <Label htmlFor="end_time">End Time (Auto-calculated)</Label>
                     <Input
                       id="end_time"
                       type="time"
                       value={formData.end_time}
-                      onChange={(e) => setFormData({...formData, end_time: e.target.value})}
-                      required
+                      disabled
+                      className="bg-gray-100"
+                      title="End time is automatically calculated based on 1-hour duration"
                     />
+                    <p className="text-xs text-gray-500">Duration: 1 hour (fixed)</p>
                   </div>
+                </div>
+
+                {/* Appointment Type Selection */}
+                <div className="space-y-2">
+                  <Label>Appointment Type *</Label>
+                  {(() => {
+                    const existingType = getDayAppointmentType(formData.day_of_week)
+                    return existingType && !editingSlot ? (
+                      <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          ℹ️ This day is already set to <strong>{existingType}</strong>. All slots must match.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-amber-600 mb-2">
+                        ⚠️ All time slots on the same day must have the same appointment type
+                      </p>
+                    )
+                  })()}
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, appointment_type: 'online'})}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                        formData.appointment_type === 'online'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Monitor className="h-5 w-5" />
+                      <span className="font-medium">Online Only</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, appointment_type: 'on-site'})}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                        formData.appointment_type === 'on-site'
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Building2 className="h-5 w-5" />
+                      <span className="font-medium">On-Site Only</span>
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {formData.appointment_type === 'online' && 'This slot will only be available for online appointments'}
+                    {formData.appointment_type === 'on-site' && 'This slot will only be available for on-site appointments'}
+                  </p>
                 </div>
 
                 {editingSlot && (
@@ -377,6 +455,18 @@ export function AdminSchedule() {
                               >
                                 {slot.is_active ? 'Active' : 'Inactive'}
                               </Badge>
+                              {slot.appointment_type === 'online' && (
+                                <Badge className="text-xs bg-blue-500">
+                                  <Monitor className="h-3 w-3 mr-1" />
+                                  Online
+                                </Badge>
+                              )}
+                              {slot.appointment_type === 'on-site' && (
+                                <Badge className="text-xs bg-green-500">
+                                  <Building2 className="h-3 w-3 mr-1" />
+                                  On-Site
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>

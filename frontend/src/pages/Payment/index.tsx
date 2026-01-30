@@ -8,11 +8,22 @@ import { ArrowLeft, Loader2, CreditCard, Calendar, Clock, Shield } from 'lucide-
 
 export default function Payment() {
   const navigate = useNavigate()
-  const email = sessionStorage.getItem('signupEmail') || ''
-  const code = sessionStorage.getItem('verificationCode') || ''
+  
+  // Support both signup flow and logged-in patient flow
+  const signupEmail = sessionStorage.getItem('signupEmail') || ''
+  const verificationCode = sessionStorage.getItem('verificationCode') || ''
+  const patientEmail = sessionStorage.getItem('patientEmail') || ''
+  const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
+  const isValidUser = (signupEmail && verificationCode) || (patientEmail && isAuthenticated)
+  
+  // Use patientEmail if logged in, otherwise use signupEmail
+  const email = patientEmail || signupEmail
+  
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
   const bookingDate = sessionStorage.getItem('bookingDate') || ''
   const bookingTime = sessionStorage.getItem('bookingTime') || ''
+  const appointmentType = sessionStorage.getItem('appointmentType') || 'on-site'
+  const patientDetails = JSON.parse(sessionStorage.getItem('patientDetails') || '{}')
   
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,10 +33,10 @@ export default function Payment() {
   const [name, setName] = useState('')
 
   useEffect(() => {
-    if (!email || !code || !service.id || !bookingDate || !bookingTime) {
+    if (!isValidUser || !service.id || !bookingDate || !bookingTime) {
       navigate('/signup')
     }
-  }, [email, code, service, bookingDate, bookingTime, navigate])
+  }, [isValidUser, service, bookingDate, bookingTime, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,13 +49,13 @@ export default function Payment() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          code,
           serviceId: service.id,
           bookingDate,
           bookingTime,
-          firstName: name.split(' ')[0] || 'Guest',
-          lastName: name.split(' ').slice(1).join(' ') || 'User',
-          phoneNumber: '09000000000',
+          appointmentType,
+          firstName: patientDetails.firstName || name.split(' ')[0] || 'Guest',
+          lastName: patientDetails.lastName || name.split(' ').slice(1).join(' ') || 'User',
+          phoneNumber: patientDetails.contactNumber || '09000000000',
           paymentMethod: 'card'
         }),
       })
@@ -105,26 +116,25 @@ export default function Payment() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex"
+      className="min-h-screen bg-white"
     >
-      {/* Left Side - Payment Form */}
-      <div className="flex-1 flex flex-col px-6 sm:px-12 lg:px-20 py-12 bg-white overflow-auto">
-        <div className="w-full max-w-lg mx-auto">
-          {/* Back Button & Logo */}
-          <div className="mb-8 flex items-center justify-between">
-            <button
-              onClick={() => navigate('/choose-schedule')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back</span>
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">N</span>
-              </div>
+      {/* Full Width - Payment Form */}
+      <div className="flex flex-col px-6 sm:px-12 lg:px-20 py-12 max-w-4xl mx-auto">
+        {/* Back Button & Logo */}
+        <div className="mb-8 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/choose-schedule')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">N</span>
             </div>
           </div>
+        </div>
 
           {/* Heading */}
           <div className="mb-8">
@@ -143,6 +153,18 @@ export default function Payment() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Service</span>
                 <span className="font-medium">{service.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Type</span>
+                <span className="flex items-center gap-1">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    appointmentType === 'online' 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {appointmentType === 'online' ? 'Online' : 'On-Site'}
+                  </span>
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date</span>
@@ -247,25 +269,6 @@ export default function Payment() {
               <span>Secured by 256-bit encryption</span>
             </div>
           </form>
-        </div>
-      </div>
-
-      {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        </div>
-        
-        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
-          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
-            <CreditCard className="w-12 h-12" />
-          </div>
-          <h2 className="text-3xl font-bold mb-4">Secure Payment</h2>
-          <p className="text-lg text-white/80 max-w-md">
-            Your payment information is encrypted and secure. We never store your full card details.
-          </p>
-        </div>
       </div>
     </motion.div>
   )

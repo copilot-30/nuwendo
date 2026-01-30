@@ -6,7 +6,9 @@ import {
   completeRegistration,
   login, 
   getProfile, 
-  updateProfile 
+  updateProfile,
+  patientLoginSendCode,
+  patientLoginVerifyCode
 } from '../controllers/authController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -41,6 +43,10 @@ const loginValidation = [
 router.post('/send-code', sendCodeValidation, sendVerificationCode);
 router.post('/verify-code', verifyCodeValidation, verifyCode);
 router.post('/complete-registration', completeRegistrationValidation, completeRegistration);
+
+// Public routes - Patient Login (with verification code)
+router.post('/patient-login/send-code', sendCodeValidation, patientLoginSendCode);
+router.post('/patient-login/verify-code', verifyCodeValidation, patientLoginVerifyCode);
 
 // Public routes - Login
 router.post('/login', loginValidation, login);

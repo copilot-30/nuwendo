@@ -42,6 +42,9 @@ export function AdminServices() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [showCustomCategory, setShowCustomCategory] = useState(false)
+  const [customCategory, setCustomCategory] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -51,18 +54,13 @@ export function AdminServices() {
     is_active: true
   })
 
-  const categories = [
-    'Consultation',
-    'Dental',
-    'Ophthalmology',
-    'Therapy',
-    'Laboratory',
-    'Mental Health',
-    'Cardiology',
-    'Dermatology',
-    'Pediatrics',
-    'Surgery'
-  ]
+  const defaultCategories = ['Services', 'Peptides']
+  
+  // Get unique categories from existing services
+  const existingCategories = Array.from(new Set(services.map(s => s.category).filter(Boolean)))
+  
+  // Combine default and existing categories
+  const allCategories = Array.from(new Set([...defaultCategories, ...existingCategories])).sort()
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
@@ -196,6 +194,8 @@ export function AdminServices() {
       category: '',
       is_active: true
     })
+    setShowCustomCategory(false)
+    setCustomCategory('')
     setEditingService(null)
     setShowForm(false)
   }
@@ -220,6 +220,14 @@ export function AdminServices() {
       minimumFractionDigits: 0
     }).format(parseFloat(price))
   }
+
+  // Filter services by category
+  const filteredServices = selectedCategory === 'all' 
+    ? services 
+    : services.filter(s => s.category === selectedCategory)
+
+  // Get unique categories from services
+  const activeCategories = Array.from(new Set(services.map(s => s.category))).sort()
 
   if (isLoading) {
     return (
@@ -290,17 +298,45 @@ export function AdminServices() {
                     <Label htmlFor="category">Category *</Label>
                     <select
                       id="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      required
+                      value={formData.category === '__custom__' || !allCategories.includes(formData.category) && formData.category ? '__custom__' : formData.category}
+                      onChange={(e) => {
+                        if (e.target.value === '__custom__') {
+                          setShowCustomCategory(true)
+                          setFormData({...formData, category: ''})
+                        } else {
+                          setShowCustomCategory(false)
+                          setCustomCategory('')
+                          setFormData({...formData, category: e.target.value})
+                        }
+                      }}
+                      required={!showCustomCategory}
                       className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select category</option>
-                      {categories.map(cat => (
+                      {allCategories.map((cat: string) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
+                      <option value="__custom__">+ Add New Category</option>
                     </select>
                   </div>
+
+                  {showCustomCategory && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customCategory">New Category Name *</Label>
+                      <Input
+                        id="customCategory"
+                        type="text"
+                        value={customCategory}
+                        onChange={(e) => {
+                          setCustomCategory(e.target.value)
+                          setFormData({...formData, category: e.target.value})
+                        }}
+                        required
+                        placeholder="Enter new category name"
+                      />
+                      <p className="text-sm text-gray-500">This will create a new category</p>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="duration">Duration (minutes) *</Label>
@@ -370,9 +406,32 @@ export function AdminServices() {
           </Card>
         )}
 
+        {/* Category Filter */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant={selectedCategory === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedCategory('all')}
+            >
+              All Services ({services.length})
+            </Button>
+            {activeCategories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category} ({services.filter(s => s.category === category).length})
+              </Button>
+            ))}
+          </div>
+        </div>
+
         {/* Services List */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
+          {filteredServices.map((service) => (
             <Card key={service.id} className={service.is_active ? '' : 'opacity-60'}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
@@ -437,9 +496,18 @@ export function AdminServices() {
           ))}
         </div>
 
-        {services.length === 0 && !showForm && (
+        {filteredServices.length === 0 && !showForm && (
           <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No services found</p>
+            <p className="text-gray-500 mb-4">
+              {selectedCategory === 'all' 
+                ? 'No services found' 
+                : `No services found in ${selectedCategory} category`}
+            </p>
+            {selectedCategory !== 'all' && (
+              <Button variant="outline" onClick={() => setSelectedCategory('all')} className="mr-2">
+                Show All Services
+              </Button>
+            )}
             <Button onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add First Service

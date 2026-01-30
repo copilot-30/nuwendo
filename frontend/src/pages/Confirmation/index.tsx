@@ -2,20 +2,27 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, Calendar, Clock, Mail, Download, PartyPopper } from 'lucide-react'
+import { CheckCircle, Calendar, Clock, Mail, Download, Monitor, Building2 } from 'lucide-react'
 
 export default function Confirmation() {
   const navigate = useNavigate()
-  const email = sessionStorage.getItem('signupEmail') || ''
+  
+  // Support both signup flow and logged-in patient flow
+  const signupEmail = sessionStorage.getItem('signupEmail') || ''
+  const patientEmail = sessionStorage.getItem('patientEmail') || ''
+  const email = patientEmail || signupEmail
+  const isValidUser = email !== ''
+  
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
   const bookingDate = sessionStorage.getItem('bookingDate') || ''
   const bookingTime = sessionStorage.getItem('bookingTime') || ''
+  const appointmentType = sessionStorage.getItem('appointmentType') || 'on-site'
 
   useEffect(() => {
-    if (!email || !service.id || !bookingDate || !bookingTime) {
+    if (!isValidUser || !service.id || !bookingDate || !bookingTime) {
       navigate('/signup')
     }
-  }, [email, service, bookingDate, bookingTime, navigate])
+  }, [isValidUser, service, bookingDate, bookingTime, navigate])
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':')
@@ -35,8 +42,24 @@ export default function Confirmation() {
   }
 
   const handleDone = () => {
-    sessionStorage.clear()
-    navigate('/')
+    const isLoggedIn = sessionStorage.getItem('isAuthenticated') === 'true'
+    
+    // Clear booking-related data but keep login info if logged in
+    sessionStorage.removeItem('selectedService')
+    sessionStorage.removeItem('bookingDate')
+    sessionStorage.removeItem('bookingTime')
+    sessionStorage.removeItem('appointmentType')
+    sessionStorage.removeItem('bookingConfirmation')
+    sessionStorage.removeItem('signupEmail')
+    sessionStorage.removeItem('verificationCode')
+    sessionStorage.removeItem('patientDetails')
+    
+    if (isLoggedIn) {
+      navigate('/dashboard')
+    } else {
+      sessionStorage.clear()
+      navigate('/')
+    }
   }
 
   return (
@@ -45,11 +68,11 @@ export default function Confirmation() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex"
+      className="min-h-screen bg-white"
     >
-      {/* Left Side - Confirmation Details */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-white">
-        <div className="w-full max-w-lg mx-auto">
+      {/* Confirmation Details */}
+      <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12">
+        <div className="w-full max-w-4xl mx-auto">
           {/* Success Icon */}
           <motion.div
             initial={{ scale: 0 }}
@@ -77,6 +100,22 @@ export default function Confirmation() {
             <h3 className="font-semibold text-xl text-gray-900 mb-6">{service.name}</h3>
             
             <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  {appointmentType === 'online' ? (
+                    <Monitor className="w-5 h-5 text-purple-600" />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-purple-600" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Appointment Type</div>
+                  <div className="font-medium text-gray-900">
+                    {appointmentType === 'online' ? 'Online (Video Call)' : 'On-Site (Clinic Visit)'}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-teal-600" />
@@ -130,24 +169,6 @@ export default function Confirmation() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             A confirmation email has been sent to your email address with all the details.
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-green-500 via-teal-500 to-emerald-600 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        </div>
-        
-        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
-          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
-            <PartyPopper className="w-12 h-12" />
-          </div>
-          <h2 className="text-3xl font-bold mb-4">You're all set!</h2>
-          <p className="text-lg text-white/80 max-w-md">
-            We look forward to seeing you. Remember to arrive 10 minutes before your scheduled time.
           </p>
         </div>
       </div>

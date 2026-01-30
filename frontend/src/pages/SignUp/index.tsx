@@ -4,17 +4,19 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Check, Heart, Shield, Clock, MessageCircle } from 'lucide-react'
+import { Loader2, Heart, Shield, Clock, MessageCircle } from 'lucide-react'
 
 export default function SignUp() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccessMessage('')
     setIsLoading(true)
 
     try {
@@ -27,6 +29,17 @@ export default function SignUp() {
       const data = await response.json()
 
       if (!response.ok) {
+        // If user already exists, redirect to login
+        if (data.shouldLogin) {
+          setError('')
+          setSuccessMessage('Account already exists! Redirecting to login...')
+          // Store email and redirect to login
+          sessionStorage.setItem('loginEmail', email)
+          setTimeout(() => {
+            navigate('/login')
+          }, 2000)
+          return
+        }
         throw new Error(data.message || 'Failed to send verification code')
       }
 
@@ -102,6 +115,12 @@ export default function SignUp() {
               </div>
             )}
 
+            {successMessage && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-600">{successMessage}</p>
+              </div>
+            )}
+
             <Button 
               type="submit" 
               className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
@@ -117,6 +136,19 @@ export default function SignUp() {
               )}
             </Button>
           </form>
+
+          {/* Already have an account */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{' '}
+              <button
+                onClick={() => navigate('/login')}
+                className="text-teal-600 hover:text-teal-700 font-medium"
+              >
+                Log in
+              </button>
+            </p>
+          </div>
 
           {/* Features */}
           <div className="mt-12 grid grid-cols-2 gap-4">

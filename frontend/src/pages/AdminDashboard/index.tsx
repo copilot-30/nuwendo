@@ -274,7 +274,10 @@ export function AdminDashboard() {
                               {booking.status}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600">{booking.service_name}</p>
+                          <p className="text-sm text-gray-600 mb-1">{booking.service_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {booking.email}
+                          </p>
                           <p className="text-xs text-gray-500">
                             {formatDate(booking.booking_date)} at {formatTime(booking.booking_time)}
                           </p>

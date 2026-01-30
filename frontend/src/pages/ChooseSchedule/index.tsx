@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Loader2, Clock, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { ArrowLeft, Loader2, Clock, ChevronLeft, ChevronRight, Monitor, Building2 } from 'lucide-react'
 
 interface TimeSlot {
   id: number
@@ -10,12 +10,21 @@ interface TimeSlot {
   end_time: string
 }
 
+type AppointmentType = 'online' | 'on-site'
+
 export default function ChooseSchedule() {
   const navigate = useNavigate()
-  const email = sessionStorage.getItem('signupEmail') || ''
-  const code = sessionStorage.getItem('verificationCode') || ''
+  
+  // Support both signup flow and logged-in patient flow
+  const signupEmail = sessionStorage.getItem('signupEmail') || ''
+  const verificationCode = sessionStorage.getItem('verificationCode') || ''
+  const patientEmail = sessionStorage.getItem('patientEmail') || ''
+  const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
+  const isValidUser = (signupEmail && verificationCode) || (patientEmail && isAuthenticated)
+  
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
   
+  const [appointmentType, setAppointmentType] = useState<AppointmentType>('on-site')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
@@ -23,18 +32,23 @@ export default function ChooseSchedule() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   useEffect(() => {
-    if (!email || !code || !service.id) {
+    if (!isValidUser || !service.id) {
       navigate('/signup')
     }
-  }, [email, code, service, navigate])
+  }, [isValidUser, service, navigate])
 
   useEffect(() => {
     if (selectedDate) {
       const fetchSlots = async () => {
         setIsLoading(true)
         try {
-          const dateStr = selectedDate.toISOString().split('T')[0]
-          const response = await fetch(`http://localhost:5000/api/availability?date=${dateStr}`)
+          // Format date as YYYY-MM-DD in local timezone (avoid UTC conversion)
+          const year = selectedDate.getFullYear()
+          const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+          const day = String(selectedDate.getDate()).padStart(2, '0')
+          const dateStr = `${year}-${month}-${day}`
+          
+          const response = await fetch(`http://localhost:5000/api/availability?date=${dateStr}&type=${appointmentType}`)
           const data = await response.json()
           setAvailableSlots(data.availableSlots || [])
           setSelectedSlot(null)
@@ -46,12 +60,19 @@ export default function ChooseSchedule() {
       }
       fetchSlots()
     }
-  }, [selectedDate])
+  }, [selectedDate, appointmentType])
 
   const handleContinue = () => {
     if (selectedDate && selectedSlot) {
-      sessionStorage.setItem('bookingDate', selectedDate.toISOString().split('T')[0])
+      // Format date as YYYY-MM-DD in local timezone (avoid UTC conversion)
+      const year = selectedDate.getFullYear()
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const day = String(selectedDate.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
+      sessionStorage.setItem('bookingDate', dateStr)
       sessionStorage.setItem('bookingTime', selectedSlot.start_time)
+      sessionStorage.setItem('appointmentType', appointmentType)
       navigate('/payment')
     }
   }
@@ -124,26 +145,25 @@ export default function ChooseSchedule() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex"
+      className="min-h-screen bg-white"
     >
-      {/* Left Side - Calendar */}
-      <div className="flex-1 flex flex-col px-6 sm:px-12 lg:px-20 py-12 bg-white overflow-auto">
-        <div className="w-full max-w-2xl mx-auto">
-          {/* Back Button & Logo */}
-          <div className="mb-8 flex items-center justify-between">
-            <button
-              onClick={() => navigate('/choose-service')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back</span>
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">N</span>
-              </div>
+      {/* Full Width - Calendar */}
+      <div className="flex flex-col px-6 sm:px-12 lg:px-20 py-12 max-w-5xl mx-auto">
+        {/* Back Button & Logo */}
+        <div className="mb-8 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/choose-service')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">N</span>
             </div>
           </div>
+        </div>
 
           {/* Heading */}
           <div className="mb-8">
@@ -151,8 +171,76 @@ export default function ChooseSchedule() {
               Pick a date & time
             </h1>
             <p className="text-lg text-gray-600">
-              Select when you'd like to come in for your appointment
+              Select when you'd like your appointment
             </p>
+          </div>
+
+          {/* Appointment Type Selection */}
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Type</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setAppointmentType('online')
+                  setSelectedSlot(null)
+                }}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  appointmentType === 'online'
+                    ? 'border-teal-500 bg-teal-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    appointmentType === 'online' ? 'bg-teal-100' : 'bg-gray-100'
+                  }`}>
+                    <Monitor className={`w-6 h-6 ${
+                      appointmentType === 'online' ? 'text-teal-600' : 'text-gray-600'
+                    }`} />
+                  </div>
+                  <div>
+                    <p className={`font-semibold ${
+                      appointmentType === 'online' ? 'text-teal-900' : 'text-gray-900'
+                    }`}>
+                      Online
+                    </p>
+                    <p className="text-sm text-gray-600">Video consultation</p>
+                  </div>
+                </div>
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setAppointmentType('on-site')
+                  setSelectedSlot(null)
+                }}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  appointmentType === 'on-site'
+                    ? 'border-teal-500 bg-teal-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    appointmentType === 'on-site' ? 'bg-teal-100' : 'bg-gray-100'
+                  }`}>
+                    <Building2 className={`w-6 h-6 ${
+                      appointmentType === 'on-site' ? 'text-teal-600' : 'text-gray-600'
+                    }`} />
+                  </div>
+                  <div>
+                    <p className={`font-semibold ${
+                      appointmentType === 'on-site' ? 'text-teal-900' : 'text-gray-900'
+                    }`}>
+                      On-Site
+                    </p>
+                    <p className="text-sm text-gray-600">Visit clinic</p>
+                  </div>
+                </div>
+              </motion.button>
+            </div>
           </div>
 
           {/* Calendar */}
@@ -221,32 +309,13 @@ export default function ChooseSchedule() {
             </div>
           )}
 
-          <Button 
-            className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
-            disabled={!selectedDate || !selectedSlot}
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
-        </div>
-      </div>
-
-      {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        </div>
-        
-        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
-          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
-            <Calendar className="w-12 h-12" />
-          </div>
-          <h2 className="text-3xl font-bold mb-4">Flexible Scheduling</h2>
-          <p className="text-lg text-white/80 max-w-md">
-            Choose a time that works best for you. We offer appointments throughout the week.
-          </p>
-        </div>
+        <Button 
+          className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+          disabled={!selectedDate || !selectedSlot}
+          onClick={handleContinue}
+        >
+          Continue
+        </Button>
       </div>
     </motion.div>
   )

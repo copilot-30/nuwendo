@@ -26,16 +26,17 @@ export const sendVerificationCode = async (req, res) => {
 
     const { email } = req.body;
 
-    // Check if user already exists
+    // Check if user already exists and is verified (patient account)
     const existingUser = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND password_hash IS NOT NULL',
+      'SELECT * FROM users WHERE email = $1 AND is_verified = true',
       [email]
     );
 
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ 
         success: false,
-        message: 'User already exists with this email' 
+        message: 'An account with this email already exists. Please log in instead.',
+        shouldLogin: true
       });
     }
 
@@ -122,6 +123,16 @@ export const verifyCode = async (req, res) => {
         message: 'Verification code has expired. Please request a new one.' 
       });
     }
+
+    // Mark user as verified (for patients who don't need passwords)
+    await pool.query(
+      `UPDATE users 
+       SET is_verified = true, 
+           verification_code = NULL, 
+           verification_code_expires = NULL 
+       WHERE id = $1`,
+      [user.id]
+    );
 
     res.json({
       success: true,
@@ -370,6 +381,153 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Server error updating profile' 
+    });
+  }
+};
+
+// Patient Login - Send verification code for existing user
+export const patientLoginSendCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
+    }
+
+    const { email } = req.body;
+
+    // Check if user exists and is verified
+    const userResult = await pool.query(
+      'SELECT id, email, is_verified FROM users WHERE email = $1 AND role = $2',
+      [email, 'patient']
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'No account found with this email. Please sign up first.' 
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    if (!user.is_verified) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Account not verified. Please complete the signup process.' 
+      });
+    }
+
+    // Generate 6-digit code
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update user with new verification code
+    await pool.query(
+      `UPDATE users 
+       SET verification_code = $1, verification_code_expires = $2 
+       WHERE email = $3`,
+      [code, expiresAt, email]
+    );
+
+    // Send verification email
+    await sendVerificationEmail(email, code);
+
+    res.json({
+      success: true,
+      message: 'Verification code sent to your email',
+      data: {
+        email,
+        expiresIn: 600 // seconds
+      }
+    });
+  } catch (error) {
+    console.error('Patient login send code error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error sending verification code' 
+    });
+  }
+};
+
+// Patient Login - Verify code and login
+export const patientLoginVerifyCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
+    }
+
+    const { email, code } = req.body;
+
+    // Find user with matching email and code
+    const result = await pool.query(
+      `SELECT id, email, first_name, last_name, role, verification_code, verification_code_expires 
+       FROM users 
+       WHERE email = $1 AND role = $2`,
+      [email, 'patient']
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if code matches
+    if (user.verification_code !== code) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid verification code' 
+      });
+    }
+
+    // Check if code is expired
+    if (new Date() > new Date(user.verification_code_expires)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Verification code has expired. Please request a new one.' 
+      });
+    }
+
+    // Update last login
+    await pool.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+
+    // Generate token
+    const token = generateToken(user.id, user.email);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Patient login verify code error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error verifying code' 
     });
   }
 };

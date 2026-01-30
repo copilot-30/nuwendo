@@ -41,6 +41,9 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <Link to="/login">
+            <Button variant="outline" className="hidden md:inline-flex">Login</Button>
+          </Link>
           <Link to="/signup">
             <Button className="hidden md:inline-flex">Get Started</Button>
           </Link>

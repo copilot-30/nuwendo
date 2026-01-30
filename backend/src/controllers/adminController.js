@@ -140,8 +140,33 @@ const getTimeSlots = async (req, res) => {
 // Create new time slot
 const createTimeSlot = async (req, res) => {
   try {
-    const { day_of_week, start_time, end_time } = req.body;
+    const { day_of_week, start_time, end_time, appointment_type } = req.body;
     const adminId = req.admin.adminId;
+
+    // Validate that appointment_type is required
+    if (!appointment_type || !['online', 'on-site'].includes(appointment_type)) {
+      return res.status(400).json({ 
+        message: 'Appointment type is required and must be either "online" or "on-site"' 
+      });
+    }
+
+    // Check if there are existing slots for this day with a different appointment type
+    const existingSlotsResult = await pool.query(
+      `SELECT appointment_type FROM time_slots 
+       WHERE day_of_week = $1 
+       AND is_active = true
+       LIMIT 1`,
+      [day_of_week]
+    );
+
+    if (existingSlotsResult.rows.length > 0) {
+      const existingType = existingSlotsResult.rows[0].appointment_type;
+      if (existingType !== appointment_type) {
+        return res.status(400).json({ 
+          message: `All time slots on this day must have the same appointment type. This day is already set to "${existingType}".` 
+        });
+      }
+    }
 
     // Check for overlapping slots
     const overlappingResult = await pool.query(
@@ -162,10 +187,10 @@ const createTimeSlot = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO time_slots (day_of_week, start_time, end_time, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $4)
+      `INSERT INTO time_slots (day_of_week, start_time, end_time, appointment_type, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $5)
        RETURNING *`,
-      [day_of_week, start_time, end_time, adminId]
+      [day_of_week, start_time, end_time, appointment_type, adminId]
     );
 
     res.status(201).json({
@@ -183,8 +208,35 @@ const createTimeSlot = async (req, res) => {
 const updateTimeSlot = async (req, res) => {
   try {
     const { id } = req.params;
-    const { day_of_week, start_time, end_time, is_active } = req.body;
+    const { day_of_week, start_time, end_time, appointment_type, is_active } = req.body;
     const adminId = req.admin.adminId;
+
+    // Validate appointment_type if provided
+    if (appointment_type && !['online', 'on-site'].includes(appointment_type)) {
+      return res.status(400).json({ 
+        message: 'Appointment type must be either "online" or "on-site"' 
+      });
+    }
+
+    // If changing appointment_type, check if other slots on this day have different type
+    if (appointment_type) {
+      const existingSlotsResult = await pool.query(
+        `SELECT id, appointment_type FROM time_slots 
+         WHERE day_of_week = $1 
+         AND is_active = true
+         AND id != $2`,
+        [day_of_week, id]
+      );
+
+      if (existingSlotsResult.rows.length > 0) {
+        const differentType = existingSlotsResult.rows.find(s => s.appointment_type !== appointment_type);
+        if (differentType) {
+          return res.status(400).json({ 
+            message: `Cannot change appointment type. All time slots on this day must have the same type. Other slots are set to "${differentType.appointment_type}".` 
+          });
+        }
+      }
+    }
 
     // Check for overlapping slots (excluding current slot)
     const overlappingResult = await pool.query(
@@ -206,10 +258,10 @@ const updateTimeSlot = async (req, res) => {
 
     const result = await pool.query(
       `UPDATE time_slots 
-       SET day_of_week = $1, start_time = $2, end_time = $3, is_active = $4, updated_by = $5
-       WHERE id = $6
+       SET day_of_week = $1, start_time = $2, end_time = $3, appointment_type = $4, is_active = $5, updated_by = $6
+       WHERE id = $7
        RETURNING *`,
-      [day_of_week, start_time, end_time, is_active, adminId, id]
+      [day_of_week, start_time, end_time, appointment_type, is_active, adminId, id]
     );
 
     if (result.rows.length === 0) {

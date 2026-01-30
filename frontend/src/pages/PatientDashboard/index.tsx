@@ -1,402 +1,208 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { 
-  Calendar, 
-  Clock, 
-  FileText, 
-  Bell,
-  LogOut,
-  Activity,
-  Pill,
-  ClipboardList,
-  Loader2
-} from 'lucide-react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  getProfile, 
-  getDashboardStats, 
-  getAppointments, 
-  getMedications, 
-  getMedicalRecords,
-  logout as logoutApi 
-} from '@/services/api'
+import { motion } from 'framer-motion'
+import { Button } from '@/components/ui/button'
+import { Calendar, Clock, LogOut, Plus, Monitor, Building2, User, Mail } from 'lucide-react'
 
-export function PatientDashboard() {
+interface Appointment {
+  id: number
+  service_name: string
+  booking_date: string
+  booking_time: string
+  appointment_type: string
+  status: string
+  first_name?: string
+  last_name?: string
+  phone_number?: string
+}
+
+interface PatientProfile {
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+}
+
+export default function PatientDashboard() {
   const navigate = useNavigate()
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [profile, setProfile] = useState<PatientProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    initials: ''
-  })
-  const [stats, setStats] = useState({
-    upcomingAppointments: 0,
-    activeMedications: 0,
-    medicalRecords: 0,
-    healthStatus: 'Good'
-  })
-  const [appointments, setAppointments] = useState<any[]>([])
-  const [medications, setMedications] = useState<any[]>([])
-  const [medicalRecords, setMedicalRecords] = useState<any[]>([])
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    const patientEmail = sessionStorage.getItem('patientEmail')
+    
+    if (!patientEmail) {
+      navigate('/login')
+      return
+    }
 
-  const fetchDashboardData = async () => {
+    fetchDashboardData(patientEmail)
+  }, [navigate])
+
+  const fetchDashboardData = async (email: string) => {
     try {
-      setLoading(true)
+      const response = await fetch(`http://localhost:5000/api/booking/patient?email=${encodeURIComponent(email)}`)
+      const data = await response.json()
       
-      // Fetch all data in parallel
-      const [profileData, statsData, appointmentsData, medicationsData, recordsData] = await Promise.all([
-        getProfile(),
-        getDashboardStats(),
-        getAppointments(),
-        getMedications(),
-        getMedicalRecords()
-      ])
-
-      // Set user profile
-      const userData = profileData.data
-      setUser({
-        firstName: userData.firstName || '',
-        lastName: userData.lastName || '',
-        email: userData.email || '',
-        initials: `${userData.firstName?.[0] || ''}${userData.lastName?.[0] || ''}`
-      })
-
-      // Set dashboard stats
-      setStats(statsData.data)
-
-      // Set appointments
-      setAppointments(appointmentsData.data || [])
-
-      // Set medications
-      setMedications(medicationsData.data || [])
-
-      // Set medical records
-      setMedicalRecords(recordsData.data || [])
-
-    } catch (error: any) {
-      console.error('Error fetching dashboard data:', error)
-      // If authentication fails, redirect to login
-      if (error.message.includes('Token') || error.message.includes('authentication')) {
-        navigate('/login')
+      if (response.ok && data.success) {
+        const bookings = data.bookings || []
+        setAppointments(bookings)
+        
+        // Set profile from first booking or from sessionStorage
+        if (bookings.length > 0) {
+          const firstBooking = bookings[0]
+          setProfile({
+            first_name: firstBooking.first_name || sessionStorage.getItem('patientFirstName') || '',
+            last_name: firstBooking.last_name || sessionStorage.getItem('patientLastName') || '',
+            email: email,
+            phone: firstBooking.phone_number || sessionStorage.getItem('patientPhone') || ''
+          })
+        } else {
+          // No bookings yet, try to get from sessionStorage
+          setProfile({
+            first_name: sessionStorage.getItem('patientFirstName') || '',
+            last_name: sessionStorage.getItem('patientLastName') || '',
+            email: email,
+            phone: sessionStorage.getItem('patientPhone') || ''
+          })
+        }
       }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleLogout = () => {
-    logoutApi()
-    navigate('/login')
+    sessionStorage.clear()
+    navigate('/')
+  }
+
+  const handleNewAppointment = () => {
+    // Store profile for pre-filling in patientDetails format (used by Payment page)
+    if (profile) {
+      const patientDetails = {
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        contactNumber: profile.phone,
+        age: '',
+        cityAddress: '',
+        height: '',
+        weight: '',
+        reasonForConsult: '',
+        healthGoals: []
+      }
+      sessionStorage.setItem('patientDetails', JSON.stringify(patientDetails))
+      sessionStorage.setItem('patientFirstName', profile.first_name)
+      sessionStorage.setItem('patientLastName', profile.last_name)
+      sessionStorage.setItem('patientPhone', profile.phone)
+    }
+    navigate('/choose-service')
+  }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minutes} ${ampm}`
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-lg text-gray-600">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Nuwendo
-              </h1>
-              <Badge variant="outline" className="ml-2">Patient Portal</Badge>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-              </Button>
-              
-              <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback className="bg-blue-600 text-white">
-                    {user.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.first_name || 'Patient'}!</h1>
+            <p className="text-gray-600 mt-1">Manage your appointments and health services</p>
+          </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="w-4 h-4" />Logout
+          </Button>
+        </div>
+
+        {profile && (
+          <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <User className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold text-gray-900">{profile.first_name} {profile.last_name}</h2>
+                <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Mail className="w-4 h-4" />{profile.email}
+                  </div>
+                  <div>{profile.phone}</div>
                 </div>
               </div>
-              
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
-                <LogOut className="h-5 w-5" />
+              <Button onClick={handleNewAppointment} className="gap-2">
+                <Plus className="w-4 h-4" />New Appointment
               </Button>
             </div>
           </div>
-        </div>
-      </header>
+        )}
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Welcome back, {user.firstName}!</h2>
-          <p className="text-gray-600">Here's an overview of your health information</p>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Upcoming</p>
-                  <p className="text-2xl font-bold">{stats.upcomingAppointments}</p>
-                  <p className="text-xs text-gray-500">Appointments</p>
-                </div>
-                <Calendar className="h-10 w-10 text-blue-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Active</p>
-                  <p className="text-2xl font-bold">{stats.activeMedications}</p>
-                  <p className="text-xs text-gray-500">Medications</p>
-                </div>
-                <Pill className="h-10 w-10 text-green-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Recent</p>
-                  <p className="text-2xl font-bold">{stats.medicalRecords}</p>
-                  <p className="text-xs text-gray-500">Records</p>
-                </div>
-                <FileText className="h-10 w-10 text-purple-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Health</p>
-                  <p className="text-2xl font-bold">{stats.healthStatus}</p>
-                  <p className="text-xs text-gray-500">Status</p>
-                </div>
-                <Activity className="h-10 w-10 text-orange-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs Section */}
-        <Tabs defaultValue="appointments" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="appointments">Appointments</TabsTrigger>
-            <TabsTrigger value="medications">Medications</TabsTrigger>
-            <TabsTrigger value="records">Medical Records</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-          </TabsList>
-
-          {/* Appointments Tab */}
-          <TabsContent value="appointments" className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Upcoming Appointments</h3>
-              <Button>
-                <Calendar className="mr-2 h-4 w-4" />
-                Book Appointment
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Appointments</h2>
+          
+          {appointments.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-lg text-gray-600 mb-4">No appointments yet</p>
+              <Button onClick={handleNewAppointment} className="gap-2">
+                <Plus className="w-4 h-4" />Book Your First Appointment
               </Button>
             </div>
-            
-            <div className="grid gap-4">
-              {appointments.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6 text-center text-gray-500">
-                    No upcoming appointments
-                  </CardContent>
-                </Card>
-              ) : (
-                appointments.map((apt: any) => (
-                  <Card key={apt.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-4">
-                          <div className="bg-blue-50 p-3 rounded-lg">
-                            <Calendar className="h-6 w-6 text-blue-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-lg">{apt.doctorName}</h4>
-                            <p className="text-sm text-gray-600">{apt.specialty}</p>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(apt.date).toLocaleDateString('en-US', { 
-                                  month: 'long', 
-                                  day: 'numeric', 
-                                  year: 'numeric' 
-                                })}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {apt.time}
-                              </span>
-                            </div>
-                          </div>
+          ) : (
+            <div className="space-y-4">
+              {appointments.map((appointment) => (
+                <div key={appointment.id} className="border rounded-lg p-4 hover:border-green-500 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg text-gray-900">{appointment.service_name}</h3>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />{formatDate(appointment.booking_date)}
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">Reschedule</Button>
-                          <Button variant="outline" size="sm">Cancel</Button>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />{formatTime(appointment.booking_time)}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {appointment.appointment_type === 'online' ? <Monitor className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+                          {appointment.appointment_type === 'online' ? 'Online' : 'On-Site'}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Medications Tab */}
-          <TabsContent value="medications" className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Current Medications</h3>
-              <Button>
-                <Pill className="mr-2 h-4 w-4" />
-                Request Refill
-              </Button>
-            </div>
-            
-            <div className="grid gap-4">
-              {medications.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6 text-center text-gray-500">
-                    No active medications
-                  </CardContent>
-                </Card>
-              ) : (
-                medications.map((med: any) => (
-                  <Card key={med.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-4">
-                          <div className="bg-green-50 p-3 rounded-lg">
-                            <Pill className="h-6 w-6 text-green-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-lg">{med.name}</h4>
-                            <p className="text-sm text-gray-600">{med.dosage} - {med.frequency}</p>
-                            <p className="text-xs text-gray-500 mt-1">Prescribed by {med.prescribedBy}</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">Details</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Medical Records Tab */}
-          <TabsContent value="records" className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Recent Medical Records</h3>
-              <Button>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                View All
-              </Button>
-            </div>
-            
-            <div className="grid gap-4">
-              {medicalRecords.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6 text-center text-gray-500">
-                    No medical records available
-                  </CardContent>
-                </Card>
-              ) : (
-                medicalRecords.map((record: any) => (
-                  <Card key={record.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-4">
-                          <div className="bg-purple-50 p-3 rounded-lg">
-                            <FileText className="h-6 w-6 text-purple-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-lg">{record.type}</h4>
-                            <p className="text-sm text-gray-600">{record.doctorName}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {new Date(record.date).toLocaleDateString('en-US', { 
-                                month: 'long', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-green-600">
-                            {record.status}
-                          </Badge>
-                          <Button variant="outline" size="sm">Download</Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Profile Tab */}
-          <TabsContent value="profile" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>Manage your account details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">First Name</label>
-                    <p className="text-lg">{user.firstName}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Last Name</label>
-                    <p className="text-lg">{user.lastName}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium">Email</label>
-                    <p className="text-lg">{user.email}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                      {appointment.status}
+                    </span>
                   </div>
                 </div>
-                <Button>Edit Profile</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   )
 }

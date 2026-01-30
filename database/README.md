@@ -120,3 +120,76 @@ Migrations are tracked in the `migrations` table, which is automatically created
 - Applied timestamp
 
 Each migration runs in a transaction, so if it fails, no changes are committed.
+
+---
+
+## Recent Migrations
+
+### Migration 006: Appointment Type for Time Slots ⭐ NEW
+- **File**: `006_add_appointment_type_to_time_slots.sql`
+- **Rollback**: `006_add_appointment_type_to_time_slots_rollback.sql`
+- **Description**: Adds `appointment_type` column to time_slots table
+- **Values**: 
+  - `online` - Only available for online appointments
+  - `on-site` - Only available for on-site appointments  
+  - `both` - Available for both types (default)
+- **Purpose**: Enables separate scheduling for online and on-site appointments
+
+**Schema Change:**
+```sql
+ALTER TABLE time_slots 
+ADD COLUMN appointment_type VARCHAR(20) DEFAULT 'both' NOT NULL 
+CHECK (appointment_type IN ('online', 'on-site', 'both'));
+
+CREATE INDEX idx_time_slots_type ON time_slots(appointment_type);
+```
+
+### Migration 007: Appointment Type for Bookings ⭐ NEW
+- **File**: `007_add_appointment_type_to_bookings.sql`
+- **Rollback**: `007_add_appointment_type_to_bookings_rollback.sql`
+- **Description**: Adds `appointment_type` column to bookings table
+- **Values**: 
+  - `online` - Online appointment (video call)
+  - `on-site` - On-site appointment (clinic visit)
+- **Default**: `on-site`
+- **Purpose**: Tracks which type of appointment was booked
+
+**Schema Change:**
+```sql
+ALTER TABLE bookings 
+ADD COLUMN appointment_type VARCHAR(20) DEFAULT 'on-site' NOT NULL 
+CHECK (appointment_type IN ('online', 'on-site'));
+
+CREATE INDEX idx_bookings_type ON bookings(appointment_type);
+```
+
+## Appointment Type Feature
+
+The appointment type feature allows the platform to support both online (video call) and on-site (clinic visit) appointments with separate scheduling.
+
+### How It Works
+1. **Admin creates time slots** via `/admin/schedule` with appointment_type:
+   - `online` - Slot only available for online appointments
+   - `on-site` - Slot only available for on-site appointments
+   - `both` - Slot available for either type (default)
+
+2. **Patient selects appointment type** when booking:
+   - Frontend filters available slots based on selection
+   - Backend API validates slot availability for chosen type
+   - Prevents double-booking per appointment type
+
+3. **Booking stores appointment_type**:
+   - Records whether appointment is online or on-site
+   - Displayed throughout booking flow and confirmation
+   - Admin can see appointment type in booking management
+
+### API Updates
+- **GET** `/api/availability?date=YYYY-MM-DD&type=online|on-site` - Filtered slots
+- **POST** `/api/booking` - Now requires `appointmentType` field
+- **GET/POST/PUT** `/api/admin/time-slots` - Now supports `appointment_type` field
+
+### Frontend Updates
+- `/choose-schedule` - Appointment type selection buttons
+- `/payment` - Shows selected appointment type
+- `/confirmation` - Displays appointment type with icon
+- `/admin/schedule` - Appointment type management UI
