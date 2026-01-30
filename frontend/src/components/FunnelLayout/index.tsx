@@ -44,7 +44,7 @@ export function FunnelLayout({
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">N</span>
             </div>
-            <span className="font-semibold text-gray-800 hidden sm:block">Nowendo</span>
+            <span className="font-semibold text-gray-800 hidden sm:block">Nuwendo</span>
           </Link>
         </div>
       </header>

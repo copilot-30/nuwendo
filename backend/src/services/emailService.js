@@ -35,9 +35,9 @@ export const sendVerificationEmail = async (email, code) => {
   const transporter = createTransporter();
   
   const mailOptions = {
-    from: process.env.EMAIL_FROM || 'noreply@nowendo.com',
+    from: process.env.EMAIL_FROM || 'noreply@nuwendo.com',
     to: email,
-    subject: 'Verify Your Nowendo Account',
+    subject: 'Verify Your Nuwendo Account',
     html: `
       <!DOCTYPE html>
       <html>
@@ -55,12 +55,12 @@ export const sendVerificationEmail = async (email, code) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1 style="margin: 0;">Nowendo</h1>
+            <h1 style="margin: 0;">Nuwendo</h1>
             <p style="margin: 10px 0 0 0;">Verify Your Email Address</p>
           </div>
           <div class="content">
             <p>Hello!</p>
-            <p>Thank you for signing up with Nowendo. To complete your registration, please use the verification code below:</p>
+            <p>Thank you for signing up with Nuwendo. To complete your registration, please use the verification code below:</p>
             
             <div class="code-box">
               <p style="margin: 0 0 10px 0; color: #6b7280;">Your Verification Code</p>
@@ -71,7 +71,7 @@ export const sendVerificationEmail = async (email, code) => {
             <p>If you didn't request this code, please ignore this email.</p>
             
             <div class="footer">
-              <p>© 2026 Nowendo. All rights reserved.</p>
+              <p>© 2026 Nuwendo. All rights reserved.</p>
             </div>
           </div>
         </div>
@@ -103,9 +103,9 @@ export const sendPasswordResetEmail = async (email, resetLink) => {
   const transporter = createTransporter();
   
   const mailOptions = {
-    from: process.env.EMAIL_FROM || 'noreply@nowendo.com',
+    from: process.env.EMAIL_FROM || 'noreply@nuwendo.com',
     to: email,
-    subject: 'Reset Your Nowendo Password',
+    subject: 'Reset Your Nuwendo Password',
     html: `
       <!DOCTYPE html>
       <html>

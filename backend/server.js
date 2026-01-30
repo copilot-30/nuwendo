@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'Welcome to Nowendo API',
+    message: 'Welcome to Nuwendo API',
     version: '1.0.0',
     endpoints: {
       health: '/api/health',

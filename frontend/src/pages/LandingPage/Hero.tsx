@@ -9,8 +9,8 @@ export function Hero() {
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
             Welcome to{' '}
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Nowendo
+            <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Nuwendo
             </span>
           </h1>
           <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl">
@@ -18,11 +18,11 @@ export function Hero() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Link to="/signup">
             <Button size="lg" className="gap-2">
               Get Started
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
           <Button size="lg" variant="outline">
@@ -30,17 +30,21 @@ export function Hero() {
           </Button>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-8 pt-8">
-          <div className="text-center">
-            <p className="text-3xl font-bold">500+</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-12">
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-primary">500+</div>
             <p className="text-sm text-muted-foreground">Happy Clients</p>
           </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold">1000+</p>
-            <p className="text-sm text-muted-foreground">Projects Done</p>
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-primary">98%</div>
+            <p className="text-sm text-muted-foreground">Satisfaction Rate</p>
           </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold">24/7</p>
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-primary">50+</div>
+            <p className="text-sm text-muted-foreground">Team Members</p>
+          </div>
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-primary">24/7</div>
             <p className="text-sm text-muted-foreground">Support</p>
           </div>
         </div>

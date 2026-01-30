@@ -2,10 +2,13 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 import SignUp from '@/pages/SignUp'
 import VerifyCode from '@/pages/VerifyCode'
+import PatientDetails from '@/pages/PatientDetails'
 import ChooseService from '@/pages/ChooseService'
 import ChooseSchedule from '@/pages/ChooseSchedule'
 import Payment from '@/pages/Payment'
 import Confirmation from '@/pages/Confirmation'
+import { Login } from '@/pages/Login'
+import { PatientDashboard } from '@/pages/PatientDashboard'
 import { AdminLogin } from '@/pages/AdminLogin'
 import { AdminDashboard } from '@/pages/AdminDashboard'
 import { AdminServices } from '@/pages/AdminServices'
@@ -19,10 +22,15 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/verify-code" element={<VerifyCode />} />
+        <Route path="/patient-details" element={<PatientDetails />} />
         <Route path="/choose-service" element={<ChooseService />} />
         <Route path="/choose-schedule" element={<ChooseSchedule />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/confirmation" element={<Confirmation />} />
+        
+        {/* Patient Login & Dashboard */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<PatientDashboard />} />
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />

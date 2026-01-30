@@ -63,7 +63,7 @@ export default function SignUp() {
               <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-lg">N</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">Nowendo</span>
+              <span className="text-2xl font-bold text-gray-900">Nuwendo</span>
             </div>
           </div>
 

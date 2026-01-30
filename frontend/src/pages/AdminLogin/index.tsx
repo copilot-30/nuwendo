@@ -55,7 +55,7 @@ export function AdminLogin() {
             <Shield className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>
-          <p className="text-slate-400">Nowendo Health Services</p>
+          <p className="text-slate-400">Nuwendo Health Services</p>
         </div>
 
         <Card className="border-slate-700 bg-slate-800">

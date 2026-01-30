@@ -4,7 +4,7 @@ export function Footer() {
       <div className="container py-12">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="space-y-4">
-            <h3 className="text-lg font-bold">Nowendo</h3>
+            <h3 className="text-lg font-bold">Nuwendo</h3>
             <p className="text-sm text-muted-foreground">
               Transforming businesses with innovative solutions.
             </p>
@@ -70,7 +70,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Nowendo. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Nuwendo. All rights reserved.</p>
           <p className="mt-2">
             <a href="/admin/login" className="text-muted-foreground hover:text-foreground transition-colors">
               Admin Login
