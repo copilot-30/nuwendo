@@ -1,89 +1,75 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CreditCard, Wallet, Building2, QrCode, Calendar, Clock, User, Phone, CheckCircle2 } from 'lucide-react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { createBooking, Service } from '@/services/api'
+import { ArrowLeft, Loader2, CreditCard, Calendar, Clock, Shield } from 'lucide-react'
 
-interface LocationState {
-  email: string
-  code: string
-  service: Service
-  bookingDate: string
-  bookingTime: string
-  firstName: string
-  lastName: string
-  phoneNumber: string
-  notes: string
-}
-
-type PaymentMethod = 'gcash' | 'maya' | 'card' | 'bank'
-
-const paymentMethods = [
-  { id: 'gcash' as PaymentMethod, name: 'GCash', icon: Wallet, color: 'bg-blue-500' },
-  { id: 'maya' as PaymentMethod, name: 'Maya', icon: Wallet, color: 'bg-green-500' },
-  { id: 'card' as PaymentMethod, name: 'Credit/Debit Card', icon: CreditCard, color: 'bg-purple-500' },
-  { id: 'bank' as PaymentMethod, name: 'Bank Transfer', icon: Building2, color: 'bg-gray-500' },
-]
-
-export function Payment() {
+export default function Payment() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const state = location.state as LocationState
-  const { email, code, service, bookingDate, bookingTime, firstName, lastName, phoneNumber, notes } = state || {}
-
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
-  const [referenceNumber, setReferenceNumber] = useState('')
-  const [isProcessing, setIsProcessing] = useState(false)
+  const email = sessionStorage.getItem('signupEmail') || ''
+  const code = sessionStorage.getItem('verificationCode') || ''
+  const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
+  const bookingDate = sessionStorage.getItem('bookingDate') || ''
+  const bookingTime = sessionStorage.getItem('bookingTime') || ''
+  
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cardNumber, setCardNumber] = useState('')
+  const [expiry, setExpiry] = useState('')
+  const [cvv, setCvv] = useState('')
+  const [name, setName] = useState('')
 
   useEffect(() => {
-    if (!email || !code || !service || !bookingDate || !bookingTime || !firstName || !lastName || !phoneNumber) {
+    if (!email || !code || !service.id || !bookingDate || !bookingTime) {
       navigate('/signup')
     }
-  }, [email, code, service, bookingDate, bookingTime, firstName, lastName, phoneNumber, navigate])
+  }, [email, code, service, bookingDate, bookingTime, navigate])
 
-  const handlePayment = async () => {
-    if (!selectedMethod) return
-
-    setIsProcessing(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError('')
+    setIsLoading(true)
 
     try {
-      const result = await createBooking({
-        email,
-        serviceId: service.id,
-        bookingDate,
-        bookingTime,
-        firstName,
-        lastName,
-        phoneNumber,
-        notes,
-        paymentMethod: selectedMethod,
-        paymentReference: referenceNumber || `REF-${Date.now()}`
-      })
-
-      // Navigate to confirmation page
-      navigate('/confirmation', { 
-        state: { 
-          bookingId: result.bookingId,
-          service,
+      const response = await fetch('http://localhost:5000/api/booking/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          code,
+          serviceId: service.id,
           bookingDate,
           bookingTime,
-          firstName,
-          lastName,
-          email,
-          phoneNumber,
-          paymentMethod: selectedMethod
-        } 
+          firstName: name.split(' ')[0] || 'Guest',
+          lastName: name.split(' ').slice(1).join(' ') || 'User',
+          phoneNumber: '09000000000',
+          paymentMethod: 'card'
+        }),
       })
-    } catch (err: any) {
-      setError(err.message || 'Payment failed. Please try again.')
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Payment failed')
+      }
+
+      sessionStorage.setItem('bookingConfirmation', JSON.stringify(data))
+      navigate('/confirmation')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setIsProcessing(false)
+      setIsLoading(false)
     }
+  }
+
+  const formatPrice = (price: string) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 0
+    }).format(parseFloat(price))
   }
 
   const formatTime = (time: string) => {
@@ -95,251 +81,192 @@ export function Payment() {
   }
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    })
   }
 
-  const formatPrice = (price: string) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0
-    }).format(parseFloat(price))
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    const matches = v.match(/\d{4,16}/g)
+    const match = matches && matches[0] || ''
+    const parts = []
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4))
+    }
+    return parts.length ? parts.join(' ') : value
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Progress indicator */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">✓</div>
-            <span className="text-sm text-gray-600 hidden sm:inline">Email</span>
-          </div>
-          <div className="w-8 h-0.5 bg-green-500"></div>
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">✓</div>
-            <span className="text-sm text-gray-600 hidden sm:inline">Verify</span>
-          </div>
-          <div className="w-8 h-0.5 bg-green-500"></div>
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">✓</div>
-            <span className="text-sm text-gray-600 hidden sm:inline">Service</span>
-          </div>
-          <div className="w-8 h-0.5 bg-green-500"></div>
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">✓</div>
-            <span className="text-sm text-gray-600 hidden sm:inline">Schedule</span>
-          </div>
-          <div className="w-8 h-0.5 bg-green-500"></div>
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">✓</div>
-            <span className="text-sm text-gray-600 hidden sm:inline">Details</span>
-          </div>
-          <div className="w-8 h-0.5 bg-blue-500"></div>
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-medium">6</div>
-            <span className="text-sm text-blue-600 font-medium hidden sm:inline">Payment</span>
-          </div>
-        </div>
-
-        {/* Order Summary */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Order Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-start pb-4 border-b">
-              <div>
-                <p className="font-semibold text-lg">{service?.name}</p>
-                <p className="text-sm text-gray-600">{service?.duration_minutes} minutes</p>
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen flex"
+    >
+      {/* Left Side - Payment Form */}
+      <div className="flex-1 flex flex-col px-6 sm:px-12 lg:px-20 py-12 bg-white overflow-auto">
+        <div className="w-full max-w-lg mx-auto">
+          {/* Back Button & Logo */}
+          <div className="mb-8 flex items-center justify-between">
+            <button
+              onClick={() => navigate('/choose-schedule')}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">N</span>
               </div>
-              <p className="font-semibold text-lg">{formatPrice(service?.price || '0')}</p>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
+              Complete payment
+            </h1>
+            <p className="text-lg text-gray-600">
+              Enter your payment details to confirm your booking
+            </p>
+          </div>
+
+          {/* Booking Summary */}
+          <div className="bg-gray-50 rounded-2xl p-5 mb-8">
+            <h3 className="font-semibold text-gray-900 mb-4">Booking Summary</h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Service</span>
+                <span className="font-medium">{service.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Date</span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  {formatDate(bookingDate)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Time</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  {formatTime(bookingTime)}
+                </span>
+              </div>
+              <div className="pt-3 border-t flex justify-between">
+                <span className="font-semibold">Total</span>
+                <span className="font-bold text-xl text-teal-600">{formatPrice(service.price)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="name">Cardholder Name</Label>
+              <Input
+                id="name"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-12"
+                required
+              />
             </div>
             
-            <div className="grid gap-2 text-sm">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Calendar className="h-4 w-4" />
-                <span>{bookingDate && formatDate(bookingDate)}</span>
+            <div className="space-y-2">
+              <Label htmlFor="card">Card Number</Label>
+              <div className="relative">
+                <Input
+                  id="card"
+                  placeholder="1234 5678 9012 3456"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                  className="h-12 pr-12"
+                  maxLength={19}
+                  required
+                />
+                <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Clock className="h-4 w-4" />
-                <span>{bookingTime && formatTime(bookingTime)}</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="expiry">Expiry Date</Label>
+                <Input
+                  id="expiry"
+                  placeholder="MM / YY"
+                  value={expiry}
+                  onChange={(e) => setExpiry(e.target.value)}
+                  className="h-12"
+                  required
+                />
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <User className="h-4 w-4" />
-                <span>{firstName} {lastName}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Phone className="h-4 w-4" />
-                <span>{phoneNumber}</span>
+              <div className="space-y-2">
+                <Label htmlFor="cvv">CVV</Label>
+                <Input
+                  id="cvv"
+                  type="password"
+                  placeholder=""
+                  value={cvv}
+                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="h-12"
+                  required
+                />
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t">
-              <p className="font-semibold text-lg">Total Amount</p>
-              <p className="font-bold text-2xl text-green-600">{formatPrice(service?.price || '0')}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment Methods */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Payment Method</CardTitle>
-            <CardDescription>
-              Choose how you'd like to pay
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
             {error && (
-              <div className="p-4 text-red-600 bg-red-50 border border-red-200 rounded-md">
-                {error}
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {paymentMethods.map((method) => {
-                const Icon = method.icon
-                const isSelected = selectedMethod === method.id
-                
-                return (
-                  <button
-                    key={method.id}
-                    onClick={() => setSelectedMethod(method.id)}
-                    className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all text-left
-                      ${isSelected 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                  >
-                    <div className={`p-2 rounded-full ${method.color} text-white`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{method.name}</p>
-                    </div>
-                    {isSelected && (
-                      <CheckCircle2 className="h-5 w-5 text-blue-500" />
-                    )}
-                  </button>
-                )
-              })}
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                `Pay ${formatPrice(service.price)}`
+              )}
+            </Button>
+
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <Shield className="h-4 w-4" />
+              <span>Secured by 256-bit encryption</span>
             </div>
-
-            {selectedMethod && (
-              <div className="p-4 bg-gray-50 rounded-lg space-y-4">
-                {selectedMethod === 'gcash' && (
-                  <div className="text-center space-y-3">
-                    <div className="w-32 h-32 mx-auto bg-white rounded-lg flex items-center justify-center border">
-                      <QrCode className="h-20 w-20 text-blue-500" />
-                    </div>
-                    <p className="text-sm text-gray-600">Scan QR code or send to:</p>
-                    <p className="font-mono font-bold text-lg">0917-123-4567</p>
-                    <p className="text-sm text-gray-500">Nowendo Health Services</p>
-                  </div>
-                )}
-
-                {selectedMethod === 'maya' && (
-                  <div className="text-center space-y-3">
-                    <div className="w-32 h-32 mx-auto bg-white rounded-lg flex items-center justify-center border">
-                      <QrCode className="h-20 w-20 text-green-500" />
-                    </div>
-                    <p className="text-sm text-gray-600">Scan QR code or send to:</p>
-                    <p className="font-mono font-bold text-lg">0917-123-4567</p>
-                    <p className="text-sm text-gray-500">Nowendo Health Services</p>
-                  </div>
-                )}
-
-                {selectedMethod === 'card' && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Card Number</Label>
-                      <Input placeholder="1234 5678 9012 3456" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Expiry Date</Label>
-                        <Input placeholder="MM/YY" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>CVV</Label>
-                        <Input placeholder="123" type="password" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Cardholder Name</Label>
-                      <Input placeholder="JUAN DELA CRUZ" />
-                    </div>
-                  </div>
-                )}
-
-                {selectedMethod === 'bank' && (
-                  <div className="space-y-3">
-                    <p className="font-medium">Bank Transfer Details:</p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Bank:</span>
-                        <span className="font-medium">BDO Unibank</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Account Name:</span>
-                        <span className="font-medium">Nowendo Health Services</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Account Number:</span>
-                        <span className="font-mono font-medium">1234-5678-9012</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {(selectedMethod === 'gcash' || selectedMethod === 'maya' || selectedMethod === 'bank') && (
-                  <div className="space-y-2 pt-4">
-                    <Label>Reference Number (optional)</Label>
-                    <Input
-                      placeholder="Enter your payment reference number"
-                      value={referenceNumber}
-                      onChange={(e) => setReferenceNumber(e.target.value)}
-                    />
-                    <p className="text-xs text-gray-500">
-                      Enter the reference number from your payment confirmation
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-4">
-              <Link 
-                to="/patient-details" 
-                state={state} 
-                className="text-blue-600 hover:underline"
-              >
-                ← Back
-              </Link>
-              <Button
-                size="lg"
-                onClick={handlePayment}
-                disabled={!selectedMethod || isProcessing}
-                className="px-8"
-              >
-                {isProcessing ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Complete Booking
-                    <CheckCircle2 className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          </form>
+        </div>
       </div>
-    </div>
+
+      {/* Right Side - Decorative */}
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
+          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
+            <CreditCard className="w-12 h-12" />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Secure Payment</h2>
+          <p className="text-lg text-white/80 max-w-md">
+            Your payment information is encrypted and secure. We never store your full card details.
+          </p>
+        </div>
+      </div>
+    </motion.div>
   )
 }

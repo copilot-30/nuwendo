@@ -1,109 +1,173 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Mail, ArrowRight } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { sendVerificationCode } from '@/services/api'
+import { Loader2, Check, Heart, Shield, Clock, MessageCircle } from 'lucide-react'
 
-export function SignUp() {
+export default function SignUp() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setIsSubmitting(true)
-    
+    setIsLoading(true)
+
     try {
-      await sendVerificationCode(email)
-      // Navigate to verification page with email
-      navigate('/verify-code', { state: { email } })
-    } catch (err: any) {
-      setError(err.message || 'Failed to send verification code')
+      const response = await fetch('http://localhost:5000/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send verification code')
+      }
+
+      sessionStorage.setItem('signupEmail', email)
+      navigate('/verify-code')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
   }
 
+  const features = [
+    { icon: Clock, text: 'Book consultations at your convenience' },
+    { icon: Shield, text: 'Your health data is secure and private' },
+    { icon: Heart, text: 'Personalized care plans just for you' },
+    { icon: MessageCircle, text: '24/7 support for all your questions' }
+  ]
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Book an Appointment</CardTitle>
-          <CardDescription className="text-lg">
-            Enter your email to get started
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen flex"
+    >
+      {/* Left Side - Form */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-white">
+        <div className="w-full max-w-lg mx-auto">
+          {/* Logo */}
+          <div className="mb-10">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">N</span>
+              </div>
+              <span className="text-2xl font-bold text-gray-900">Nowendo</span>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
+              Your health journey{' '}
+              <span className="text-teal-600">starts here</span>
+            </h1>
+            <p className="text-lg text-gray-600">
+              Enter your email to get started. We'll send you a verification code.
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 text-base"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-                {error}
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-base">
-                Email Address
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="pl-10 h-12 text-base"
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                We'll send a verification code to this email
-              </p>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full h-12 text-base"
-              disabled={isSubmitting}
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              disabled={isLoading || !email}
             >
-              {isSubmitting ? (
+              {isLoading ? (
                 <>
-                  <span className="animate-spin mr-2">⏳</span>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Sending code...
                 </>
               ) : (
-                <>
-                  Continue
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </>
+                'Continue'
               )}
             </Button>
-
-            <div className="text-center text-sm text-gray-600">
-              By continuing, you agree to our{' '}
-              <a href="#" className="text-blue-600 hover:underline">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="text-blue-600 hover:underline">
-                Privacy Policy
-              </a>
-            </div>
-
-            <div className="text-center text-sm">
-              <Link to="/" className="text-blue-600 hover:underline">
-                ← Back to Home
-              </Link>
-            </div>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+
+          {/* Features */}
+          <div className="mt-12 grid grid-cols-2 gap-4">
+            {features.map((feature, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
+                  <feature.icon className="w-4 h-4 text-teal-600" />
+                </div>
+                <span className="text-sm text-gray-600 leading-tight">{feature.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Decorative */}
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full" />
+        </div>
+        
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
+          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
+            <Heart className="w-12 h-12" />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Healthcare made simple</h2>
+          <p className="text-lg text-white/80 max-w-md">
+            Book appointments, access your records, and connect with healthcare providers all in one place.
+          </p>
+          
+          {/* Stats */}
+          <div className="mt-12 grid grid-cols-3 gap-8">
+            <div>
+              <div className="text-4xl font-bold">500+</div>
+              <div className="text-sm text-white/70">Providers</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold">50k+</div>
+              <div className="text-sm text-white/70">Patients</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold">4.9</div>
+              <div className="text-sm text-white/70">Rating</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   )
 }

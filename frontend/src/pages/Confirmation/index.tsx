@@ -1,33 +1,21 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle2, Calendar, Clock, User, Phone, Mail, MapPin, Download, Share2, Home } from 'lucide-react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { Service } from '@/services/api'
+import { CheckCircle, Calendar, Clock, Mail, Download, PartyPopper } from 'lucide-react'
 
-interface LocationState {
-  bookingId: number
-  service: Service
-  bookingDate: string
-  bookingTime: string
-  firstName: string
-  lastName: string
-  email: string
-  phoneNumber: string
-  paymentMethod: string
-}
-
-export function Confirmation() {
+export default function Confirmation() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const state = location.state as LocationState
-  const { bookingId, service, bookingDate, bookingTime, firstName, lastName, email, phoneNumber, paymentMethod } = state || {}
+  const email = sessionStorage.getItem('signupEmail') || ''
+  const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
+  const bookingDate = sessionStorage.getItem('bookingDate') || ''
+  const bookingTime = sessionStorage.getItem('bookingTime') || ''
 
   useEffect(() => {
-    if (!bookingId || !service) {
-      navigate('/')
+    if (!email || !service.id || !bookingDate || !bookingTime) {
+      navigate('/signup')
     }
-  }, [bookingId, service, navigate])
+  }, [email, service, bookingDate, bookingTime, navigate])
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':')
@@ -38,181 +26,131 @@ export function Confirmation() {
   }
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    })
   }
 
-  const formatPrice = (price: string) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0
-    }).format(parseFloat(price))
-  }
-
-  const getPaymentMethodName = (method: string) => {
-    const methods: Record<string, string> = {
-      'gcash': 'GCash',
-      'maya': 'Maya',
-      'card': 'Credit/Debit Card',
-      'bank': 'Bank Transfer'
-    }
-    return methods[method] || method
+  const handleDone = () => {
+    sessionStorage.clear()
+    navigate('/')
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 p-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Success Animation */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-4">
-            <CheckCircle2 className="h-16 w-16 text-green-500" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen flex"
+    >
+      {/* Left Side - Confirmation Details */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-white">
+        <div className="w-full max-w-lg mx-auto">
+          {/* Success Icon */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            className="mb-8"
+          >
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="w-10 h-10 text-green-600" />
+            </div>
+          </motion.div>
+
+          {/* Heading */}
+          <div className="text-center mb-10">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+              Booking Confirmed!
+            </h1>
+            <p className="text-lg text-gray-600">
+              Your appointment has been successfully booked
+            </p>
           </div>
-          <h1 className="text-3xl font-bold text-green-700 mb-2">Booking Confirmed!</h1>
-          <p className="text-gray-600">Your appointment has been successfully scheduled</p>
-        </div>
 
-        {/* Booking Reference */}
-        <Card className="mb-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-          <CardContent className="p-6 text-center">
-            <p className="text-sm opacity-90 mb-1">Booking Reference</p>
-            <p className="text-3xl font-mono font-bold tracking-wider">NW-{String(bookingId).padStart(6, '0')}</p>
-            <p className="text-sm opacity-75 mt-2">Please save this reference number</p>
-          </CardContent>
-        </Card>
-
-        {/* Appointment Details */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Appointment Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="font-semibold text-lg text-blue-900">{service?.name}</p>
-              <p className="text-sm text-blue-700">{service?.duration_minutes} minutes • {formatPrice(service?.price || '0')}</p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <div className="p-2 bg-white rounded-full">
-                  <Calendar className="h-5 w-5 text-blue-500" />
+          {/* Booking Details */}
+          <div className="bg-gray-50 rounded-2xl p-6 mb-8">
+            <h3 className="font-semibold text-xl text-gray-900 mb-6">{service.name}</h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Date</p>
-                  <p className="font-medium">{bookingDate && formatDate(bookingDate)}</p>
+                  <div className="text-sm text-gray-500">Date</div>
+                  <div className="font-medium text-gray-900">{formatDate(bookingDate)}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <div className="p-2 bg-white rounded-full">
-                  <Clock className="h-5 w-5 text-green-500" />
+              
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Time</p>
-                  <p className="font-medium">{bookingTime && formatTime(bookingTime)}</p>
+                  <div className="text-sm text-gray-500">Time</div>
+                  <div className="font-medium text-gray-900">{formatTime(bookingTime)}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-teal-600" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Confirmation sent to</div>
+                  <div className="font-medium text-gray-900">{email}</div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className="p-2 bg-white rounded-full">
-                <MapPin className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Location</p>
-                <p className="font-medium">Nowendo Health Center</p>
-                <p className="text-sm text-gray-600">123 Healthcare Ave, Makati City</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Patient Information */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Patient Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-gray-400" />
-              <span className="font-medium">{firstName} {lastName}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-gray-400" />
-              <span>{email}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Phone className="h-4 w-4 text-gray-400" />
-              <span>{phoneNumber}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment Information */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm text-gray-500">Payment Method</p>
-                <p className="font-medium">{getPaymentMethodName(paymentMethod)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Amount Paid</p>
-                <p className="font-bold text-lg text-green-600">{formatPrice(service?.price || '0')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Important Notes */}
-        <Card className="mb-6 bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-yellow-800 mb-2">📋 Important Reminders</h3>
-            <ul className="text-sm text-yellow-700 space-y-1">
-              <li>• Please arrive 15 minutes before your appointment</li>
-              <li>• Bring a valid ID and this booking reference</li>
-              <li>• A confirmation email has been sent to {email}</li>
-              <li>• For cancellations, please contact us 24 hours in advance</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => window.print()}>
-            <Download className="mr-2 h-4 w-4" />
-            Download Receipt
-          </Button>
-          <Button variant="outline" className="flex-1" onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: 'My Appointment',
-                text: `Appointment on ${formatDate(bookingDate)} at ${formatTime(bookingTime)}`,
-              })
-            }
-          }}>
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </Button>
-          <Link to="/" className="flex-1">
-            <Button className="w-full">
-              <Home className="mr-2 h-4 w-4" />
-              Back to Home
+          {/* Actions */}
+          <div className="space-y-3">
+            <Button 
+              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              onClick={handleDone}
+            >
+              Done
             </Button>
-          </Link>
-        </div>
+            
+            <Button 
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={() => {}}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Add to Calendar
+            </Button>
+          </div>
 
-        {/* Contact Support */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>Need help? Contact us at</p>
-          <p className="font-medium text-blue-600">support@nowendo.com | (02) 8123-4567</p>
+          <p className="text-center text-sm text-gray-500 mt-6">
+            A confirmation email has been sent to your email address with all the details.
+          </p>
         </div>
       </div>
-    </div>
+
+      {/* Right Side - Decorative */}
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-green-500 via-teal-500 to-emerald-600 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
+          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
+            <PartyPopper className="w-12 h-12" />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">You're all set!</h2>
+          <p className="text-lg text-white/80 max-w-md">
+            We look forward to seeing you. Remember to arrive 10 minutes before your scheduled time.
+          </p>
+        </div>
+      </div>
+    </motion.div>
   )
 }
