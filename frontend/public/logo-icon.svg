@@ -1,0 +1,13 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stylized N with double stroke design matching brand -->
+  <g fill="none" stroke="#1e2a5e" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter">
+    <!-- Left vertical -->
+    <line x1="20" y1="85" x2="20" y2="15"/>
+    <!-- Diagonal going up right -->
+    <line x1="20" y1="85" x2="80" y2="15"/>
+    <!-- Right vertical -->
+    <line x1="80" y1="85" x2="80" y2="15"/>
+    <!-- Upper horizontal bar -->
+    <line x1="15" y1="10" x2="55" y2="10"/>
+  </g>
+</svg>

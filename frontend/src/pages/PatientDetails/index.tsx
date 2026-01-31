@@ -98,11 +98,7 @@ export default function PatientDetails() {
               <ArrowLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">N</span>
-              </div>
-            </div>
+            <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
           </div>
 
           {/* Heading */}
@@ -246,7 +242,7 @@ export default function PatientDetails() {
                 ))}
               </div>
               {formData.healthGoals.length > 0 && (
-                <p className="text-sm text-teal-600">
+                <p className="text-sm text-brand">
                   {formData.healthGoals.length} goal{formData.healthGoals.length > 1 ? 's' : ''} selected
                 </p>
               )}
@@ -260,7 +256,7 @@ export default function PatientDetails() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              className="w-full h-12 text-base bg-brand hover:bg-brand-600"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -277,7 +273,7 @@ export default function PatientDetails() {
       </div>
 
       {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-brand via-brand-600 to-brand-800 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />

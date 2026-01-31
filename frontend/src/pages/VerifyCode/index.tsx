@@ -129,11 +129,7 @@ export default function VerifyCode() {
               <ArrowLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">N</span>
-              </div>
-            </div>
+            <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
           </div>
 
           {/* Heading */}
@@ -160,7 +156,7 @@ export default function VerifyCode() {
                   onChange={(e) => handleChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
-                  className="w-12 h-14 sm:w-16 sm:h-18 text-center text-2xl font-bold border-2 rounded-xl focus:border-teal-500 focus:ring-4 focus:ring-teal-100 outline-none transition-all"
+                  className="w-12 h-14 sm:w-16 sm:h-18 text-center text-2xl font-bold border-2 rounded-xl focus:border-brand focus:ring-4 focus:ring-brand-100 outline-none transition-all"
                   disabled={isLoading}
                 />
               ))}
@@ -174,7 +170,7 @@ export default function VerifyCode() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              className="w-full h-12 text-base bg-brand hover:bg-brand-600"
               disabled={isLoading || code.join('').length !== 6}
             >
               {isLoading ? (
@@ -192,7 +188,7 @@ export default function VerifyCode() {
                 type="button"
                 onClick={handleResend}
                 disabled={timeLeft > 0 || isResending}
-                className="text-sm text-teal-600 hover:text-teal-700 disabled:text-gray-400 flex items-center justify-center gap-2 mx-auto transition-colors"
+                className="text-sm text-brand hover:text-brand-600 disabled:text-gray-400 flex items-center justify-center gap-2 mx-auto transition-colors"
               >
                 {isResending && <RefreshCw className="h-3 w-3 animate-spin" />}
                 {timeLeft > 0 ? `Resend code in ${timeLeft}s` : 'Resend code'}
@@ -203,7 +199,7 @@ export default function VerifyCode() {
       </div>
 
       {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-brand via-brand-600 to-brand-800 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />

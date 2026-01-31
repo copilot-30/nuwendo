@@ -137,7 +137,7 @@ export function AdminDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800'
+      case 'confirmed': return 'bg-brand-100 text-brand'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'completed': return 'bg-blue-100 text-blue-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
@@ -162,9 +162,12 @@ export function AdminDashboard() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
-              <p className="text-sm text-gray-500">Welcome back, {adminUser?.full_name}</p>
+            <div className="flex items-center gap-4">
+              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-8" />
+              <div className="border-l border-gray-200 pl-4">
+                <h1 className="text-lg font-semibold text-gray-900">Admin Dashboard</h1>
+                <p className="text-sm text-gray-500">Welcome, {adminUser?.full_name}</p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm">
@@ -213,8 +216,8 @@ export function AdminDashboard() {
                   <p className="text-sm text-gray-600">Today's Appointments</p>
                   <p className="text-3xl font-bold">{stats?.todayAppointments || 0}</p>
                 </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <Clock className="h-6 w-6 text-green-600" />
+                <div className="p-3 bg-brand-100 rounded-full">
+                  <Clock className="h-6 w-6 text-brand" />
                 </div>
               </div>
             </CardContent>
@@ -283,7 +286,7 @@ export function AdminDashboard() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-green-600">
+                          <p className="font-semibold text-brand">
                             {formatPrice(booking.amount_paid)}
                           </p>
                           <p className="text-xs text-gray-500">#{booking.id}</p>

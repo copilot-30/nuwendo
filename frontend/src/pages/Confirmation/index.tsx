@@ -73,6 +73,11 @@ export default function Confirmation() {
       {/* Confirmation Details */}
       <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12">
         <div className="w-full max-w-4xl mx-auto">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-10" />
+          </div>
+
           {/* Success Icon */}
           <motion.div
             initial={{ scale: 0 }}
@@ -80,8 +85,8 @@ export default function Confirmation() {
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
             className="mb-8"
           >
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+            <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="w-10 h-10 text-brand" />
             </div>
           </motion.div>
 
@@ -117,8 +122,8 @@ export default function Confirmation() {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-brand" />
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Date</div>
@@ -127,8 +132,8 @@ export default function Confirmation() {
               </div>
               
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-brand" />
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Time</div>
@@ -137,8 +142,8 @@ export default function Confirmation() {
               </div>
               
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-brand" />
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Confirmation sent to</div>
@@ -151,7 +156,7 @@ export default function Confirmation() {
           {/* Actions */}
           <div className="space-y-3">
             <Button 
-              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              className="w-full h-12 text-base bg-brand hover:bg-brand-600"
               onClick={handleDone}
             >
               Done

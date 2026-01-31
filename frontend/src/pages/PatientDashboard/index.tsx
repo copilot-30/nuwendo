@@ -131,20 +131,24 @@ export default function PatientDashboard() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.first_name || 'Patient'}!</h1>
-            <p className="text-gray-600 mt-1">Manage your appointments and health services</p>
+          <div className="flex items-center gap-4">
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-10" />
           </div>
           <Button variant="outline" onClick={handleLogout} className="gap-2">
             <LogOut className="w-4 h-4" />Logout
           </Button>
         </div>
 
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.first_name || 'Patient'}!</h1>
+          <p className="text-gray-600 mt-1">Manage your appointments and health services</p>
+        </div>
+
         {profile && (
           <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center">
+                <User className="w-6 h-6 text-brand" />
               </div>
               <div className="flex-1">
                 <h2 className="text-xl font-semibold text-gray-900">{profile.first_name} {profile.last_name}</h2>
@@ -176,7 +180,7 @@ export default function PatientDashboard() {
           ) : (
             <div className="space-y-4">
               {appointments.map((appointment) => (
-                <div key={appointment.id} className="border rounded-lg p-4 hover:border-green-500 transition-colors">
+                <div key={appointment.id} className="border rounded-lg p-4 hover:border-brand transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg text-gray-900">{appointment.service_name}</h3>
@@ -193,7 +197,7 @@ export default function PatientDashboard() {
                         </div>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${appointment.status === 'confirmed' ? 'bg-brand-100 text-brand' : 'bg-gray-100 text-gray-700'}`}>
                       {appointment.status}
                     </span>
                   </div>

@@ -72,19 +72,14 @@ export default function SignUp() {
         <div className="w-full max-w-lg mx-auto">
           {/* Logo */}
           <div className="mb-10">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">N</span>
-              </div>
-              <span className="text-2xl font-bold text-gray-900">Nuwendo</span>
-            </div>
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
           </div>
 
           {/* Heading */}
           <div className="mb-8">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
               Your health journey{' '}
-              <span className="text-teal-600">starts here</span>
+              <span className="text-brand">starts here</span>
             </h1>
             <p className="text-lg text-gray-600">
               Enter your email to get started. We'll send you a verification code.
@@ -123,7 +118,7 @@ export default function SignUp() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              className="w-full h-12 text-base bg-brand hover:bg-brand-600"
               disabled={isLoading || !email}
             >
               {isLoading ? (
@@ -143,7 +138,7 @@ export default function SignUp() {
               Already have an account?{' '}
               <button
                 onClick={() => navigate('/login')}
-                className="text-teal-600 hover:text-teal-700 font-medium"
+                className="text-brand hover:text-brand-600 font-medium"
               >
                 Log in
               </button>
@@ -154,8 +149,8 @@ export default function SignUp() {
           <div className="mt-12 grid grid-cols-2 gap-4">
             {features.map((feature, index) => (
               <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-                  <feature.icon className="w-4 h-4 text-teal-600" />
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+                  <feature.icon className="w-4 h-4 text-brand" />
                 </div>
                 <span className="text-sm text-gray-600 leading-tight">{feature.text}</span>
               </div>
@@ -165,7 +160,7 @@ export default function SignUp() {
       </div>
 
       {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 relative overflow-hidden">
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-brand via-brand-600 to-brand-800 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />

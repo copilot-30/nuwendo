@@ -126,9 +126,9 @@ export default function ChooseSchedule() {
           disabled={past}
           onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
           className={`h-10 w-10 rounded-full text-sm font-medium transition-all
-            ${past ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-teal-100'}
-            ${isToday(day) && !isSelected(day) ? 'ring-2 ring-teal-500 ring-offset-2' : ''}
-            ${isSelected(day) ? 'bg-teal-500 text-white hover:bg-teal-600' : ''}
+            ${past ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-brand-100'}
+            ${isToday(day) && !isSelected(day) ? 'ring-2 ring-brand ring-offset-2' : ''}
+            ${isSelected(day) ? 'bg-brand text-white hover:bg-brand-600' : ''}
           `}
         >
           {day}
@@ -158,11 +158,7 @@ export default function ChooseSchedule() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">N</span>
-            </div>
-          </div>
+          <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
         </div>
 
           {/* Heading */}
@@ -187,25 +183,27 @@ export default function ChooseSchedule() {
                 }}
                 className={`p-4 rounded-xl border-2 transition-all ${
                   appointmentType === 'online'
-                    ? 'border-teal-500 bg-teal-50'
+                    ? 'border-brand bg-brand-50'
                     : 'border-gray-200 hover:border-gray-300 bg-white'
                 }`}
               >
                 <div className="flex flex-col items-center gap-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    appointmentType === 'online' ? 'bg-teal-100' : 'bg-gray-100'
+                    appointmentType === 'online' ? 'bg-brand-100' : 'bg-gray-100'
                   }`}>
                     <Monitor className={`w-6 h-6 ${
-                      appointmentType === 'online' ? 'text-teal-600' : 'text-gray-600'
+                      appointmentType === 'online' ? 'text-brand' : 'text-gray-600'
                     }`} />
                   </div>
                   <div>
                     <p className={`font-semibold ${
-                      appointmentType === 'online' ? 'text-teal-900' : 'text-gray-900'
+                      appointmentType === 'online' ? 'text-brand-900' : 'text-gray-900'
                     }`}>
                       Online
                     </p>
-                    <p className="text-sm text-gray-600">Video consultation</p>
+                    <p className="text-sm text-gray-600">
+                      {service.duration_minutes || 30} min video call
+                    </p>
                   </div>
                 </div>
               </motion.button>
@@ -218,25 +216,25 @@ export default function ChooseSchedule() {
                 }}
                 className={`p-4 rounded-xl border-2 transition-all ${
                   appointmentType === 'on-site'
-                    ? 'border-teal-500 bg-teal-50'
+                    ? 'border-brand bg-brand-50'
                     : 'border-gray-200 hover:border-gray-300 bg-white'
                 }`}
               >
                 <div className="flex flex-col items-center gap-3">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    appointmentType === 'on-site' ? 'bg-teal-100' : 'bg-gray-100'
+                    appointmentType === 'on-site' ? 'bg-brand-100' : 'bg-gray-100'
                   }`}>
                     <Building2 className={`w-6 h-6 ${
-                      appointmentType === 'on-site' ? 'text-teal-600' : 'text-gray-600'
+                      appointmentType === 'on-site' ? 'text-brand' : 'text-gray-600'
                     }`} />
                   </div>
                   <div>
                     <p className={`font-semibold ${
-                      appointmentType === 'on-site' ? 'text-teal-900' : 'text-gray-900'
+                      appointmentType === 'on-site' ? 'text-brand-900' : 'text-gray-900'
                     }`}>
                       On-Site
                     </p>
-                    <p className="text-sm text-gray-600">Visit clinic</p>
+                    <p className="text-sm text-gray-600">60 min clinic visit</p>
                   </div>
                 </div>
               </motion.button>
@@ -283,7 +281,7 @@ export default function ChooseSchedule() {
               
               {isLoading ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
+                  <Loader2 className="h-6 w-6 animate-spin text-brand" />
                 </div>
               ) : availableSlots.length === 0 ? (
                 <p className="text-center text-gray-500 py-8 bg-gray-50 rounded-xl">
@@ -297,8 +295,8 @@ export default function ChooseSchedule() {
                       onClick={() => setSelectedSlot(slot)}
                       className={`p-3 text-sm font-medium rounded-xl border-2 transition-all
                         ${selectedSlot?.id === slot.id
-                          ? 'bg-teal-500 text-white border-teal-500'
-                          : 'border-gray-200 hover:border-teal-300 bg-white'}
+                          ? 'bg-brand text-white border-brand'
+                          : 'border-gray-200 hover:border-brand-300 bg-white'}
                       `}
                     >
                       {formatTime(slot.start_time)}
@@ -310,7 +308,7 @@ export default function ChooseSchedule() {
           )}
 
         <Button 
-          className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+          className="w-full h-12 text-base bg-brand hover:bg-brand-600"
           disabled={!selectedDate || !selectedSlot}
           onClick={handleContinue}
         >

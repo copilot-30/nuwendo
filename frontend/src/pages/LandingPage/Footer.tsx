@@ -1,81 +1,176 @@
+import { Link } from 'react-router-dom'
+import { Phone, Mail, MapPin, Facebook, Instagram, Linkedin } from 'lucide-react'
+import { motion } from 'framer-motion'
+
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/50">
-      <div className="container py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold">Nuwendo</h3>
-            <p className="text-sm text-muted-foreground">
-              Transforming businesses with innovative solutions.
+    <footer className="bg-brand-800 text-white">
+      {/* Main Footer */}
+      <div className="container py-16">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+          {/* Brand Column */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="space-y-6"
+          >
+            <Link to="/">
+              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12 brightness-0 invert" />
+            </Link>
+            <p className="text-white/70 leading-relaxed">
+              Doctor-led weight loss and metabolic health clinic. Real results. Sustainable change.
             </p>
-          </div>
+            <div className="flex gap-4">
+              <a 
+                href="https://facebook.com/nuwendo" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand transition-colors"
+              >
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a 
+                href="https://instagram.com/nuwendo.ph" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand transition-colors"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a 
+                href="https://linkedin.com/company/nuwendo" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand transition-colors"
+              >
+                <Linkedin className="h-5 w-5" />
+              </a>
+            </div>
+          </motion.div>
 
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold">Company</h4>
-            <ul className="space-y-2 text-sm">
+          {/* Quick Links */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="space-y-6"
+          >
+            <h4 className="text-lg font-semibold">Quick Links</h4>
+            <ul className="space-y-3">
               <li>
-                <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
+                <a href="#about" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
                   About Us
                 </a>
               </li>
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Careers
+                <a href="#services" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  Our Services
                 </a>
               </li>
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Contact
+                <a href="#faq" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  FAQs
                 </a>
               </li>
+              <li>
+                <Link to="/signup" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  Book Now
+                </Link>
+              </li>
             </ul>
-          </div>
+          </motion.div>
 
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold">Services</h4>
-            <ul className="space-y-2 text-sm">
+          {/* Services */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="space-y-6"
+          >
+            <h4 className="text-lg font-semibold">Our Services</h4>
+            <ul className="space-y-3">
               <li>
-                <a href="#services" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Web Development
+                <a href="#services" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  Initial Consultation
                 </a>
               </li>
               <li>
-                <a href="#services" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Mobile Apps
+                <a href="#services" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  Starter Program
                 </a>
               </li>
               <li>
-                <a href="#services" className="text-muted-foreground hover:text-foreground transition-colors">
-                  UI/UX Design
+                <a href="#services" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  Weight Management
+                </a>
+              </li>
+              <li>
+                <a href="#services" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  Metabolic Health
                 </a>
               </li>
             </ul>
-          </div>
+          </motion.div>
 
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold">Legal</h4>
-            <ul className="space-y-2 text-sm">
+          {/* Contact Info */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="space-y-6"
+          >
+            <h4 className="text-lg font-semibold">Contact Us</h4>
+            <ul className="space-y-4">
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Privacy Policy
+                <a href="tel:09178084442" className="text-white/70 hover:text-brand-300 transition-colors flex items-start gap-3">
+                  <Phone className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />
+                  <span>0917 808 4442</span>
                 </a>
               </li>
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Terms of Service
+                <a href="mailto:hello@nuwendo.com" className="text-white/70 hover:text-brand-300 transition-colors flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />
+                  <span>hello@nuwendo.com</span>
                 </a>
+              </li>
+              <li className="flex items-start gap-3 text-white/70">
+                <MapPin className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />
+                <span>Philippines</span>
               </li>
             </ul>
-          </div>
+          </motion.div>
         </div>
+      </div>
 
-        <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Nuwendo. All rights reserved.</p>
-          <p className="mt-2">
-            <a href="/admin/login" className="text-muted-foreground hover:text-foreground transition-colors">
-              Admin Login
-            </a>
+      {/* Bottom Bar */}
+      <div className="border-t border-white/10">
+        <div className="container py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-white/60 text-sm">
+            &copy; {new Date().getFullYear()} Nuwendo Metabolic Clinic. All rights reserved.
           </p>
+          <div className="flex items-center gap-6 text-sm">
+            <a href="#" className="text-white/60 hover:text-white transition-colors">
+              Privacy Policy
+            </a>
+            <a href="#" className="text-white/60 hover:text-white transition-colors">
+              Terms of Service
+            </a>
+            <a href="/admin/login" className="text-white/60 hover:text-white transition-colors">
+              Admin
+            </a>
+          </div>
         </div>
       </div>
     </footer>

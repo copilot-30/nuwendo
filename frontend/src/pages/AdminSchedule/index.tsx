@@ -62,17 +62,22 @@ export function AdminSchedule() {
     fetchTimeSlots()
   }, [navigate])
 
-  // Auto-calculate end_time when start_time changes (1 hour duration)
+  // Auto-calculate end_time based on appointment type:
+  // ON-SITE: Always 60 minutes (1 hour)
+  // ONLINE: Always 30 minutes (services needing 60 mins will book 2 consecutive slots)
   useEffect(() => {
     if (formData.start_time) {
       const [hours, minutes] = formData.start_time.split(':').map(Number)
-      const endHours = (hours + 1) % 24
-      const endTime = `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+      const durationMinutes = formData.appointment_type === 'on-site' ? 60 : 30
+      const totalMinutes = hours * 60 + minutes + durationMinutes
+      const endHours = Math.floor(totalMinutes / 60) % 24
+      const endMinutes = totalMinutes % 60
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
       if (formData.end_time !== endTime) {
         setFormData(prev => ({ ...prev, end_time: endTime }))
       }
     }
-  }, [formData.start_time])
+  }, [formData.start_time, formData.appointment_type])
 
   const fetchTimeSlots = async () => {
     try {
@@ -330,16 +335,24 @@ export function AdminSchedule() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="end_time">End Time (Auto-calculated)</Label>
+                    <Label htmlFor="end_time">
+                      End Time (Auto: {formData.appointment_type === 'on-site' ? '60 min' : '30 min'})
+                    </Label>
                     <Input
                       id="end_time"
                       type="time"
                       value={formData.end_time}
                       disabled
                       className="bg-gray-100"
-                      title="End time is automatically calculated based on 1-hour duration"
+                      title={formData.appointment_type === 'on-site' 
+                        ? 'On-site slots are always 60 minutes' 
+                        : 'Online slots are always 30 minutes (60 min services book 2 slots)'}
                     />
-                    <p className="text-xs text-gray-500">Duration: 1 hour (fixed)</p>
+                    <p className="text-xs text-gray-500">
+                      {formData.appointment_type === 'on-site' 
+                        ? 'On-site: 60 min per slot' 
+                        : 'Online: 30 min per slot (60 min services use 2 consecutive slots)'}
+                    </p>
                   </div>
                 </div>
 
@@ -378,7 +391,7 @@ export function AdminSchedule() {
                       onClick={() => setFormData({...formData, appointment_type: 'on-site'})}
                       className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                         formData.appointment_type === 'on-site'
-                          ? 'border-green-500 bg-green-50 text-green-700'
+                          ? 'border-brand bg-brand-50 text-brand'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -462,7 +475,7 @@ export function AdminSchedule() {
                                 </Badge>
                               )}
                               {slot.appointment_type === 'on-site' && (
-                                <Badge className="text-xs bg-green-500">
+                                <Badge className="text-xs bg-brand">
                                   <Building2 className="h-3 w-3 mr-1" />
                                   On-Site
                                 </Badge>
@@ -477,7 +490,7 @@ export function AdminSchedule() {
                             className="text-gray-400 hover:text-gray-600"
                           >
                             {slot.is_active ? (
-                              <ToggleRight className="h-5 w-5 text-green-500" />
+                              <ToggleRight className="h-5 w-5 text-brand" />
                             ) : (
                               <ToggleLeft className="h-5 w-5 text-gray-400" />
                             )}

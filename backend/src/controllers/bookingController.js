@@ -111,9 +111,9 @@ const createBooking = async (req, res) => {
       );
     }
 
-    // Get service price
+    // Get service price and duration
     const serviceResult = await pool.query(
-      'SELECT price FROM services WHERE id = $1',
+      'SELECT price, duration_minutes FROM services WHERE id = $1',
       [serviceId]
     );
 
@@ -122,22 +122,43 @@ const createBooking = async (req, res) => {
     }
 
     const amountPaid = serviceResult.rows[0].price;
+    const serviceDuration = serviceResult.rows[0].duration_minutes || 30;
 
-    // Check if slot is still available for the specific appointment type
-    const existingBooking = await pool.query(
-      `SELECT id FROM bookings 
-       WHERE booking_date = $1 
-       AND booking_time = $2 
-       AND appointment_type = $3
-       AND status != 'cancelled'`,
-      [bookingDate, bookingTime, appointmentType]
-    );
-
-    if (existingBooking.rows.length > 0) {
-      return res.status(400).json({ message: 'This time slot is no longer available for ' + appointmentType + ' appointments' });
+    // For online appointments with 60 min services, we need to book 2 consecutive 30-min slots
+    const slotsToBook = [];
+    slotsToBook.push(bookingTime);
+    
+    if (appointmentType === 'online' && serviceDuration >= 60) {
+      // Calculate the next 30-min slot
+      const [hours, minutes] = bookingTime.split(':').map(Number);
+      const nextSlotMinutes = hours * 60 + minutes + 30;
+      const nextHours = Math.floor(nextSlotMinutes / 60) % 24;
+      const nextMins = nextSlotMinutes % 60;
+      const nextSlotTime = `${String(nextHours).padStart(2, '0')}:${String(nextMins).padStart(2, '0')}`;
+      slotsToBook.push(nextSlotTime);
     }
 
-    // Create booking
+    // Check if all required slots are available
+    for (const slotTime of slotsToBook) {
+      const existingBooking = await pool.query(
+        `SELECT id FROM bookings 
+         WHERE booking_date = $1 
+         AND booking_time = $2 
+         AND appointment_type = $3
+         AND status != 'cancelled'`,
+        [bookingDate, slotTime, appointmentType]
+      );
+
+      if (existingBooking.rows.length > 0) {
+        return res.status(400).json({ 
+          message: slotsToBook.length > 1 
+            ? 'This service requires 2 consecutive slots. One or both slots are no longer available.' 
+            : 'This time slot is no longer available for ' + appointmentType + ' appointments' 
+        });
+      }
+    }
+
+    // Create booking (we store the start time, duration determines if it spans 2 slots)
     const result = await pool.query(
       `INSERT INTO bookings (
         user_id, service_id, booking_date, booking_time, 
@@ -164,7 +185,8 @@ const createBooking = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Booking created successfully',
-      bookingId: result.rows[0].id
+      bookingId: result.rows[0].id,
+      slotsBooked: slotsToBook.length
     });
   } catch (error) {
     console.error('Create booking error:', error);

@@ -96,9 +96,12 @@ export default function Login() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="min-h-screen bg-white">
       <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12">
         <div className="w-full max-w-md mx-auto">
-          <Button type="button" variant="ghost" onClick={() => step === 'code' ? setStep('email') : navigate('/')} className="mb-8 -ml-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />Back
-          </Button>
+          <div className="flex items-center justify-between mb-8">
+            <Button type="button" variant="ghost" onClick={() => step === 'code' ? setStep('email') : navigate('/')} className="-ml-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />Back
+            </Button>
+            <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
+          </div>
           <div className="mb-10">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">{step === 'email' ? 'Welcome Back' : 'Enter Verification Code'}</h1>
             <p className="text-lg text-gray-600">{step === 'email' ? 'Sign in to manage your appointments' : `We've sent a verification code to ${email}`}</p>
@@ -114,7 +117,7 @@ export default function Login() {
               </div>
               {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-600">{error}</p></div>}
               <Button type="submit" className="w-full h-12 text-base" disabled={loading}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending Code...</> : 'Send Verification Code'}</Button>
-              <p className="text-center text-sm text-gray-600">Don't have an account? <button type="button" onClick={() => navigate('/signup')} className="text-green-600 hover:text-green-700 font-medium">Sign up</button></p>
+              <p className="text-center text-sm text-gray-600">Don't have an account? <button type="button" onClick={() => navigate('/signup')} className="text-brand hover:text-brand-600 font-medium">Sign up</button></p>
             </form>
           )}
           {step === 'code' && (
@@ -130,7 +133,7 @@ export default function Login() {
               <Button type="submit" className="w-full h-12 text-base" disabled={loading || code.length !== 6}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Sign In'}</Button>
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
-                <button type="button" onClick={handleResendCode} disabled={loading} className="text-sm text-green-600 hover:text-green-700 font-medium disabled:opacity-50">Resend Code</button>
+                <button type="button" onClick={handleResendCode} disabled={loading} className="text-sm text-brand hover:text-brand-600 font-medium disabled:opacity-50">Resend Code</button>
               </div>
             </form>
           )}

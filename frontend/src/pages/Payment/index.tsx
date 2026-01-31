@@ -129,11 +129,7 @@ export default function Payment() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">N</span>
-            </div>
-          </div>
+          <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
         </div>
 
           {/* Heading */}
@@ -160,7 +156,7 @@ export default function Payment() {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     appointmentType === 'online' 
                       ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-green-100 text-green-700'
+                      : 'bg-brand-100 text-brand'
                   }`}>
                     {appointmentType === 'online' ? 'Online' : 'On-Site'}
                   </span>
@@ -182,7 +178,7 @@ export default function Payment() {
               </div>
               <div className="pt-3 border-t flex justify-between">
                 <span className="font-semibold">Total</span>
-                <span className="font-bold text-xl text-teal-600">{formatPrice(service.price)}</span>
+                <span className="font-bold text-xl text-brand">{formatPrice(service.price)}</span>
               </div>
             </div>
           </div>
@@ -251,7 +247,7 @@ export default function Payment() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+              className="w-full h-12 text-base bg-brand hover:bg-brand-600"
               disabled={isLoading}
             >
               {isLoading ? (

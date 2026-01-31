@@ -118,11 +118,7 @@ export default function ChooseService() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">N</span>
-            </div>
-          </div>
+          <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
         </div>
 
         {/* Heading */}
@@ -138,7 +134,7 @@ export default function ChooseService() {
           {/* Services List by Category */}
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-brand" />
             </div>
           ) : error ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -152,8 +148,8 @@ export default function ChooseService() {
                   <div key={category}>
                     {/* Category Header */}
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-teal-600" />
+                      <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-brand" />
                       </div>
                       <h2 className="text-xl font-semibold text-gray-900">{category}</h2>
                     </div>
@@ -168,7 +164,7 @@ export default function ChooseService() {
                           onClick={() => setSelectedService(service)}
                           className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
                             selectedService?.id === service.id
-                              ? 'border-teal-500 bg-teal-50'
+                              ? 'border-brand bg-brand-50'
                               : 'border-gray-200 hover:border-gray-300 bg-white'
                           }`}
                         >
@@ -177,7 +173,7 @@ export default function ChooseService() {
                               <div className="flex items-center gap-3 mb-2">
                                 <h3 className="font-semibold text-lg text-gray-900">{service.name}</h3>
                                 {selectedService?.id === service.id && (
-                                  <div className="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center">
+                                  <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center">
                                     <Check className="h-3 w-3 text-white" />
                                   </div>
                                 )}
@@ -188,7 +184,7 @@ export default function ChooseService() {
                                   <Clock className="h-4 w-4" />
                                   {service.duration_minutes} min
                                 </span>
-                                <span className="font-semibold text-teal-600">
+                                <span className="font-semibold text-brand">
                                   {formatPrice(service.price)}
                                 </span>
                               </div>
@@ -204,7 +200,7 @@ export default function ChooseService() {
           )}
 
         <Button 
-          className="w-full h-12 text-base bg-teal-600 hover:bg-teal-700"
+          className="w-full h-12 text-base bg-brand hover:bg-brand-600"
           disabled={!selectedService}
           onClick={handleContinue}
         >

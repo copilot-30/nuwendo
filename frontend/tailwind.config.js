@@ -6,6 +6,23 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    container: {
+      center: true,
+      padding: {
+        DEFAULT: '1rem',
+        sm: '2rem',
+        lg: '4rem',
+        xl: '5rem',
+        '2xl': '6rem',
+      },
+      screens: {
+        sm: '640px',
+        md: '768px',
+        lg: '1024px',
+        xl: '1280px',
+        '2xl': '1400px',
+      },
+    },
     extend: {
       borderRadius: {
         lg: 'var(--radius)',
@@ -13,6 +30,19 @@ export default {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        brand: {
+          DEFAULT: '#2c4d5c',
+          50: '#f0f5f7',
+          100: '#d9e4e9',
+          200: '#b3c9d3',
+          300: '#8daebd',
+          400: '#6793a7',
+          500: '#2c4d5c',
+          600: '#264453',
+          700: '#1f3a47',
+          800: '#19303b',
+          900: '#12262f',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

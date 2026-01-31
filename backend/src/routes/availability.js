@@ -3,6 +3,15 @@ import pool from '../config/database.js';
 
 const router = express.Router();
 
+// Helper function to add minutes to a time string
+const addMinutesToTime = (timeStr, minutes) => {
+  const [hours, mins] = timeStr.split(':').map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60) % 24;
+  const newMins = totalMinutes % 60;
+  return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+};
+
 // Get available time slots for a specific date (public endpoint)
 router.get('/', async (req, res) => {
   try {
@@ -58,20 +67,33 @@ router.get('/', async (req, res) => {
       [dayOfWeek, appointmentType]
     );
     
-    // Get already booked slots for this date and type
+    // Get already booked slots for this date and type, including service duration
     const bookedResult = await pool.query(
-      `SELECT booking_time FROM bookings 
-       WHERE booking_date = $1 
-       AND appointment_type = $2
-       AND status NOT IN ('cancelled')`,
+      `SELECT b.booking_time, s.duration_minutes 
+       FROM bookings b
+       JOIN services s ON b.service_id = s.id
+       WHERE b.booking_date = $1 
+       AND b.appointment_type = $2
+       AND b.status NOT IN ('cancelled')`,
       [date, appointmentType]
     );
     
-    const bookedTimes = bookedResult.rows.map(row => row.booking_time);
+    // Build list of blocked times
+    // For online appointments with 60 min services, both the start slot AND the next 30-min slot are blocked
+    const blockedTimes = new Set();
+    bookedResult.rows.forEach(row => {
+      blockedTimes.add(row.booking_time);
+      
+      // For online appointments, if service is 60 mins, also block the next slot
+      if (appointmentType === 'online' && row.duration_minutes >= 60) {
+        const nextSlot = addMinutesToTime(row.booking_time, 30);
+        blockedTimes.add(nextSlot);
+      }
+    });
     
-    // Filter out booked slots
+    // Filter out booked/blocked slots
     const availableSlots = timeSlotsResult.rows.filter(slot => {
-      return !bookedTimes.includes(slot.start_time);
+      return !blockedTimes.has(slot.start_time);
     });
     
     res.json({

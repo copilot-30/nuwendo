@@ -340,15 +340,20 @@ export function AdminServices() {
 
                   <div className="space-y-2">
                     <Label htmlFor="duration">Duration (minutes) *</Label>
-                    <Input
+                    <select
                       id="duration"
-                      type="number"
-                      min="5"
-                      max="480"
                       value={formData.duration_minutes}
                       onChange={(e) => setFormData({...formData, duration_minutes: parseInt(e.target.value)})}
                       required
-                    />
+                      className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={30}>30 minutes</option>
+                      <option value={60}>60 minutes</option>
+                    </select>
+                    <p className="text-xs text-gray-500">
+                      • Online: 30 min uses 1 slot, 60 min uses 2 consecutive slots<br/>
+                      • On-site: Always 60 minutes (1 slot)
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -446,7 +451,7 @@ export function AdminServices() {
                     className="text-gray-400 hover:text-gray-600"
                   >
                     {service.is_active ? (
-                      <ToggleRight className="h-6 w-6 text-green-500" />
+                      <ToggleRight className="h-6 w-6 text-brand" />
                     ) : (
                       <ToggleLeft className="h-6 w-6 text-gray-400" />
                     )}
@@ -456,13 +461,16 @@ export function AdminServices() {
                 <p className="text-sm text-gray-600 mb-4">{service.description}</p>
 
                 <div className="flex items-center gap-4 mb-4 text-sm">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1" title={service.duration_minutes >= 60 ? 'Online: uses 2 slots | On-site: 1 slot' : 'Online: 1 slot | On-site: 1 slot (60 min)'}>
                     <Clock className="h-4 w-4 text-gray-400" />
-                    <span>{service.duration_minutes} min</span>
+                    <span>
+                      {service.duration_minutes} min
+                      {service.duration_minutes >= 60 && <span className="text-xs text-amber-600 ml-1">(2 online slots)</span>}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="font-semibold text-green-600">
+                    <DollarSign className="h-4 w-4 text-brand" />
+                    <span className="font-semibold text-brand">
                       {formatPrice(service.price)}
                     </span>
                   </div>

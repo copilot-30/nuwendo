@@ -61,7 +61,7 @@ export function SetupPassword() {
     if (pass.length === 0) return { strength: 0, label: '', color: '' }
     if (pass.length < 6) return { strength: 1, label: 'Weak', color: 'bg-red-500' }
     if (pass.length < 10) return { strength: 2, label: 'Medium', color: 'bg-yellow-500' }
-    return { strength: 3, label: 'Strong', color: 'bg-green-500' }
+    return { strength: 3, label: 'Strong', color: 'bg-brand' }
   }
 
   const passwordStrength = getPasswordStrength(password)
@@ -198,7 +198,7 @@ export function SetupPassword() {
                 <p className="text-xs text-red-600">Passwords do not match</p>
               )}
               {confirmPassword && password === confirmPassword && (
-                <p className="text-xs text-green-600">✓ Passwords match</p>
+                <p className="text-xs text-brand">✓ Passwords match</p>
               )}
             </div>
 

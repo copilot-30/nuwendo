@@ -3,6 +3,7 @@ import { Hero } from './Hero'
 import { AboutUs } from './AboutUs'
 import { Services } from './Services'
 import { AddOn } from './AddOn'
+import { FAQ } from './FAQ'
 import { Footer } from './Footer'
 
 export function LandingPage() {
@@ -14,6 +15,7 @@ export function LandingPage() {
         <AboutUs />
         <Services />
         <AddOn />
+        <FAQ />
       </main>
       <Footer />
     </div>

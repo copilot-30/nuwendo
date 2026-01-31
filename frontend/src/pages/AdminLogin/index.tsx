@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Lock, Eye, EyeOff, Shield } from 'lucide-react'
+import { User, Lock, Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
 const API_URL = 'http://localhost:5000/api'
@@ -51,11 +51,11 @@ export function AdminLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-            <Shield className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white mb-4 p-2">
+            <img src="/logo-icon.svg" alt="Nuwendo" className="h-full w-full" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>
-          <p className="text-slate-400">Nuwendo Health Services</p>
+          <p className="text-slate-400">Nuwendo Metabolic Clinic</p>
         </div>
 
         <Card className="border-slate-700 bg-slate-800">

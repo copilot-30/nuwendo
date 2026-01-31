@@ -1,72 +1,121 @@
-import { Code, Palette, Smartphone, Database, Cloud, Shield } from 'lucide-react'
+import { ArrowRight, Monitor, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const services = [
   {
-    icon: Code,
-    title: 'Web Development',
-    description: 'Build modern, responsive websites that engage your audience and drive conversions.',
+    number: '01',
+    title: 'Initial Medical Consultation',
+    description: 'Full medical intake, risk screening, baseline goals, and a personalized starter plan.',
+    image: '/9.png',
   },
   {
-    icon: Smartphone,
-    title: 'Mobile Apps',
-    description: 'Create powerful mobile applications for iOS and Android platforms.',
+    number: '02',
+    title: 'Nuwendo Starter',
+    description: 'Structured follow-ups, habit coaching, and adjustments based on your response.',
+    image: '/8.png',
   },
   {
-    icon: Palette,
-    title: 'UI/UX Design',
-    description: 'Design beautiful, intuitive interfaces that users love to interact with.',
+    number: '03',
+    title: 'Tirzepatide Vial',
+    description: 'Prescription guidance with education, monitoring, and scheduled follow-ups.',
+    image: '/7.png',
   },
   {
-    icon: Database,
-    title: 'Database Solutions',
-    description: 'Implement robust database systems to manage your data efficiently.',
-  },
-  {
-    icon: Cloud,
-    title: 'Cloud Services',
-    description: 'Deploy and manage your applications on secure cloud infrastructure.',
-  },
-  {
-    icon: Shield,
-    title: 'Security',
-    description: 'Protect your business with comprehensive security solutions.',
+    number: '04',
+    title: 'Tirzepatide Clinic',
+    description: 'In-clinic tirzepatide administration with physician supervision.',
+    image: '/6.png',
   },
 ]
 
 export function Services() {
   return (
-    <section id="services" className="container py-20 bg-muted/50">
-      <div className="flex flex-col items-center text-center space-y-4 mb-12">
-        <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-          Our Services
-        </h2>
-        <p className="max-w-[700px] text-muted-foreground md:text-lg">
-          Comprehensive solutions tailored to meet your business needs
-        </p>
-      </div>
+    <section id="services" className="py-20 bg-gray-50">
+      <div className="container">
+        {/* Section Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <p className="text-brand font-medium mb-2">ONLINE & CLINIC CONSULTS</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-brand-800 mb-4">
+            Our Services & Programs
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Looking for trusted medical weight management? Discover our full range of doctor-led in-clinic and online care services.
+          </p>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {services.map((service, index) => {
-          const Icon = service.icon
-          return (
-            <div
-              key={index}
-              className="group relative overflow-hidden rounded-lg border bg-card p-6 hover:shadow-lg transition-all duration-300"
-            >
-              <div className="flex flex-col space-y-4">
-                <div className="p-3 rounded-full bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
-                  <Icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">{service.title}</h3>
-                <p className="text-muted-foreground">{service.description}</p>
-                <Button variant="link" className="w-fit p-0 h-auto">
-                  Learn more →
-                </Button>
-              </div>
+          {/* Appointment Type Badges */}
+          <div className="flex justify-center gap-4 mt-6">
+            <div className="inline-flex items-center gap-2 bg-brand-100 text-brand px-4 py-2 rounded-full text-sm font-medium">
+              <Monitor className="h-4 w-4" />
+              Online Consults
             </div>
-          )
-        })}
+            <div className="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-2 rounded-full text-sm font-medium">
+              <Building2 className="h-4 w-4" />
+              Clinic Visits
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Services Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {services.map((service, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+              className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
+            >
+              {/* Image */}
+              <div className="relative h-48 bg-gradient-to-br from-brand-700 to-brand-800 overflow-hidden">
+                <img 
+                  src={service.image} 
+                  alt={service.title}
+                  className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute top-4 left-4 bg-brand text-white text-lg font-bold px-3 py-1 rounded-lg">
+                  {service.number}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-brand-800 mb-2 group-hover:text-brand transition-colors">
+                  {service.title}
+                </h3>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                  {service.description}
+                </p>
+                <Link to="/signup" className="inline-flex items-center gap-2 text-brand text-sm font-medium hover:gap-3 transition-all">
+                  Book Now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mt-12"
+        >
+          <Link to="/signup">
+            <Button size="lg" className="bg-brand hover:bg-brand-600 text-white gap-2">
+              View All Services
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </motion.div>
       </div>
     </section>
   )
