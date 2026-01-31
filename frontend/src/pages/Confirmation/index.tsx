@@ -44,17 +44,23 @@ export default function Confirmation() {
   const handleDone = () => {
     const isLoggedIn = sessionStorage.getItem('isAuthenticated') === 'true'
     
-    // Clear booking-related data but keep login info if logged in
+    // Clear booking-related data
     sessionStorage.removeItem('selectedService')
     sessionStorage.removeItem('bookingDate')
     sessionStorage.removeItem('bookingTime')
     sessionStorage.removeItem('appointmentType')
     sessionStorage.removeItem('bookingConfirmation')
-    sessionStorage.removeItem('signupEmail')
     sessionStorage.removeItem('verificationCode')
     sessionStorage.removeItem('patientDetails')
     
-    if (isLoggedIn) {
+    // For new signups, they have completed the booking flow successfully
+    // Set them as authenticated so they can access their dashboard
+    if (signupEmail && !isLoggedIn) {
+      sessionStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('patientEmail', signupEmail)
+      sessionStorage.removeItem('signupEmail')
+      navigate('/dashboard')
+    } else if (isLoggedIn) {
       navigate('/dashboard')
     } else {
       sessionStorage.clear()

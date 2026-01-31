@@ -290,19 +290,22 @@ export default function ChooseSchedule() {
                 </p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {availableSlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`p-3 text-sm font-medium rounded-xl border-2 transition-all
-                        ${selectedSlot?.id === slot.id
-                          ? 'bg-brand text-white border-brand'
-                          : 'border-gray-200 hover:border-brand-300 bg-white'}
-                      `}
-                    >
-                      {formatTime(slot.start_time)}
-                    </button>
-                  ))}
+                  {availableSlots.map((slot, index) => {
+                    const isSelected = selectedSlot?.start_time === slot.start_time
+                    return (
+                      <button
+                        key={slot.start_time || index}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`p-3 text-sm font-medium rounded-xl border-2 transition-all duration-150
+                          ${isSelected
+                            ? 'bg-brand border-brand text-white'
+                            : 'bg-white border-brand text-brand hover:bg-brand hover:text-white'}
+                        `}
+                      >
+                        {formatTime(slot.start_time)}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>

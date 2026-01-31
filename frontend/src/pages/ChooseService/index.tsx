@@ -38,6 +38,16 @@ export default function ChooseService() {
   
   // User is valid if they're either going through signup OR already logged in
   const isValidUser = (signupEmail && verificationCode) || (patientEmail && isAuthenticated)
+
+  const handleBack = () => {
+    // If user is authenticated (logged in), go back to dashboard
+    if (isAuthenticated && patientEmail) {
+      navigate('/dashboard')
+    } else {
+      // Otherwise go back to verify-code (signup flow)
+      navigate('/verify-code')
+    }
+  }
   
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
@@ -112,7 +122,7 @@ export default function ChooseService() {
         {/* Back Button & Logo */}
         <div className="mb-8 flex items-center justify-between">
           <button
-            onClick={() => navigate('/verify-code')}
+            onClick={handleBack}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />

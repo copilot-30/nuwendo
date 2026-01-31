@@ -64,6 +64,25 @@ export default function PatientDetails() {
       // Store patient details in session
       sessionStorage.setItem('patientDetails', JSON.stringify(formData))
       
+      // Also save to backend
+      await fetch(`http://localhost:5000/api/patient/profile/${encodeURIComponent(email)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.contactNumber,
+          address: formData.cityAddress,
+          age: formData.age,
+          height: formData.height,
+          weight: formData.weight,
+          reasonForConsult: formData.reasonForConsult,
+          healthGoals: formData.healthGoals
+        })
+      })
+      
       // Navigate to choose service
       navigate('/choose-service')
     } catch (err) {

@@ -268,10 +268,76 @@ const getPatientBookings = async (req, res) => {
   }
 };
 
+// Cancel a booking (patient can cancel if 24+ hours before appointment)
+const cancelBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Get booking details
+    const bookingResult = await pool.query(
+      `SELECT b.*, u.email 
+       FROM bookings b 
+       JOIN users u ON b.user_id = u.id 
+       WHERE b.id = $1`,
+      [id]
+    );
+
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const booking = bookingResult.rows[0];
+
+    // Verify the email matches the booking owner
+    if (booking.email !== email) {
+      return res.status(403).json({ message: 'You are not authorized to cancel this booking' });
+    }
+
+    // Check if already cancelled
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'This booking is already cancelled' });
+    }
+
+    // Check if 24+ hours before appointment
+    const appointmentDateTime = new Date(`${booking.booking_date.toISOString().split('T')[0]}T${booking.booking_time}`);
+    const now = new Date();
+    const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (hoursUntilAppointment < 24) {
+      return res.status(400).json({ 
+        message: 'Cancellations must be made at least 24 hours before the appointment time',
+        hoursRemaining: Math.round(hoursUntilAppointment)
+      });
+    }
+
+    // Cancel the booking
+    await pool.query(
+      `UPDATE bookings 
+       SET status = 'cancelled', updated_at = NOW() 
+       WHERE id = $1`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully'
+    });
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export {
   getServices,
   getAvailableSlots,
   createBooking,
   getBooking,
-  getPatientBookings
+  getPatientBookings,
+  cancelBooking
 };

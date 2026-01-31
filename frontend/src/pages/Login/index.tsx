@@ -1,24 +1,38 @@
-﻿import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Mail, Lock, Loader2 } from 'lucide-react'
+import { Loader2, Heart, Shield, Clock, MessageCircle, RefreshCw, Mail } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
   const [step, setStep] = useState<'email' | 'code'>('email')
-  // Prefill email if coming from signup
   const [email, setEmail] = useState(sessionStorage.getItem('loginEmail') || '')
-  const [code, setCode] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isResending, setIsResending] = useState(false)
   const [error, setError] = useState('')
+  const [timeLeft, setTimeLeft] = useState(60)
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  useEffect(() => {
+    if (step === 'code') {
+      inputRefs.current[0]?.focus()
+      
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+      }, 1000)
+      
+      return () => clearInterval(timer)
+    }
+  }, [step])
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    setIsLoading(true)
 
     try {
       const response = await fetch('http://localhost:5000/api/auth/patient-login/send-code', {
@@ -35,23 +49,53 @@ export default function Login() {
 
       sessionStorage.setItem('loginEmail', email)
       setStep('code')
+      setTimeLeft(60)
     } catch (err: any) {
       setError(err.message || 'Failed to send verification code')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
+  }
+
+  const handleChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return
+    const newCode = [...code]
+    newCode[index] = value.slice(-1)
+    setCode(newCode)
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    const newCode = [...code]
+    pastedData.split('').forEach((char, i) => {
+      if (i < 6) newCode[i] = char
+    })
+    setCode(newCode)
   }
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const fullCode = code.join('')
+    if (fullCode.length !== 6) return
+
     setError('')
-    setLoading(true)
+    setIsLoading(true)
 
     try {
       const response = await fetch('http://localhost:5000/api/auth/patient-login/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code })
+        body: JSON.stringify({ email, code: fullCode })
       })
 
       const data = await response.json()
@@ -60,23 +104,21 @@ export default function Login() {
         throw new Error(data.message || 'Invalid verification code')
       }
 
-      // Store authentication data
       sessionStorage.setItem('patientEmail', email)
       sessionStorage.setItem('authToken', data.token)
       sessionStorage.setItem('isAuthenticated', 'true')
       
-      // Navigate to dashboard
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Invalid verification code')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   const handleResendCode = async () => {
+    setIsResending(true)
     setError('')
-    setLoading(true)
     try {
       const response = await fetch('http://localhost:5000/api/auth/patient-login/send-code', {
         method: 'POST',
@@ -84,59 +126,249 @@ export default function Login() {
         body: JSON.stringify({ email })
       })
       if (!response.ok) throw new Error('Failed to resend code')
-      alert('Verification code sent!')
+      setTimeLeft(60)
+      setCode(['', '', '', '', '', ''])
     } catch (err: any) {
       setError(err.message || 'Failed to resend verification code')
     } finally {
-      setLoading(false)
+      setIsResending(false)
     }
   }
 
+  const features = [
+    { icon: Clock, text: 'Quick and easy appointment booking' },
+    { icon: Shield, text: 'Your health data is secure and private' },
+    { icon: Heart, text: 'Access your personalized care plans' },
+    { icon: MessageCircle, text: 'View your consultation history' }
+  ]
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="min-h-screen bg-white">
-      <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12">
-        <div className="w-full max-w-md mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <Button type="button" variant="ghost" onClick={() => step === 'code' ? setStep('email') : navigate('/')} className="-ml-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />Back
-            </Button>
-            <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
-          </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen flex"
+    >
+      {/* Left Side - Form */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-white">
+        <div className="w-full max-w-lg mx-auto">
+          {/* Logo */}
           <div className="mb-10">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">{step === 'email' ? 'Welcome Back' : 'Enter Verification Code'}</h1>
-            <p className="text-lg text-gray-600">{step === 'email' ? 'Sign in to manage your appointments' : `We've sent a verification code to ${email}`}</p>
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
           </div>
-          {step === 'email' && (
-            <form onSubmit={handleEmailSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="email" className="text-base font-medium">Email Address</Label>
-                <div className="relative mt-2">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your.email@example.com" className="pl-10 h-12 text-base" required />
+
+          {step === 'email' ? (
+            <>
+              {/* Heading */}
+              <div className="mb-8">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
+                  Welcome back to{' '}
+                  <span className="text-brand">Nuwendo</span>
+                </h1>
+                <p className="text-lg text-gray-600">
+                  Enter your email to sign in. We'll send you a verification code.
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleEmailSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                    Email address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 text-base"
+                    required
+                    disabled={isLoading}
+                  />
                 </div>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+                  disabled={isLoading || !email}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending code...
+                    </>
+                  ) : (
+                    'Continue'
+                  )}
+                </Button>
+              </form>
+
+              {/* Don't have an account */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={() => navigate('/signup')}
+                    className="text-brand hover:text-brand-600 font-medium"
+                  >
+                    Sign up
+                  </button>
+                </p>
               </div>
-              {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-600">{error}</p></div>}
-              <Button type="submit" className="w-full h-12 text-base" disabled={loading}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending Code...</> : 'Send Verification Code'}</Button>
-              <p className="text-center text-sm text-gray-600">Don't have an account? <button type="button" onClick={() => navigate('/signup')} className="text-brand hover:text-brand-600 font-medium">Sign up</button></p>
-            </form>
-          )}
-          {step === 'code' && (
-            <form onSubmit={handleCodeSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="code" className="text-base font-medium">Verification Code</Label>
-                <div className="relative mt-2">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input id="code" type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter 6-digit code" className="pl-10 h-12 text-base tracking-widest text-center" maxLength={6} required />
+
+              {/* Features */}
+              <div className="mt-12 grid grid-cols-2 gap-4">
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+                      <feature.icon className="w-4 h-4 text-brand" />
+                    </div>
+                    <span className="text-sm text-gray-600 leading-tight">{feature.text}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Verification Code Step */}
+              <div className="mb-8">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
+                  Check your email
+                </h1>
+                <p className="text-lg text-gray-600">
+                  We've sent a 6-digit verification code to{' '}
+                  <span className="font-medium text-gray-900">{email}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleCodeSubmit} className="space-y-6">
+                {/* Code Input Boxes */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                    Enter verification code
+                  </Label>
+                  <div className="flex gap-3 justify-between" onPaste={handlePaste}>
+                    {code.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => (inputRefs.current[index] = el)}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleChange(index, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        className="w-12 h-14 text-center text-2xl font-semibold border-2 border-gray-300 rounded-xl focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all"
+                        disabled={isLoading}
+                      />
+                    ))}
+                  </div>
                 </div>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+                  disabled={isLoading || code.join('').length !== 6}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
+
+              {/* Resend Code */}
+              <div className="mt-8 text-center">
+                {timeLeft > 0 ? (
+                  <p className="text-sm text-gray-500">
+                    Resend code in <span className="font-medium text-gray-900">{timeLeft}s</span>
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleResendCode}
+                    disabled={isResending}
+                    className="inline-flex items-center gap-2 text-sm text-brand hover:text-brand-600 font-medium disabled:opacity-50"
+                  >
+                    {isResending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Resend verification code
+                  </button>
+                )}
               </div>
-              {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-600">{error}</p></div>}
-              <Button type="submit" className="w-full h-12 text-base" disabled={loading || code.length !== 6}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Sign In'}</Button>
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
-                <button type="button" onClick={handleResendCode} disabled={loading} className="text-sm text-brand hover:text-brand-600 font-medium disabled:opacity-50">Resend Code</button>
+
+              {/* Back to email */}
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => {
+                    setStep('email')
+                    setCode(['', '', '', '', '', ''])
+                    setError('')
+                  }}
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  ← Use a different email
+                </button>
               </div>
-            </form>
+            </>
           )}
+        </div>
+      </div>
+
+      {/* Right Side - Decorative */}
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-brand via-brand-600 to-brand-800 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full" />
+        </div>
+        
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
+          <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
+            <Heart className="w-12 h-12" />
+          </div>
+          <h2 className="text-3xl font-bold mb-4">Welcome back!</h2>
+          <p className="text-lg text-white/80 max-w-md">
+            Continue your health journey with Nuwendo. Access your appointments, prescriptions, and more.
+          </p>
+          
+          {/* Stats */}
+          <div className="mt-12 grid grid-cols-3 gap-8">
+            <div>
+              <div className="text-4xl font-bold">500+</div>
+              <div className="text-sm text-white/70">Providers</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold">50k+</div>
+              <div className="text-sm text-white/70">Patients</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold">4.9</div>
+              <div className="text-sm text-white/70">Rating</div>
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>

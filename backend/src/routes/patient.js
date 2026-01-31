@@ -6,7 +6,10 @@ import {
   addMedication,
   getMedicalRecords,
   addMedicalRecord,
-  getDashboardStats
+  getDashboardStats,
+  getPatientProfile,
+  updatePatientProfile,
+  getFullPatientProfile
 } from '../controllers/patientController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -50,6 +53,12 @@ router.get('/dashboard/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch dashboard data' });
   }
 });
+
+// Get patient profile by email (public - no auth required)
+router.get('/profile', getFullPatientProfile);
+
+// Update patient profile by email (public - no auth required)
+router.put('/profile/:email', updatePatientProfile);
 
 // All other patient routes require authentication
 router.use(authMiddleware);

@@ -1,6 +1,6 @@
 import express from 'express';
-import { body, query } from 'express-validator';
-import { getServices, getAvailableSlots, createBooking, getBooking, getPatientBookings } from '../controllers/bookingController.js';
+import { body, query, param } from 'express-validator';
+import { getServices, getAvailableSlots, createBooking, getBooking, getPatientBookings, cancelBooking } from '../controllers/bookingController.js';
 
 const router = express.Router();
 
@@ -28,6 +28,12 @@ router.post('/create', [
 router.get('/patient', [
   query('email').isEmail().withMessage('Valid email is required')
 ], getPatientBookings);
+
+// Cancel a booking (24 hours before required)
+router.put('/:id/cancel', [
+  param('id').isInt().withMessage('Booking ID is required'),
+  body('email').isEmail().withMessage('Valid email is required')
+], cancelBooking);
 
 // Get booking details
 router.get('/:id', getBooking);
