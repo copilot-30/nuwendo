@@ -1,6 +1,11 @@
 -- Migration 008: Remove 'both' from appointment types and update existing slots
 -- This ensures each day is either fully online or fully on-site
 
+-- First, update NULL values to 'on-site'
+UPDATE time_slots 
+SET appointment_type = 'on-site' 
+WHERE appointment_type IS NULL;
+
 -- Update existing 'both' slots to 'on-site' (default)
 UPDATE time_slots 
 SET appointment_type = 'on-site' 

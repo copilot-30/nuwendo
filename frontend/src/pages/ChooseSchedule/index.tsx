@@ -48,7 +48,8 @@ export default function ChooseSchedule() {
           const day = String(selectedDate.getDate()).padStart(2, '0')
           const dateStr = `${year}-${month}-${day}`
           
-          const response = await fetch(`http://localhost:5000/api/availability?date=${dateStr}&type=${appointmentType}`)
+          // Include serviceId so backend can check for consecutive slot availability
+          const response = await fetch(`http://localhost:5000/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${service.id}`)
           const data = await response.json()
           setAvailableSlots(data.availableSlots || [])
           setSelectedSlot(null)
@@ -60,7 +61,7 @@ export default function ChooseSchedule() {
       }
       fetchSlots()
     }
-  }, [selectedDate, appointmentType])
+  }, [selectedDate, appointmentType, service.id])
 
   const handleContinue = () => {
     if (selectedDate && selectedSlot) {

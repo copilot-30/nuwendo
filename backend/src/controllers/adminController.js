@@ -114,17 +114,17 @@ const deleteService = async (req, res) => {
   }
 };
 
-// Get all time slots
+// Get all time slots (now working hours)
 const getTimeSlots = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT ts.*, 
+      `SELECT wh.*, 
               au1.full_name as created_by_name,
               au2.full_name as updated_by_name
-       FROM time_slots ts
-       LEFT JOIN admin_users au1 ON ts.created_by = au1.id
-       LEFT JOIN admin_users au2 ON ts.updated_by = au2.id
-       ORDER BY ts.day_of_week, ts.start_time`
+       FROM working_hours wh
+       LEFT JOIN admin_users au1 ON wh.created_by = au1.id
+       LEFT JOIN admin_users au2 ON wh.updated_by = au2.id
+       ORDER BY wh.day_of_week, wh.appointment_type`
     );
     
     res.json({
@@ -137,10 +137,10 @@ const getTimeSlots = async (req, res) => {
   }
 };
 
-// Create new time slot
+// Create or update working hours for a day
 const createTimeSlot = async (req, res) => {
   try {
-    const { day_of_week, start_time, end_time, appointment_type } = req.body;
+    const { day_of_week, start_time, end_time, appointment_type, slot_interval_minutes } = req.body;
     const adminId = req.admin.adminId;
 
     // Validate that appointment_type is required
@@ -150,52 +150,45 @@ const createTimeSlot = async (req, res) => {
       });
     }
 
-    // Check if there are existing slots for this day with a different appointment type
-    const existingSlotsResult = await pool.query(
-      `SELECT appointment_type FROM time_slots 
-       WHERE day_of_week = $1 
-       AND is_active = true
-       LIMIT 1`,
-      [day_of_week]
-    );
-
-    if (existingSlotsResult.rows.length > 0) {
-      const existingType = existingSlotsResult.rows[0].appointment_type;
-      if (existingType !== appointment_type) {
-        return res.status(400).json({ 
-          message: `All time slots on this day must have the same appointment type. This day is already set to "${existingType}".` 
-        });
-      }
-    }
-
-    // Check for overlapping slots
-    const overlappingResult = await pool.query(
-      `SELECT id FROM time_slots 
-       WHERE day_of_week = $1 
-       AND (
-         (start_time <= $2 AND end_time > $2) OR
-         (start_time < $3 AND end_time >= $3) OR
-         (start_time >= $2 AND end_time <= $3)
-       )`,
-      [day_of_week, start_time, end_time]
-    );
-
-    if (overlappingResult.rows.length > 0) {
+    // Validate times
+    if (start_time >= end_time) {
       return res.status(400).json({ 
-        message: 'Time slot overlaps with existing slot' 
+        message: 'Start time must be before end time' 
       });
     }
 
-    const result = await pool.query(
-      `INSERT INTO time_slots (day_of_week, start_time, end_time, appointment_type, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $5)
-       RETURNING *`,
-      [day_of_week, start_time, end_time, appointment_type, adminId]
+    // Check if working hours already exist for this day/type combination
+    const existingResult = await pool.query(
+      `SELECT id FROM working_hours 
+       WHERE day_of_week = $1 
+       AND appointment_type = $2`,
+      [day_of_week, appointment_type]
     );
+
+    let result;
+    if (existingResult.rows.length > 0) {
+      // Update existing working hours
+      result = await pool.query(
+        `UPDATE working_hours 
+         SET start_time = $1, end_time = $2, slot_interval_minutes = $3, 
+             updated_by = $4, updated_at = CURRENT_TIMESTAMP, is_active = TRUE
+         WHERE day_of_week = $5 AND appointment_type = $6
+         RETURNING *`,
+        [start_time, end_time, slot_interval_minutes || 30, adminId, day_of_week, appointment_type]
+      );
+    } else {
+      // Create new working hours
+      result = await pool.query(
+        `INSERT INTO working_hours (day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $6)
+         RETURNING *`,
+        [day_of_week, start_time, end_time, appointment_type, slot_interval_minutes || 30, adminId]
+      );
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Time slot created successfully',
+      message: 'Working hours saved successfully',
       timeSlot: result.rows[0]
     });
   } catch (error) {
@@ -204,11 +197,11 @@ const createTimeSlot = async (req, res) => {
   }
 };
 
-// Update time slot
+// Update working hours
 const updateTimeSlot = async (req, res) => {
   try {
     const { id } = req.params;
-    const { day_of_week, start_time, end_time, appointment_type, is_active } = req.body;
+    const { day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, is_active } = req.body;
     const adminId = req.admin.adminId;
 
     // Validate appointment_type if provided
@@ -218,87 +211,63 @@ const updateTimeSlot = async (req, res) => {
       });
     }
 
-    // If changing appointment_type, check if other slots on this day have different type
-    if (appointment_type) {
-      const existingSlotsResult = await pool.query(
-        `SELECT id, appointment_type FROM time_slots 
-         WHERE day_of_week = $1 
-         AND is_active = true
-         AND id != $2`,
-        [day_of_week, id]
-      );
-
-      if (existingSlotsResult.rows.length > 0) {
-        const differentType = existingSlotsResult.rows.find(s => s.appointment_type !== appointment_type);
-        if (differentType) {
-          return res.status(400).json({ 
-            message: `Cannot change appointment type. All time slots on this day must have the same type. Other slots are set to "${differentType.appointment_type}".` 
-          });
-        }
-      }
-    }
-
-    // Check for overlapping slots (excluding current slot)
-    const overlappingResult = await pool.query(
-      `SELECT id FROM time_slots 
-       WHERE day_of_week = $1 AND id != $2
-       AND (
-         (start_time <= $3 AND end_time > $3) OR
-         (start_time < $4 AND end_time >= $4) OR
-         (start_time >= $3 AND end_time <= $4)
-       )`,
-      [day_of_week, id, start_time, end_time]
-    );
-
-    if (overlappingResult.rows.length > 0) {
+    // Validate times
+    if (start_time && end_time && start_time >= end_time) {
       return res.status(400).json({ 
-        message: 'Time slot overlaps with existing slot' 
+        message: 'Start time must be before end time' 
       });
     }
 
     const result = await pool.query(
-      `UPDATE time_slots 
-       SET day_of_week = $1, start_time = $2, end_time = $3, appointment_type = $4, is_active = $5, updated_by = $6
-       WHERE id = $7
+      `UPDATE working_hours 
+       SET day_of_week = COALESCE($1, day_of_week), 
+           start_time = COALESCE($2, start_time), 
+           end_time = COALESCE($3, end_time), 
+           appointment_type = COALESCE($4, appointment_type), 
+           slot_interval_minutes = COALESCE($5, slot_interval_minutes),
+           is_active = COALESCE($6, is_active), 
+           updated_by = $7,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8
        RETURNING *`,
-      [day_of_week, start_time, end_time, appointment_type, is_active, adminId, id]
+      [day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, is_active, adminId, id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Time slot not found' });
+      return res.status(404).json({ message: 'Working hours not found' });
     }
 
     res.json({
       success: true,
-      message: 'Time slot updated successfully',
+      message: 'Working hours updated successfully',
       timeSlot: result.rows[0]
     });
   } catch (error) {
-    console.error('Update time slot error:', error);
+    console.error('Update working hours error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Delete time slot
+// Delete working hours
 const deleteTimeSlot = async (req, res) => {
   try {
     const { id } = req.params;
 
     const result = await pool.query(
-      'DELETE FROM time_slots WHERE id = $1 RETURNING *',
+      'DELETE FROM working_hours WHERE id = $1 RETURNING *',
       [id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Time slot not found' });
+      return res.status(404).json({ message: 'Working hours not found' });
     }
 
     res.json({
       success: true,
-      message: 'Time slot deleted successfully'
+      message: 'Working hours deleted successfully'
     });
   } catch (error) {
-    console.error('Delete time slot error:', error);
+    console.error('Delete working hours error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

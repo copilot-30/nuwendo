@@ -15,13 +15,13 @@ CREATE TABLE IF NOT EXISTS admin_users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes
-CREATE INDEX idx_admin_users_username ON admin_users(username);
-CREATE INDEX idx_admin_users_email ON admin_users(email);
-CREATE INDEX idx_admin_users_active ON admin_users(is_active);
+-- CREATE INDEX IF NOT EXISTSes
+CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
+CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+CREATE INDEX IF NOT EXISTS idx_admin_users_active ON admin_users(is_active);
 
--- Create trigger for updated_at
-CREATE TRIGGER update_admin_users_updated_at 
+-- CREATE OR REPLACE TRIGGER for updated_at
+CREATE OR REPLACE TRIGGER update_admin_users_updated_at 
     BEFORE UPDATE ON admin_users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_admin_sessions_token ON admin_sessions(token);
-CREATE INDEX idx_admin_sessions_admin_id ON admin_sessions(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
 
 -- Seed default admin account
 -- Username: admin, Password: admin123

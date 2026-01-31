@@ -43,21 +43,21 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 
 -- Create indexes
-CREATE INDEX idx_services_active ON services(is_active);
-CREATE INDEX idx_services_category ON services(category);
-CREATE INDEX idx_bookings_user_id ON bookings(user_id);
-CREATE INDEX idx_bookings_service_id ON bookings(service_id);
-CREATE INDEX idx_bookings_date ON bookings(booking_date);
-CREATE INDEX idx_bookings_status ON bookings(status);
-CREATE INDEX idx_time_slots_day ON time_slots(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_services_active ON services(is_active);
+CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
+CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_service_id ON bookings(service_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+CREATE INDEX IF NOT EXISTS idx_time_slots_day ON time_slots(day_of_week);
 
 -- Create trigger for updated_at
-CREATE TRIGGER update_services_updated_at 
+CREATE OR REPLACE TRIGGER update_services_updated_at 
     BEFORE UPDATE ON services
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_bookings_updated_at 
+CREATE OR REPLACE TRIGGER update_bookings_updated_at 
     BEFORE UPDATE ON bookings
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
