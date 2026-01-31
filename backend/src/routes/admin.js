@@ -14,7 +14,8 @@ import {
   updateBookingStatus,
   getPaymentSettings,
   updatePaymentSettings,
-  getPendingPayments
+  getPendingPayments,
+  getPatientProfile
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -89,5 +90,8 @@ router.put('/payment-settings', [
 
 // Pending payments (with receipts awaiting approval)
 router.get('/pending-payments', getPendingPayments);
+
+// Patient profile
+router.get('/patients/:email', getPatientProfile);
 
 export default router;

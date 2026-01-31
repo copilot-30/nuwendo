@@ -473,6 +473,54 @@ const getPendingPayments = async (req, res) => {
   }
 };
 
+// Get patient profile by email
+const getPatientProfile = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const decodedEmail = decodeURIComponent(email);
+
+    // Get user info
+    const userResult = await pool.query(
+      `SELECT u.id, u.email, u.first_name, u.last_name, u.created_at,
+              pp.phone_number, pp.date_of_birth, pp.gender, pp.address,
+              pp.medical_conditions, pp.allergies, pp.blood_type
+       FROM users u
+       LEFT JOIN patient_profiles pp ON u.id = pp.user_id
+       WHERE u.email = $1`,
+      [decodedEmail]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    const patient = userResult.rows[0];
+
+    // Get booking history
+    const bookingsResult = await pool.query(
+      `SELECT b.id, b.booking_date, b.booking_time, b.status, b.amount_paid, b.appointment_type,
+              s.name as service_name
+       FROM bookings b
+       JOIN services s ON b.service_id = s.id
+       WHERE b.user_id = $1
+       ORDER BY b.booking_date DESC, b.booking_time DESC
+       LIMIT 20`,
+      [patient.id]
+    );
+
+    res.json({
+      success: true,
+      patient: {
+        ...patient,
+        bookings: bookingsResult.rows
+      }
+    });
+  } catch (error) {
+    console.error('Get patient profile error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export {
   getServices,
   createService,
@@ -486,5 +534,6 @@ export {
   updateBookingStatus,
   getPaymentSettings,
   updatePaymentSettings,
-  getPendingPayments
+  getPendingPayments,
+  getPatientProfile
 };
