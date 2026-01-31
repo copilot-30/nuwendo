@@ -339,7 +339,7 @@ export default function PatientDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-8" />
+              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm">
@@ -813,7 +813,7 @@ export default function PatientDashboard() {
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="flex flex-col md:flex-row justify-between items-start mb-8">
             <div>
-              <img src="/logo-full.svg" alt="Nuwendo" className="h-8 brightness-0 invert mb-4" />
+              <img src="/logo-full.svg" alt="Nuwendo" className="h-14 brightness-0 invert mb-4" />
             </div>
             <p className="text-lg text-white/90">Your health always comes first</p>
           </div>

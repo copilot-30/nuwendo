@@ -72,7 +72,7 @@ export default function SignUp() {
         <div className="w-full max-w-lg mx-auto">
           {/* Logo */}
           <div className="mb-10">
-            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-16" />
           </div>
 
           {/* Heading */}

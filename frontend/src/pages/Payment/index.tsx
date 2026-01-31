@@ -127,7 +127,7 @@ export default function Payment() {
       <div className="flex flex-col px-6 sm:px-12 lg:px-20 py-12 max-w-4xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <button onClick={() => navigate('/choose-schedule')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900"><ArrowLeft className="w-5 h-5" /><span>Back</span></button>
-          <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
+          <img src="/logo-icon.svg" alt="Nuwendo" className="h-12 w-12" />
         </div>
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Complete payment</h1>

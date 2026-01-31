@@ -16,7 +16,7 @@ export function Footer() {
             className="space-y-6"
           >
             <Link to="/">
-              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12 brightness-0 invert" />
+              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-16 brightness-0 invert" />
             </Link>
             <p className="text-white/70 leading-relaxed">
               Doctor-led weight loss and metabolic health clinic. Real results. Sustainable change.

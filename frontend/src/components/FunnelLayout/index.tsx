@@ -41,7 +41,7 @@ export function FunnelLayout({
             <div />
           )}
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-8" />
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-14" />
           </Link>
         </div>
       </header>

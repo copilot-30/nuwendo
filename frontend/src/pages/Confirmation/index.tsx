@@ -83,7 +83,7 @@ export default function Confirmation() {
         <div className="w-full max-w-4xl mx-auto">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-10" />
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-16" />
           </div>
 
           {/* Success Icon */}

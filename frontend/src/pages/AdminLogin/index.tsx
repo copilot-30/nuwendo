@@ -51,7 +51,7 @@ export function AdminLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white mb-4 p-2">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white mb-4 p-3">
             <img src="/logo-icon.svg" alt="Nuwendo" className="h-full w-full" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>

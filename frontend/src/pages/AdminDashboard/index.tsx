@@ -163,7 +163,7 @@ export function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-8" />
+              <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
               <div className="border-l border-gray-200 pl-4">
                 <h1 className="text-lg font-semibold text-gray-900">Admin Dashboard</h1>
                 <p className="text-sm text-gray-500">Welcome, {adminUser?.full_name}</p>

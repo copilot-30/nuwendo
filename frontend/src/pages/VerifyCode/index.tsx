@@ -129,7 +129,7 @@ export default function VerifyCode() {
               <ArrowLeft className="w-5 h-5" />
               <span>Back</span>
             </button>
-            <img src="/logo-icon.svg" alt="Nuwendo" className="h-8 w-8" />
+            <img src="/logo-icon.svg" alt="Nuwendo" className="h-12 w-12" />
           </div>
 
           {/* Heading */}

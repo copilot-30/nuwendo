@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Heart, Shield, Clock, MessageCircle, RefreshCw, Mail } from 'lucide-react'
+import { Loader2, Heart, Shield, Clock, MessageCircle, RefreshCw } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -155,7 +155,7 @@ export default function Login() {
         <div className="w-full max-w-lg mx-auto">
           {/* Logo */}
           <div className="mb-10">
-            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
+            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-16" />
           </div>
 
           {step === 'email' ? (
@@ -259,7 +259,7 @@ export default function Login() {
                     {code.map((digit, index) => (
                       <input
                         key={index}
-                        ref={(el) => (inputRefs.current[index] = el)}
+                        ref={(el) => { inputRefs.current[index] = el }}
                         type="text"
                         inputMode="numeric"
                         maxLength={1}
