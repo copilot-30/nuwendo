@@ -13,6 +13,7 @@ import { AdminLogin } from '@/pages/AdminLogin'
 import { AdminDashboard } from '@/pages/AdminDashboard'
 import { AdminServices } from '@/pages/AdminServices'
 import { AdminSchedule } from '@/pages/AdminSchedule'
+import { AdminPayments } from '@/pages/AdminPayments'
 
 function App() {
   return (
@@ -34,9 +35,11 @@ function App() {
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/services" element={<AdminServices />} />
         <Route path="/admin/schedule" element={<AdminSchedule />} />
+        <Route path="/admin/payments" element={<AdminPayments />} />
       </Routes>
     </BrowserRouter>
   )

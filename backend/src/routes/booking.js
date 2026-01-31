@@ -1,6 +1,6 @@
 import express from 'express';
 import { body, query, param } from 'express-validator';
-import { getServices, getAvailableSlots, createBooking, getBooking, getPatientBookings, cancelBooking } from '../controllers/bookingController.js';
+import { getServices, getAvailableSlots, createBooking, getBooking, getPatientBookings, cancelBooking, getPublicPaymentSettings, uploadPaymentReceipt } from '../controllers/bookingController.js';
 
 const router = express.Router();
 
@@ -11,6 +11,9 @@ router.get('/services', getServices);
 router.get('/slots', [
   query('date').notEmpty().withMessage('Date is required')
 ], getAvailableSlots);
+
+// Get public payment settings (QR code, instructions)
+router.get('/payment-settings', getPublicPaymentSettings);
 
 // Create a booking
 router.post('/create', [
@@ -23,6 +26,13 @@ router.post('/create', [
   body('lastName').notEmpty().withMessage('Last name is required'),
   body('phoneNumber').notEmpty().withMessage('Phone number is required')
 ], createBooking);
+
+// Upload payment receipt
+router.post('/:id/receipt', [
+  param('id').isInt().withMessage('Booking ID is required'),
+  body('receiptData').notEmpty().withMessage('Receipt data is required'),
+  body('email').isEmail().withMessage('Valid email is required')
+], uploadPaymentReceipt);
 
 // Get patient bookings by email
 router.get('/patient', [

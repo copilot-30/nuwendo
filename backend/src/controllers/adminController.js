@@ -352,10 +352,18 @@ const updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const adminId = req.admin.adminId;
+
+    // If confirming, also set payment approved info
+    const updateFields = status === 'confirmed' 
+      ? 'SET status = $1, payment_approved_by = $3, payment_approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $2'
+      : 'SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2';
+    
+    const queryParams = status === 'confirmed' ? [status, id, adminId] : [status, id];
 
     const result = await pool.query(
-      'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [status, id]
+      `UPDATE bookings ${updateFields} RETURNING *`,
+      queryParams
     );
 
     if (result.rows.length === 0) {
@@ -373,6 +381,98 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
+// Get payment settings
+const getPaymentSettings = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT setting_key, setting_value 
+       FROM system_settings 
+       WHERE setting_key IN ('payment_qr_code', 'payment_instructions', 'payment_account_name', 'payment_account_number')`
+    );
+
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+
+    res.json({
+      success: true,
+      settings
+    });
+  } catch (error) {
+    console.error('Get payment settings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update payment settings (admin only)
+const updatePaymentSettings = async (req, res) => {
+  try {
+    const { qr_code, instructions, account_name, account_number } = req.body;
+
+    const updates = [
+      { key: 'payment_qr_code', value: qr_code },
+      { key: 'payment_instructions', value: instructions },
+      { key: 'payment_account_name', value: account_name },
+      { key: 'payment_account_number', value: account_number }
+    ];
+
+    for (const update of updates) {
+      if (update.value !== undefined) {
+        // First try to update existing setting
+        const updateResult = await pool.query(
+          `UPDATE system_settings 
+           SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
+           WHERE setting_key = $2
+           RETURNING id`,
+          [update.value, update.key]
+        );
+        
+        // If no row was updated, insert it
+        if (updateResult.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO system_settings (setting_key, setting_value, description)
+             VALUES ($1, $2, $3)`,
+            [update.key, update.value, `Payment setting: ${update.key}`]
+          );
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment settings updated successfully'
+    });
+  } catch (error) {
+    console.error('Update payment settings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get pending payments (bookings with receipt uploaded but not yet confirmed)
+const getPendingPayments = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT b.*, 
+              u.first_name, u.last_name, u.email,
+              s.name as service_name, s.duration_minutes, s.price
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       JOIN services s ON b.service_id = s.id
+       WHERE b.status = 'pending' AND b.payment_receipt_url IS NOT NULL
+       ORDER BY b.payment_receipt_uploaded_at ASC`
+    );
+
+    res.json({
+      success: true,
+      bookings: result.rows
+    });
+  } catch (error) {
+    console.error('Get pending payments error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export {
   getServices,
   createService,
@@ -383,5 +483,8 @@ export {
   updateTimeSlot,
   deleteTimeSlot,
   getBookings,
-  updateBookingStatus
+  updateBookingStatus,
+  getPaymentSettings,
+  updatePaymentSettings,
+  getPendingPayments
 };

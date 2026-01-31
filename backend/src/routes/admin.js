@@ -11,7 +11,10 @@ import {
   updateTimeSlot,
   deleteTimeSlot,
   getBookings,
-  updateBookingStatus
+  updateBookingStatus,
+  getPaymentSettings,
+  updatePaymentSettings,
+  getPendingPayments
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -73,5 +76,18 @@ router.get('/bookings', [
 router.patch('/bookings/:id/status', [
   body('status').isIn(['pending', 'confirmed', 'completed', 'cancelled']).withMessage('Invalid status')
 ], updateBookingStatus);
+
+// Payment settings management
+router.get('/payment-settings', getPaymentSettings);
+
+router.put('/payment-settings', [
+  body('qr_code').optional(),
+  body('instructions').optional(),
+  body('account_name').optional(),
+  body('account_number').optional()
+], updatePaymentSettings);
+
+// Pending payments (with receipts awaiting approval)
+router.get('/pending-payments', getPendingPayments);
 
 export default router;

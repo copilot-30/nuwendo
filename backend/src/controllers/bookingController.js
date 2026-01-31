@@ -174,11 +174,11 @@ const createBooking = async (req, res) => {
         appointmentType,
         phoneNumber, 
         notes,
-        'paid',
+        'pending', // Payment status is pending until receipt is verified
         paymentMethod,
         paymentReference,
         amountPaid,
-        'confirmed'
+        'pending' // Booking status is pending until admin confirms payment
       ]
     );
 
@@ -333,11 +333,84 @@ const cancelBooking = async (req, res) => {
   }
 };
 
+// Get public payment settings (QR code, instructions)
+const getPublicPaymentSettings = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT setting_key, setting_value 
+       FROM system_settings 
+       WHERE setting_key IN ('payment_qr_code', 'payment_instructions', 'payment_account_name', 'payment_account_number')`
+    );
+
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+
+    res.json({
+      success: true,
+      settings
+    });
+  } catch (error) {
+    console.error('Get payment settings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Upload payment receipt for a booking
+const uploadPaymentReceipt = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { receiptData, email } = req.body;
+
+    if (!receiptData) {
+      return res.status(400).json({ message: 'Receipt data is required' });
+    }
+
+    // Verify the booking belongs to this user
+    const bookingResult = await pool.query(
+      `SELECT b.id, b.status 
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       WHERE b.id = $1 AND u.email = $2`,
+      [id, email]
+    );
+
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (bookingResult.rows[0].status !== 'pending') {
+      return res.status(400).json({ message: 'Receipt can only be uploaded for pending bookings' });
+    }
+
+    // Update booking with receipt
+    await pool.query(
+      `UPDATE bookings 
+       SET payment_receipt_url = $1, 
+           payment_receipt_uploaded_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [receiptData, id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Payment receipt uploaded successfully. Waiting for admin approval.'
+    });
+  } catch (error) {
+    console.error('Upload receipt error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export {
   getServices,
   getAvailableSlots,
   createBooking,
   getBooking,
   getPatientBookings,
-  cancelBooking
+  cancelBooking,
+  getPublicPaymentSettings,
+  uploadPaymentReceipt
 };

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, Calendar, Clock, Mail, Download, Monitor, Building2 } from 'lucide-react'
+import { CheckCircle, Calendar, Clock, Mail, Download, Monitor, Building2, ClockIcon } from 'lucide-react'
 
 export default function Confirmation() {
   const navigate = useNavigate()
@@ -17,6 +17,8 @@ export default function Confirmation() {
   const bookingDate = sessionStorage.getItem('bookingDate') || ''
   const bookingTime = sessionStorage.getItem('bookingTime') || ''
   const appointmentType = sessionStorage.getItem('appointmentType') || 'on-site'
+  const bookingConfirmation = JSON.parse(sessionStorage.getItem('bookingConfirmation') || '{}')
+  const isPending = bookingConfirmation.status === 'pending'
 
   useEffect(() => {
     if (!isValidUser || !service.id || !bookingDate || !bookingTime) {
@@ -91,18 +93,27 @@ export default function Confirmation() {
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
             className="mb-8"
           >
-            <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-10 h-10 text-brand" />
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${
+              isPending ? 'bg-yellow-100' : 'bg-brand-100'
+            }`}>
+              {isPending ? (
+                <ClockIcon className="w-10 h-10 text-yellow-600" />
+              ) : (
+                <CheckCircle className="w-10 h-10 text-brand" />
+              )}
             </div>
           </motion.div>
 
           {/* Heading */}
           <div className="text-center mb-10">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              Booking Confirmed!
+              {isPending ? 'Booking Submitted!' : 'Booking Confirmed!'}
             </h1>
             <p className="text-lg text-gray-600">
-              Your appointment has been successfully booked
+              {isPending 
+                ? 'Your appointment is pending payment verification'
+                : 'Your appointment has been successfully booked'
+              }
             </p>
           </div>
 
@@ -179,7 +190,10 @@ export default function Confirmation() {
           </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            A confirmation email has been sent to your email address with all the details.
+            {isPending 
+              ? 'Our team will verify your payment and confirm your appointment shortly.'
+              : 'A confirmation email has been sent to your email address with all the details.'
+            }
           </p>
         </div>
       </div>

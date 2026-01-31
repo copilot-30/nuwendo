@@ -173,6 +173,10 @@ export function AdminDashboard() {
               <Button variant="ghost" size="sm">
                 <Bell className="h-4 w-4" />
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/payments')}>
+                <DollarSign className="h-4 w-4 mr-2" />
+                Payments
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => navigate('/admin/services')}>
                 <Settings className="h-4 w-4 mr-2" />
                 Manage
