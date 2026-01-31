@@ -355,8 +355,8 @@ export default function PatientDashboard() {
       </header>
 
       {/* Tab Navigation */}
-      <nav className="bg-white border-b border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 flex justify-center">
+      <nav className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center">
           <div className="inline-flex bg-gray-100 rounded-full p-1 my-4">
             {(['home', 'services', 'account'] as TabType[]).map((tab) => (
               <button
@@ -376,7 +376,7 @@ export default function PatientDashboard() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'home' && (
           <div className="space-y-8">
             {/* Welcome Message */}
@@ -810,7 +810,7 @@ export default function PatientDashboard() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white mt-auto">
-        <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row justify-between items-start mb-8">
             <div>
               <img src="/logo-full.svg" alt="Nuwendo" className="h-14 brightness-0 invert mb-4" />
