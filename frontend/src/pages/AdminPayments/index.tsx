@@ -511,25 +511,38 @@ export function AdminPayments() {
       {/* Receipt Modal */}
       {viewingReceipt && (
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
           onClick={() => setViewingReceipt(null)}
         >
           <div 
-            className="bg-white rounded-2xl max-w-2xl max-h-[90vh] overflow-auto"
+            className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold">Payment Receipt</h3>
-              <Button variant="ghost" size="sm" onClick={() => setViewingReceipt(null)}>
-                <X className="w-4 h-4" />
-              </Button>
+            <div className="p-4 border-b flex items-center justify-between bg-gray-50 sticky top-0">
+              <h3 className="font-semibold text-lg">Payment Receipt</h3>
+              <div className="flex items-center gap-2">
+                <a 
+                  href={viewingReceipt} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors"
+                >
+                  Open in New Tab
+                </a>
+                <Button variant="ghost" size="sm" onClick={() => setViewingReceipt(null)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
-            <div className="p-4">
-              <img 
-                src={viewingReceipt} 
-                alt="Payment Receipt" 
-                className="max-w-full h-auto"
-              />
+            <div className="p-6 overflow-auto flex-1 bg-gray-100">
+              <div className="flex justify-center">
+                <img 
+                  src={viewingReceipt} 
+                  alt="Payment Receipt" 
+                  className="max-w-full h-auto rounded-lg shadow-lg bg-white"
+                  style={{ maxHeight: 'calc(95vh - 120px)' }}
+                />
+              </div>
             </div>
           </div>
         </div>
