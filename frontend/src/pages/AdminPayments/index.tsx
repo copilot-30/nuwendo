@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { 
-  ArrowLeft,
   Save,
   Check,
   X,
@@ -19,6 +18,7 @@ import {
   Clock
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { AdminLayout } from '@/components/AdminLayout'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -262,30 +262,22 @@ export function AdminPayments() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
+      <AdminLayout>
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand" />
+        </div>
+      </AdminLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16 gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-            <div className="border-l border-gray-200 pl-4">
-              <h1 className="text-lg font-semibold text-gray-900">Payment Management</h1>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
+          <p className="text-gray-500">Configure payment settings and review pending payments</p>
+        </div>
         {error && (
           <div className="p-4 mb-6 text-red-600 bg-red-50 border border-red-200 rounded-md">
             {error}
@@ -547,7 +539,7 @@ export function AdminPayments() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   )
 }
 

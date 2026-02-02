@@ -9,15 +9,16 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  ArrowLeft, 
   DollarSign, 
   Clock, 
   Save,
   X,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Loader2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { AdminLayout } from '@/components/AdminLayout'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -231,40 +232,28 @@ export function AdminServices() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin text-4xl mb-4">⏳</div>
-          <p className="text-gray-600">Loading services...</p>
+      <AdminLayout>
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand" />
         </div>
-      </div>
+      </AdminLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/dashboard')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Manage Services</h1>
-                <p className="text-sm text-gray-500">Create and manage healthcare services</p>
-              </div>
-            </div>
-            <Button onClick={() => setShowForm(true)} disabled={showForm}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Service
-            </Button>
-          </div>
-        </div>
-      </header>
-
+    <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Manage Services</h1>
+            <p className="text-gray-500">Create and manage healthcare services</p>
+          </div>
+          <Button onClick={() => setShowForm(true)} disabled={showForm} className="bg-brand hover:bg-brand/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Service
+          </Button>
+        </div>
         {error && (
           <div className="p-4 mb-6 text-red-600 bg-red-50 border border-red-200 rounded-md">
             {error}
@@ -516,13 +505,13 @@ export function AdminServices() {
                 Show All Services
               </Button>
             )}
-            <Button onClick={() => setShowForm(true)}>
+            <Button onClick={() => setShowForm(true)} className="bg-brand hover:bg-brand/90">
               <Plus className="h-4 w-4 mr-2" />
               Add First Service
             </Button>
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   )
 }

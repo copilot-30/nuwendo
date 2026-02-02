@@ -8,6 +8,7 @@ import adminAuthRoutes from './src/routes/adminAuth.js';
 import adminRoutes from './src/routes/admin.js';
 import servicesRoutes from './src/routes/services.js';
 import availabilityRoutes from './src/routes/availability.js';
+import googleAuthRoutes from './src/routes/googleAuth.js';
 import pool from './src/config/database.js';
 
 dotenv.config();
@@ -59,6 +60,7 @@ app.use('/api/services', servicesRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/oauth', googleAuthRoutes); // Google OAuth routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {

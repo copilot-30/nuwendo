@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { createGoogleMeetLink } from '../services/googleCalendarService.js';
 
 // Get all services for admin management
 const getServices = async (req, res) => {
@@ -358,23 +359,23 @@ const getBookings = async (req, res) => {
 };
 
 // Update booking status
-// Helper function to generate a unique meeting link
-const generateMeetingLink = (bookingId, bookingDate) => {
-  // Generate a unique meeting code based on booking ID and date
-  const uniqueCode = `nwd-${bookingId}-${Date.now().toString(36)}`;
-  // Use Google Meet-style URL format (this creates a unique link pattern)
-  // Note: For production, you could integrate with Google Calendar API for real Meet links
-  return `https://meet.google.com/${uniqueCode}`;
-};
-
 const updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     const adminId = req.admin.adminId;
 
-    // Get old status and booking details for audit
-    const oldResult = await pool.query('SELECT id, status, user_id, appointment_type, booking_date FROM bookings WHERE id = $1', [id]);
+    // Get booking details including patient info and service details
+    const oldResult = await pool.query(`
+      SELECT b.id, b.status, b.user_id, b.appointment_type, b.booking_date, b.booking_time,
+             u.email, u.first_name, u.last_name,
+             s.name as service_name, s.duration_minutes
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN services s ON b.service_id = s.id
+      WHERE b.id = $1
+    `, [id]);
+    
     if (oldResult.rows.length === 0) {
       return res.status(404).json({ message: 'Booking not found' });
     }
@@ -386,7 +387,44 @@ const updateBookingStatus = async (req, res) => {
     // Generate meeting link for online appointments when confirming
     let meetingLink = null;
     if (status === 'confirmed' && isOnlineAppointment) {
-      meetingLink = generateMeetingLink(id, booking.booking_date);
+      try {
+        // Create appointment date/time - handle both Date objects and strings
+        let appointmentDateTime;
+        if (booking.booking_date instanceof Date) {
+          // If booking_date is already a Date object
+          const dateStr = booking.booking_date.toISOString().split('T')[0]; // YYYY-MM-DD
+          const timeStr = booking.booking_time; // Should be HH:MM:SS or HH:MM
+          appointmentDateTime = new Date(`${dateStr}T${timeStr}`);
+        } else {
+          // If booking_date is a string
+          appointmentDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+        }
+        
+        console.log('Appointment DateTime:', appointmentDateTime);
+        
+        // Validate the date
+        if (isNaN(appointmentDateTime.getTime())) {
+          throw new Error(`Invalid date/time: ${booking.booking_date} ${booking.booking_time}`);
+        }
+        
+        // Use Google Calendar service to create meet link
+        const meetResult = await createGoogleMeetLink({
+          summary: `${booking.service_name} - ${booking.first_name} ${booking.last_name}`,
+          description: `Nuwendo Clinic - ${booking.service_name} consultation`,
+          startDateTime: appointmentDateTime,
+          durationMinutes: booking.duration_minutes || 30,
+          attendeeEmail: booking.email
+        });
+        
+        meetingLink = meetResult.meetLink;
+        console.log('Google Meet link created:', meetingLink);
+      } catch (error) {
+        console.error('Error creating Google Meet link:', error);
+        return res.status(500).json({ 
+          message: 'Failed to create Google Meet link', 
+          error: error.message 
+        });
+      }
     }
 
     // Build the update query based on status and appointment type
@@ -741,12 +779,12 @@ const getAuditLogs = async (req, res) => {
 };
 
 // Create audit log entry (for internal use)
-const createAuditLog = async (adminId, action, tableName, recordId, oldValues = null, newValues = null) => {
+const createAuditLog = async (adminId, action, resourceType, resourceId, oldValues = null, newValues = null) => {
   try {
     await pool.query(
-      `INSERT INTO admin_audit_log (admin_id, action, table_name, record_id, old_values, new_values)
+      `INSERT INTO admin_audit_log (admin_id, action, resource_type, resource_id, old_values, new_values)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [adminId, action, tableName, recordId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null]
+      [adminId, action, resourceType, resourceId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null]
     );
   } catch (error) {
     console.error('Create audit log error:', error);

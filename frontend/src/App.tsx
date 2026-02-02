@@ -10,13 +10,13 @@ import Confirmation from '@/pages/Confirmation'
 import Login from '@/pages/Login'
 import PatientDashboard from '@/pages/PatientDashboard'
 import { AdminLogin } from '@/pages/AdminLogin'
-import { AdminDashboard } from '@/pages/AdminDashboard'
+import AdminDashboard from '@/pages/AdminDashboard'
 import { AdminServices } from '@/pages/AdminServices'
 import { AdminSchedule } from '@/pages/AdminSchedule'
 import { AdminPayments } from '@/pages/AdminPayments'
 import { AdminUsers } from '@/pages/AdminUsers'
 import { AdminAuditLog } from '@/pages/AdminAuditLog'
-import { AdminBookings } from '@/pages/AdminBookings'
+import AdminBookings from '@/pages/AdminBookings'
 
 function App() {
   return (

@@ -1,381 +1,396 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  Search, 
-  Filter,
-  ChevronLeft,
-  ChevronRight,
+import { useState, useEffect } from 'react';
+import { AdminLayout } from '@/components/AdminLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Calendar,
+  Clock,
+  Search,
   Video,
-  ExternalLink,
-  User,
   MapPin,
-  Loader2
-} from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-
-const API_URL = 'http://localhost:5000/api'
+  User,
+  Phone,
+  Mail,
+  ExternalLink,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
 
 interface Booking {
-  id: number
-  booking_date: string
-  booking_time: string
-  status: string
-  amount_paid: number
-  first_name: string
-  last_name: string
-  email: string
-  service_name: string
-  duration_minutes: number
-  price: string
-  appointment_type: string
-  meeting_link: string | null
-  created_at: string
+  id: number;
+  patient_id: number;
+  patient_name: string;
+  patient_email: string;
+  patient_phone: string;
+  service_id: number;
+  service_name: string;
+  slot_date: string;
+  slot_time: string;
+  appointment_type: 'online' | 'in-person';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  video_call_link?: string;
+  notes?: string;
+  created_at: string;
 }
 
-interface Pagination {
-  current_page: number
-  total_pages: number
-  total_records: number
-  per_page: number
-}
+const statusColors: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  confirmed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+  completed: 'bg-blue-100 text-blue-800',
+};
 
-export function AdminBookings() {
-  const navigate = useNavigate()
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
-  
-  // Filters
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+const statusIcons: Record<string, React.ReactNode> = {
+  pending: <AlertCircle className="h-3 w-3" />,
+  confirmed: <CheckCircle className="h-3 w-3" />,
+  cancelled: <XCircle className="h-3 w-3" />,
+  completed: <CheckCircle className="h-3 w-3" />,
+};
 
-  useEffect(() => {
-    const adminToken = localStorage.getItem('adminToken')
-    if (!adminToken) {
-      navigate('/admin/login')
-      return
-    }
-    fetchBookings()
-  }, [navigate, currentPage, statusFilter, dateFrom, dateTo])
+export default function AdminBookings() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchBookings = async () => {
-    setIsLoading(true)
     try {
-      const token = localStorage.getItem('adminToken')
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '20'
-      })
-      
-      if (statusFilter) params.append('status', statusFilter)
-      if (dateFrom) params.append('date_from', dateFrom)
-      if (dateTo) params.append('date_to', dateTo)
-      if (search) params.append('search', search)
-
-      const response = await fetch(`${API_URL}/admin/bookings?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      const data = await response.json()
-      if (data.success) {
-        setBookings(data.bookings)
-        setPagination(data.pagination)
-      } else {
-        throw new Error(data.message || 'Failed to fetch bookings')
+      setLoading(true);
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch('http://localhost:5000/api/admin/bookings', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data.bookings || []);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load bookings')
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setCurrentPage(1)
-    fetchBookings()
-  }
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
-  const formatTime = (time: string) => {
-    if (!time) return ''
-    const [hours, minutes] = time.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const displayHour = hour % 12 || 12
-    return `${displayHour}:${minutes} ${ampm}`
-  }
+  const filteredBookings = bookings.filter((booking) => {
+    const matchesSearch =
+      booking.service_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.patient_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+    const matchesType = typeFilter === 'all' || booking.appointment_type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const handleBookingClick = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setIsModalOpen(true);
+  };
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    })
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-700'
-      case 'pending': return 'bg-yellow-100 text-yellow-700'
-      case 'cancelled': return 'bg-red-100 text-red-700'
-      case 'completed': return 'bg-blue-100 text-blue-700'
-      default: return 'bg-gray-100 text-gray-700'
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
     }
-  }
+  };
 
-  const formatPrice = (price: string | number) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP'
-    }).format(typeof price === 'string' ? parseFloat(price) : price)
-  }
-
-  if (isLoading && bookings.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
-    )
-  }
+  const formatTime = (timeStr: string) => {
+    try {
+      const [hours, minutes] = timeStr.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    } catch {
+      return timeStr;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/admin/dashboard')}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">All Bookings</h1>
-                <p className="text-sm text-gray-500">
-                  {pagination?.total_records || 0} total bookings
-                </p>
-              </div>
-            </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage all appointment bookings
+            </p>
           </div>
+          <Button onClick={fetchBookings} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl">
-            {error}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by service or patient name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="in-person">In-Person</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <RefreshCw className="h-8 w-8 animate-spin text-[#2c4d5c]" />
+          </div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="text-center py-12">
+            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No bookings found</h3>
+            <p className="text-gray-500">
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+                ? 'Try adjusting your filters'
+                : 'No bookings have been made yet'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredBookings.map((booking) => (
+              <Card
+                key={booking.id}
+                className="cursor-pointer hover:shadow-lg transition-shadow duration-200 border-l-4"
+                style={{
+                  borderLeftColor:
+                    booking.status === 'confirmed'
+                      ? '#22c55e'
+                      : booking.status === 'pending'
+                      ? '#eab308'
+                      : booking.status === 'cancelled'
+                      ? '#ef4444'
+                      : '#3b82f6',
+                }}
+                onClick={() => handleBookingClick(booking)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-semibold text-gray-900 line-clamp-1">
+                      {booking.service_name}
+                    </h3>
+                    <Badge
+                      className={`${statusColors[booking.status]} text-xs flex items-center gap-1`}
+                    >
+                      {statusIcons[booking.status]}
+                      {booking.status}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span>{formatDate(booking.slot_date)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span>{formatTime(booking.slot_time)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {booking.appointment_type === 'online' ? (
+                        <>
+                          <Video className="h-4 w-4 text-blue-500" />
+                          <span className="text-blue-600">Online Consultation</span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-4 w-4 text-green-500" />
+                          <span className="text-green-600">In-Person Visit</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-400">
+                      Booked on {formatDate(booking.created_at)}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="w-5 h-5" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search patient..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              >
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1) }}
-                placeholder="From date"
-              />
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1) }}
-                placeholder="To date"
-              />
-              <Button type="submit" className="bg-brand hover:bg-brand/90">
-                <Search className="w-4 h-4 mr-2" />
-                Search
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Booking Details</DialogTitle>
+            </DialogHeader>
+            {selectedBooking && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                    {selectedBooking.service_name}
+                  </h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className={statusColors[selectedBooking.status]}>
+                      {selectedBooking.status}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={
+                        selectedBooking.appointment_type === 'online'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-green-500 text-green-600'
+                      }
+                    >
+                      {selectedBooking.appointment_type === 'online' ? (
+                        <Video className="h-3 w-3 mr-1" />
+                      ) : (
+                        <MapPin className="h-3 w-3 mr-1" />
+                      )}
+                      {selectedBooking.appointment_type === 'online'
+                        ? 'Online'
+                        : 'In-Person'}
+                    </Badge>
+                  </div>
+                </div>
 
-        {/* Bookings Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Bookings</CardTitle>
-            <CardDescription>
-              All patient appointment bookings
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {bookings.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>No bookings found</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Patient</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Service</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date & Time</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Type</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Meeting</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((booking) => (
-                      <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
-                              <User className="w-4 h-4 text-brand" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {booking.first_name} {booking.last_name}
-                              </p>
-                              <p className="text-xs text-gray-500">{booking.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="font-medium text-gray-900">{booking.service_name}</p>
-                          <p className="text-xs text-gray-500">{booking.duration_minutes} mins</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            {formatDate(booking.booking_date)}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            {formatTime(booking.booking_time)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge 
-                            variant="outline" 
-                            className={
-                              booking.appointment_type === 'online'
-                                ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                : 'border-purple-200 text-purple-700 bg-purple-50'
-                            }
-                          >
-                            {booking.appointment_type === 'online' ? (
-                              <Video className="w-3 h-3 mr-1" />
-                            ) : (
-                              <MapPin className="w-3 h-3 mr-1" />
-                            )}
-                            {booking.appointment_type}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge className={getStatusColor(booking.status)}>
-                            {booking.status}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          {booking.meeting_link ? (
-                            <a
-                              href={booking.meeting_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700 hover:underline"
-                            >
-                              <Video className="w-4 h-4" />
-                              Join
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : booking.appointment_type === 'online' && booking.status === 'pending' ? (
-                            <span className="text-xs text-gray-400">Pending approval</span>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          <span className="font-medium text-gray-900">
-                            {formatPrice(booking.price)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Calendar className="h-5 w-5 text-[#2c4d5c]" />
+                    <div>
+                      <p className="text-xs text-gray-500">Date</p>
+                      <p className="font-medium">
+                        {formatDate(selectedBooking.slot_date)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Clock className="h-5 w-5 text-[#2c4d5c]" />
+                    <div>
+                      <p className="text-xs text-gray-500">Time</p>
+                      <p className="font-medium">
+                        {formatTime(selectedBooking.slot_time)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Pagination */}
-            {pagination && pagination.total_pages > 1 && (
-              <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-500">
-                  Page {pagination.current_page} of {pagination.total_pages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(pagination.total_pages, prev + 1))}
-                    disabled={currentPage === pagination.total_pages}
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-500 mb-3">
+                    Patient Information
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <span>{selectedBooking.patient_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span>{selectedBooking.patient_email}</span>
+                    </div>
+                    {selectedBooking.patient_phone && (
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        <span>{selectedBooking.patient_phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedBooking.appointment_type === 'online' &&
+                  selectedBooking.video_call_link && (
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">
+                        Video Call Link
+                      </h4>
+                      <a
+                        href={selectedBooking.video_call_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between w-full bg-blue-50 hover:bg-blue-100 rounded-lg p-3 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-500 rounded-full p-2">
+                            <Video className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-700">
+                              Join Google Meet
+                            </p>
+                            <p className="text-xs text-blue-500 truncate max-w-[200px]">
+                              {selectedBooking.video_call_link}
+                            </p>
+                          </div>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-blue-500 group-hover:text-blue-700" />
+                      </a>
+                    </div>
+                  )}
+
+                {selectedBooking.notes && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">
+                      Notes
+                    </h4>
+                    <p className="text-gray-700 text-sm">{selectedBooking.notes}</p>
+                  </div>
+                )}
+
+                <div className="border-t pt-4 text-xs text-gray-400">
+                  <p>Booking ID: #{selectedBooking.id}</p>
+                  <p>Created: {formatDate(selectedBooking.created_at)}</p>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </main>
-    </div>
-  )
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AdminLayout>
+  );
 }
-
-export default AdminBookings

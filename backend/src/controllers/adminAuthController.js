@@ -172,9 +172,28 @@ const getDashboardStats = async (req, res) => {
       [thisMonthStart.toISOString().split('T')[0], 'paid']
     );
 
+    // Pending payments
+    const pendingPaymentsResult = await pool.query(
+      `SELECT b.id, b.booking_date, b.booking_time, b.status, b.amount_paid, b.payment_status, b.phone_number,
+              u.first_name, u.last_name, u.email,
+              s.name as service_name
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       JOIN services s ON b.service_id = s.id
+       WHERE b.payment_status = 'pending' AND b.status != 'cancelled'
+       ORDER BY b.booking_date ASC, b.booking_time ASC
+       LIMIT 10`
+    );
+
+    // Calculate total pending amount
+    const pendingAmountResult = await pool.query(
+      `SELECT COALESCE(SUM(amount_paid), 0) as total FROM bookings 
+       WHERE payment_status = 'pending' AND status != 'cancelled'`
+    );
+
     // Recent bookings
     const recentBookingsResult = await pool.query(
-      `SELECT b.id, b.booking_date, b.booking_time, b.status, b.amount_paid,
+      `SELECT b.id, b.booking_date, b.booking_time, b.status, b.amount_paid, b.payment_status,
               u.first_name, u.last_name, u.email,
               s.name as service_name
        FROM bookings b
@@ -191,6 +210,8 @@ const getDashboardStats = async (req, res) => {
         todayAppointments: parseInt(todayAppointmentsResult.rows[0].today),
         thisWeekAppointments: parseInt(thisWeekResult.rows[0].week),
         monthlyRevenue: parseFloat(revenueResult.rows[0].revenue),
+        pendingPayments: pendingPaymentsResult.rows,
+        pendingPaymentsTotal: parseFloat(pendingAmountResult.rows[0].total),
         recentBookings: recentBookingsResult.rows
       }
     });

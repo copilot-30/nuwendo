@@ -1,268 +1,446 @@
-﻿import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Calendar, Clock, DollarSign, Settings, LogOut, Bell, Activity, FileText, Users, X, Mail, Phone, MapPin, User, ChevronRight, TrendingUp, CreditCard, Target } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AdminLayout } from '@/components/AdminLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Calendar,
+  Clock,
+  Users,
+  DollarSign,
+  TrendingUp,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Video,
+  MapPin,
+  Bell,
+  Activity,
+  CreditCard,
+} from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api'
+interface Booking {
+  id: number;
+  booking_date: string;
+  booking_time: string;
+  status: string;
+  amount_paid: number;
+  payment_status?: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number?: string;
+  service_name: string;
+}
 
 interface DashboardStats {
-  totalBookings: number
-  todayAppointments: number
-  thisWeekAppointments: number
-  monthlyRevenue: number
-  recentBookings: Array<{
-    id: number
-    booking_date: string
-    booking_time: string
-    status: string
-    amount_paid: number
-    first_name: string
-    last_name: string
-    email: string
-    phone_number: string
-    service_name: string
-    appointment_type: string
-  }>
+  totalBookings: number;
+  todayAppointments: number;
+  thisWeekAppointments: number;
+  monthlyRevenue: number;
+  recentBookings: Booking[];
 }
 
-interface AdminUser {
-  id: number
-  username: string
-  email: string
-  full_name: string
-  role: string
-}
-
-interface PatientProfile {
-  id: number
-  email: string
-  first_name: string
-  last_name: string
-  phone_number: string
-  date_of_birth: string
-  gender: string
-  address: string
-  medical_conditions: string
-  allergies: string
-  current_medications: string
-  created_at: string
-  bookings: Array<{
-    id: number
-    booking_date: string
-    booking_time: string
-    status: string
-    service_name: string
-    amount_paid: number
-  }>
-}
-
-export function AdminDashboard() {
-  const navigate = useNavigate()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [selectedPatient, setSelectedPatient] = useState<PatientProfile | null>(null)
-  const [isLoadingPatient, setIsLoadingPatient] = useState(false)
+export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const adminData = localStorage.getItem('adminUser')
-    if (adminData) {
-      setAdminUser(JSON.parse(adminData))
-    } else {
-      navigate('/admin/login')
-      return
-    }
-    fetchDashboardStats()
-  }, [navigate])
-
-  const fetchDashboardStats = async () => {
-    try {
-      const token = localStorage.getItem('adminToken')
-      if (!token) { navigate('/admin/login'); return }
-      const response = await fetch(API_URL + '/admin/auth/dashboard/stats', { headers: { 'Authorization': 'Bearer ' + token } })
-      const data = await response.json()
-      if (!response.ok) {
-        if (response.status === 401) { handleLogout(); return }
-        throw new Error(data.message || 'Failed to fetch stats')
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch('http://localhost:5000/api/admin/auth/dashboard/stats', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoading(false);
       }
-      setStats(data.stats)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    };
 
-  const fetchPatientProfile = async (email: string) => {
-    setIsLoadingPatient(true)
+    fetchStats();
+  }, []);
+
+  const formatDate = (dateStr: string) => {
     try {
-      const token = localStorage.getItem('adminToken')
-      const response = await fetch(API_URL + '/admin/patients/' + encodeURIComponent(email), { headers: { 'Authorization': 'Bearer ' + token } })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.message || 'Failed to fetch patient')
-      setSelectedPatient(data.patient)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load patient')
-    } finally {
-      setIsLoadingPatient(false)
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
     }
-  }
+  };
 
-  const handleLogout = async () => {
+  const formatTime = (timeStr: string) => {
     try {
-      const token = localStorage.getItem('adminToken')
-      if (token) { await fetch(API_URL + '/admin/auth/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }) }
-    } catch { /* continue */ }
-    localStorage.removeItem('adminToken')
-    localStorage.removeItem('adminUser')
-    navigate('/admin/login')
-  }
+      const [hours, minutes] = timeStr.split(':');
+      const hour = parseInt(hours, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    } catch {
+      return timeStr;
+    }
+  };
 
-  const formatPrice = (price: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(price)
-  const formatTime = (time: string) => { const [h, m] = time.split(':'); const hr = parseInt(h); return (hr % 12 || 12) + ':' + m + ' ' + (hr >= 12 ? 'PM' : 'AM') }
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const formatDateShort = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const getStatusColor = (s: string) => s === 'confirmed' ? 'bg-green-100 text-green-700' : s === 'pending' ? 'bg-yellow-100 text-yellow-700' : s === 'completed' ? 'bg-blue-100 text-blue-700' : s === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+  const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
 
-  if (isLoading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-12 h-12 border-4 border-brand border-t-transparent rounded-full animate-spin" /></div>
+  const todaysBookings = stats?.recentBookings.filter(
+    (b) => b.booking_date === new Date().toISOString().split('T')[0]
+  ) || [];
+
+  const pendingBookings = stats?.recentBookings.filter((b) => b.status === 'pending') || [];
+  const confirmedToday = todaysBookings.filter((b) => b.status === 'confirmed').length;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return <CheckCircle className="h-3 w-3" />;
+      case 'pending':
+        return <AlertCircle className="h-3 w-3" />;
+      case 'cancelled':
+        return <XCircle className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <img src="/logo-full.svg" alt="Nuwendo" className="h-12" />
-              <div className="hidden sm:block border-l border-gray-200 pl-4">
-                <h1 className="text-lg font-semibold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-500">Welcome, {adminUser?.full_name}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="relative"><Bell className="h-5 w-5" />{(stats?.todayAppointments || 0) > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{stats?.todayAppointments}</span>}</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/payments')} className="hidden lg:flex"><CreditCard className="h-4 w-4 mr-2" />Payments</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/services')} className="hidden lg:flex"><Settings className="h-4 w-4 mr-2" />Services</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/schedule')} className="hidden lg:flex"><Clock className="h-4 w-4 mr-2" />Schedule</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/users')} className="hidden lg:flex"><Users className="h-4 w-4 mr-2" />Users</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/audit-logs')} className="hidden xl:flex"><FileText className="h-4 w-4 mr-2" />Logs</Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50"><LogOut className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Logout</span></Button>
-            </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header with Quick Actions */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => navigate('/admin/bookings')} size="sm" className="bg-[#2c4d5c] hover:bg-[#234050]">
+              <Calendar className="h-4 w-4 mr-2" />
+              View All Bookings
+            </Button>
+            <Button onClick={() => navigate('/admin/schedule')} variant="outline" size="sm">
+              <Clock className="h-4 w-4 mr-2" />
+              Manage Schedule
+            </Button>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 mb-6 text-red-600 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between"><span>{error}</span><button onClick={() => setError('')}><X className="h-4 w-4" /></button></motion.div>}
-
-        <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4 mb-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="hover:shadow-lg transition-shadow border-0 shadow-md">
-              <CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-500">Total Bookings</p><p className="text-3xl font-bold text-gray-900 mt-1">{stats?.totalBookings || 0}</p><p className="text-xs text-gray-400 mt-1">All time</p></div><div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-500/20"><Calendar className="h-6 w-6 text-white" /></div></div></CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="hover:shadow-lg transition-shadow border-0 shadow-md bg-gradient-to-br from-brand to-brand-600 text-white">
-              <CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-white/80">Today</p><p className="text-3xl font-bold mt-1">{stats?.todayAppointments || 0}</p><p className="text-xs text-white/60 mt-1">Appointments</p></div><div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm"><Clock className="h-6 w-6 text-white" /></div></div></CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="hover:shadow-lg transition-shadow border-0 shadow-md">
-              <CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-500">This Week</p><p className="text-3xl font-bold text-gray-900 mt-1">{stats?.thisWeekAppointments || 0}</p><div className="flex items-center gap-1 mt-1"><TrendingUp className="h-3 w-3 text-green-500" /><p className="text-xs text-green-600">Active</p></div></div><div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/20"><Activity className="h-6 w-6 text-white" /></div></div></CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="hover:shadow-lg transition-shadow border-0 shadow-md">
-              <CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-500">Revenue</p><p className="text-2xl font-bold text-gray-900 mt-1">{formatPrice(stats?.monthlyRevenue || 0)}</p><p className="text-xs text-gray-400 mt-1">This month</p></div><div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg shadow-green-500/20"><DollarSign className="h-6 w-6 text-white" /></div></div></CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lg:col-span-2">
-            <Card className="border-0 shadow-md">
-              <CardHeader className="border-b bg-gray-50/50"><div className="flex items-center justify-between"><div><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-brand" />Recent Bookings</CardTitle><CardDescription>Click on a patient to view their profile</CardDescription></div><Button variant="outline" size="sm" onClick={() => navigate('/admin/bookings')}>View All<ChevronRight className="h-4 w-4 ml-1" /></Button></div></CardHeader>
-              <CardContent className="p-0">
-                {stats?.recentBookings && stats.recentBookings.length > 0 ? (
-                  <div className="divide-y">
-                    {stats.recentBookings.map((b) => (
-                      <div key={b.id} className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => fetchPatientProfile(b.email)}>
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center"><span className="text-brand font-semibold">{b.first_name?.[0]}{b.last_name?.[0]}</span></div>
-                          <div><div className="flex items-center gap-2 mb-0.5"><p className="font-medium text-gray-900">{b.first_name} {b.last_name}</p><Badge className={getStatusColor(b.status)}>{b.status}</Badge>{b.appointment_type && <Badge variant="outline" className="text-xs">{b.appointment_type === 'online' ? ' Online' : ' On-site'}</Badge>}</div><p className="text-sm text-gray-600">{b.service_name}</p><p className="text-xs text-gray-400">{formatDateShort(b.booking_date)} at {formatTime(b.booking_time)}</p></div>
-                        </div>
-                        <div className="text-right"><p className="font-semibold text-brand">{formatPrice(b.amount_paid)}</p><p className="text-xs text-gray-400">#{b.id}</p></div>
-                      </div>
-                    ))}
+        {/* Urgent Alerts Section */}
+        <div className="space-y-3">
+          {/* Pending Bookings Alert */}
+          {pendingBookings.length > 0 && (
+            <Card className="border-l-4 border-l-yellow-500 bg-yellow-50">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3">
+                  <Bell className="h-5 w-5 text-yellow-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-yellow-900">
+                      {pendingBookings.length} Pending {pendingBookings.length === 1 ? 'Booking' : 'Bookings'}
+                    </h3>
+                    <p className="text-sm text-yellow-700">
+                      Action required: Review and approve payment receipts
+                    </p>
                   </div>
-                ) : <div className="text-center py-12"><Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500">No recent bookings</p></div>}
+                  <Button 
+                    onClick={() => navigate('/admin/payments')} 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-yellow-600 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    Review Now
+                  </Button>
+                </div>
               </CardContent>
             </Card>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            <Card className="border-0 shadow-md">
-              <CardHeader className="border-b bg-gray-50/50"><CardTitle>Quick Actions</CardTitle><CardDescription>Manage your clinic</CardDescription></CardHeader>
-              <CardContent className="p-4 space-y-2">
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/services')}><Settings className="mr-3 h-5 w-5" />Manage Services</Button>
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/schedule')}><Clock className="mr-3 h-5 w-5" />Manage Schedule</Button>
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/payments')}><CreditCard className="mr-3 h-5 w-5" />Payment Settings</Button>
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/bookings')}><Calendar className="mr-3 h-5 w-5" />View All Bookings</Button>
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/users')}><Users className="mr-3 h-5 w-5" />View All Users</Button>
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/audit-logs')}><FileText className="mr-3 h-5 w-5" />Audit Logs</Button>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-md mt-6">
-              <CardHeader className="border-b bg-gray-50/50"><CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-brand" />Today's Schedule</CardTitle></CardHeader>
-              <CardContent className="p-4">
-                {stats?.todayAppointments && stats.todayAppointments > 0 ? <div className="text-center py-4"><p className="text-4xl font-bold text-brand">{stats.todayAppointments}</p><p className="text-sm text-gray-500 mt-1">appointments today</p><Button className="mt-4 bg-brand hover:bg-brand-600" onClick={() => navigate('/admin/schedule')}>View Schedule</Button></div> : <div className="text-center py-4"><p className="text-gray-400">No appointments today</p></div>}
-              </CardContent>
-            </Card>
-          </motion.div>
+          )}
         </div>
-      </div>
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Total Bookings</CardTitle>
+              <Users className="h-5 w-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">
+                {loading ? '--' : stats?.totalBookings ?? 0}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">All time bookings</p>
+            </CardContent>
+          </Card>
 
-      <AnimatePresence>
-        {(selectedPatient || isLoadingPatient) && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedPatient(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              {isLoadingPatient ? <div className="p-12 text-center"><div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" /><p className="text-gray-600">Loading patient profile...</p></div> : selectedPatient && (
-                <>
-                  <div className="bg-gradient-to-r from-brand to-brand-600 p-6 text-white">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4"><div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><User className="w-8 h-8" /></div><div><h2 className="text-2xl font-bold">{selectedPatient.first_name} {selectedPatient.last_name}</h2><p className="text-white/80">Patient since {formatDate(selectedPatient.created_at)}</p></div></div>
-                      <button onClick={() => setSelectedPatient(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+          <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Today's Appointments</CardTitle>
+              <Calendar className="h-5 w-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">
+                {loading ? '--' : stats?.todayAppointments ?? 0}
+              </div>
+              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                {confirmedToday} confirmed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">This Week</CardTitle>
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">
+                {loading ? '--' : stats?.thisWeekAppointments ?? 0}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Weekly appointments</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Monthly Revenue</CardTitle>
+              <DollarSign className="h-5 w-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">
+                {loading ? '--' : currencyFormatter.format(stats?.monthlyRevenue ?? 0)}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Current month</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Today's Schedule - Takes 2 columns */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Today's Schedule</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">
+                  {todaysBookings.length} {todaysBookings.length === 1 ? 'appointment' : 'appointments'} scheduled
+                </p>
+              </div>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin/bookings">View All</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="py-8 text-center text-gray-500">Loading schedule...</div>
+              ) : todaysBookings.length > 0 ? (
+                <div className="space-y-3">
+                  {todaysBookings.slice(0, 5).map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-[#2c4d5c] hover:shadow-sm transition-all cursor-pointer"
+                      onClick={() => navigate('/admin/bookings')}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-center justify-center w-16 h-16 bg-gray-50 rounded-lg">
+                          <Clock className="h-5 w-5 text-gray-400 mb-1" />
+                          <span className="text-sm font-semibold text-gray-700">
+                            {formatTime(booking.booking_time)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{booking.service_name}</p>
+                          <p className="text-sm text-gray-500">
+                            {booking.first_name} {booking.last_name}
+                          </p>
+                          <p className="text-xs text-gray-400">{booking.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge className={`${getStatusColor(booking.status)} flex items-center gap-1`}>
+                          {getStatusIcon(booking.status)}
+                          {booking.status}
+                        </Badge>
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center">
+                  <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">No appointments today</h3>
+                  <p className="text-gray-500 text-sm mt-1">Your schedule is clear for today</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions & Stats - Takes 1 column */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button 
+                  onClick={() => navigate('/admin/bookings')} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  size="sm"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Manage Bookings
+                </Button>
+                <Button 
+                  onClick={() => navigate('/admin/payments')} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  size="sm"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Review Payments
+                </Button>
+                <Button 
+                  onClick={() => navigate('/admin/services')} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  size="sm"
+                >
+                  <Activity className="h-4 w-4 mr-2" />
+                  Manage Services
+                </Button>
+                <Button 
+                  onClick={() => navigate('/admin/schedule')} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  size="sm"
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Set Availability
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Appointment Types Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Booking Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">Online</span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-600">
+                    {stats?.recentBookings.filter((b) => b.service_name.toLowerCase().includes('online')).length || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-900">In-Person</span>
+                  </div>
+                  <span className="text-lg font-bold text-green-600">
+                    {(stats?.recentBookings.length || 0) - (stats?.recentBookings.filter((b) => b.service_name.toLowerCase().includes('online')).length || 0)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Recent Bookings</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Latest booking activity</p>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/bookings">See All</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="py-8 text-center text-gray-500">Loading bookings...</div>
+            ) : stats?.recentBookings?.length ? (
+              <div className="space-y-3">
+                {stats.recentBookings.slice(0, 6).map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-100 rounded-lg hover:border-[#2c4d5c] hover:shadow-sm transition-all cursor-pointer"
+                    onClick={() => navigate('/admin/bookings')}
+                  >
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">{booking.service_name}</p>
+                      <p className="text-sm text-gray-500">
+                        {booking.first_name} {booking.last_name}  {booking.email}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        {formatDate(booking.booking_date)}
+                      </div>
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                        {formatTime(booking.booking_time)}
+                      </div>
+                      <Badge className={`${getStatusColor(booking.status)} flex items-center gap-1`}>
+                        {getStatusIcon(booking.status)}
+                        {booking.status}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="p-6 overflow-y-auto max-h-[60vh]">
-                    {(() => {
-                      let details: { age?: string; height?: string; weight?: string; reasonForConsult?: string; healthGoals?: string[] } = {}
-                      try { if (selectedPatient.medical_conditions) details = JSON.parse(selectedPatient.medical_conditions) } catch {}
-                      return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                          {details.age && <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><User className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Age</p><p className="font-medium text-sm">{details.age} years old</p></div></div>}
-                          {details.height && <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><Activity className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Height</p><p className="font-medium text-sm">{details.height} cm</p></div></div>}
-                          {details.weight && <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><Activity className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Weight</p><p className="font-medium text-sm">{details.weight} kg</p></div></div>}
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><Mail className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Email</p><p className="font-medium text-sm">{selectedPatient.email}</p></div></div>
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><Phone className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Phone</p><p className="font-medium text-sm">{selectedPatient.phone_number || 'Not provided'}</p></div></div>
-                          {selectedPatient.address && <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><MapPin className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Address</p><p className="font-medium text-sm">{selectedPatient.address}</p></div></div>}
-                          {details.reasonForConsult && <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl sm:col-span-2"><FileText className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Reason for Consultation</p><p className="font-medium text-sm">{details.reasonForConsult}</p></div></div>}
-                          {details.healthGoals && details.healthGoals.length > 0 && <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl sm:col-span-2"><Target className="h-5 w-5 text-gray-400" /><div><p className="text-xs text-gray-500">Health Goals</p><p className="font-medium text-sm">{details.healthGoals.join(', ')}</p></div></div>}
-                        </div>
-                      )
-                    })()}
-                    <h3 className="font-semibold text-gray-900 mb-3">Booking History</h3>
-                    {selectedPatient.bookings && selectedPatient.bookings.length > 0 ? <div className="space-y-2">{selectedPatient.bookings.map((b) => <div key={b.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><p className="font-medium text-sm">{b.service_name}</p><p className="text-xs text-gray-500">{formatDate(b.booking_date)} at {formatTime(b.booking_time)}</p></div><div className="text-right"><Badge className={getStatusColor(b.status)}>{b.status}</Badge><p className="text-xs text-gray-500 mt-1">{formatPrice(b.amount_paid)}</p></div></div>)}</div> : <p className="text-gray-500 text-sm">No booking history</p>}
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <Activity className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900">No bookings yet</h3>
+                <p className="text-gray-500 text-sm mt-1">Bookings will appear here once patients start booking</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AdminLayout>
+  );
 }

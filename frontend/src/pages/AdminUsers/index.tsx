@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { 
-  Users, Search, ArrowLeft, Mail, Phone, Calendar, 
-  ChevronLeft, ChevronRight, User, X, FileText, Target, Activity
+  Users, Search, Mail, Phone, Calendar, 
+  ChevronLeft, ChevronRight, User, X, FileText, Target, Activity, Loader2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AdminLayout } from '@/components/AdminLayout'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -134,35 +135,24 @@ export function AdminUsers() {
 
   if (isLoading && users.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-brand border-t-transparent rounded-full animate-spin" />
-      </div>
+      <AdminLayout>
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand" />
+        </div>
+      </AdminLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-              <div className="border-l border-gray-200 pl-4">
-                <h1 className="text-lg font-semibold text-gray-900">User Management</h1>
-                <p className="text-sm text-gray-500">
-                  {pagination ? `${pagination.total_records} total users` : 'Loading...'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <p className="text-gray-500">
+            {pagination ? `${pagination.total_records} total users` : 'Loading...'}
+          </p>
+        </div>
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -438,6 +428,6 @@ export function AdminUsers() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </AdminLayout>
   )
 }
