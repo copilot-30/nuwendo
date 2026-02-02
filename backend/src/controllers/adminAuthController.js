@@ -2,6 +2,19 @@ import pool from '../config/database.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// Helper function to create audit log
+const createAuditLog = async (adminId, action, tableName = null, recordId = null, oldValues = null, newValues = null) => {
+  try {
+    await pool.query(
+      `INSERT INTO admin_audit_log (admin_id, action, table_name, record_id, old_values, new_values)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [adminId, action, tableName, recordId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null]
+    );
+  } catch (error) {
+    console.error('Create audit log error:', error);
+  }
+};
+
 // Admin login
 const adminLogin = async (req, res) => {
   try {
@@ -48,6 +61,9 @@ const adminLogin = async (req, res) => {
       'INSERT INTO admin_sessions (admin_id, token, expires_at) VALUES ($1, $2, $3)',
       [admin.id, token, expiresAt]
     );
+
+    // Log the login
+    await createAuditLog(admin.id, 'Admin login', 'admin_sessions', null, null, { username: admin.username, email: admin.email });
 
     res.json({
       success: true,
@@ -97,10 +113,16 @@ const getAdminProfile = async (req, res) => {
 const adminLogout = async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
+    const adminId = req.admin?.adminId;
     
     if (token) {
       // Remove session from database
       await pool.query('DELETE FROM admin_sessions WHERE token = $1', [token]);
+    }
+
+    // Log the logout
+    if (adminId) {
+      await createAuditLog(adminId, 'Admin logout', 'admin_sessions', null, null, null);
     }
 
     res.json({

@@ -15,7 +15,9 @@ import {
   Bell,
   Pencil,
   Check,
-  Loader2
+  Loader2,
+  Video,
+  ExternalLink
 } from 'lucide-react'
 
 interface Appointment {
@@ -29,6 +31,7 @@ interface Appointment {
   last_name?: string
   phone_number?: string
   duration_minutes?: number
+  meeting_link?: string
 }
 
 interface PatientProfile {
@@ -529,6 +532,25 @@ export default function PatientDashboard() {
                           </span>
                         </div>
                       </div>
+                      
+                      {/* Meeting Link for confirmed online appointments */}
+                      {apt.appointment_type === 'online' && apt.status === 'confirmed' && apt.meeting_link && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <a
+                            href={apt.meeting_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-sm hover:shadow-md"
+                          >
+                            <Video className="w-4 h-4" />
+                            Join Google Meet
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Your video consultation link is ready. Click to join at your scheduled time.
+                          </p>
+                        </div>
+                      )}
                       
                       {/* Cancel button - only show if 24+ hours before */}
                       {apt.status !== 'cancelled' && (

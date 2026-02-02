@@ -144,9 +144,11 @@ export function AdminDashboard() {
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="relative"><Bell className="h-5 w-5" />{(stats?.todayAppointments || 0) > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{stats?.todayAppointments}</span>}</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/payments')} className="hidden sm:flex"><CreditCard className="h-4 w-4 mr-2" />Payments</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/services')} className="hidden sm:flex"><Settings className="h-4 w-4 mr-2" />Services</Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/schedule')} className="hidden sm:flex"><Clock className="h-4 w-4 mr-2" />Schedule</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/payments')} className="hidden lg:flex"><CreditCard className="h-4 w-4 mr-2" />Payments</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/services')} className="hidden lg:flex"><Settings className="h-4 w-4 mr-2" />Services</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/schedule')} className="hidden lg:flex"><Clock className="h-4 w-4 mr-2" />Schedule</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/users')} className="hidden lg:flex"><Users className="h-4 w-4 mr-2" />Users</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/audit-logs')} className="hidden xl:flex"><FileText className="h-4 w-4 mr-2" />Logs</Button>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50"><LogOut className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Logout</span></Button>
             </div>
           </div>
@@ -209,7 +211,8 @@ export function AdminDashboard() {
                 <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/schedule')}><Clock className="mr-3 h-5 w-5" />Manage Schedule</Button>
                 <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/payments')}><CreditCard className="mr-3 h-5 w-5" />Payment Settings</Button>
                 <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/bookings')}><Calendar className="mr-3 h-5 w-5" />View All Bookings</Button>
-                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand"><Users className="mr-3 h-5 w-5" />View All Patients</Button>
+                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/users')}><Users className="mr-3 h-5 w-5" />View All Users</Button>
+                <Button variant="outline" className="w-full justify-start h-12 hover:bg-brand-50 hover:text-brand hover:border-brand" onClick={() => navigate('/admin/audit-logs')}><FileText className="mr-3 h-5 w-5" />Audit Logs</Button>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-md mt-6">

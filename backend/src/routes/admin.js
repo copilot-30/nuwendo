@@ -15,13 +15,30 @@ import {
   getPaymentSettings,
   updatePaymentSettings,
   getPendingPayments,
-  getPatientProfile
+  getPatientProfile,
+  getAllUsers,
+  getAuditLogs
 } from '../controllers/adminController.js';
 
 const router = express.Router();
 
 // Apply admin authentication to all routes
 router.use(adminAuth);
+
+// Users management
+router.get('/users', [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+  query('role').optional().isIn(['patient', 'admin']).withMessage('Invalid role')
+], getAllUsers);
+
+// Audit logs
+router.get('/audit-logs', [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+  query('date_from').optional().isISO8601().withMessage('Invalid date format'),
+  query('date_to').optional().isISO8601().withMessage('Invalid date format')
+], getAuditLogs);
 
 // Services management
 router.get('/services', getServices);

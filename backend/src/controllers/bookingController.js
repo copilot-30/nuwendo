@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { uploadBase64Image } from '../services/storageService.js';
 
 // Get all active services
 const getServices = async (req, res) => {
@@ -384,23 +385,32 @@ const uploadPaymentReceipt = async (req, res) => {
       return res.status(400).json({ message: 'Receipt can only be uploaded for pending bookings' });
     }
 
-    // Update booking with receipt
+    // Upload image to Supabase Storage
+    console.log('Uploading receipt to Supabase Storage...');
+    const { url } = await uploadBase64Image(receiptData, `receipts/booking-${id}`);
+    console.log('Receipt uploaded successfully:', url);
+
+    // Update booking with receipt URL (not the base64 data)
     await pool.query(
       `UPDATE bookings 
        SET payment_receipt_url = $1, 
            payment_receipt_uploaded_at = CURRENT_TIMESTAMP,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $2`,
-      [receiptData, id]
+      [url, id]
     );
 
     res.json({
       success: true,
-      message: 'Payment receipt uploaded successfully. Waiting for admin approval.'
+      message: 'Payment receipt uploaded successfully. Waiting for admin approval.',
+      receiptUrl: url
     });
   } catch (error) {
     console.error('Upload receipt error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

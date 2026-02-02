@@ -177,6 +177,7 @@ export function AdminPayments() {
   }
 
   const handleApprovePayment = async (bookingId: number) => {
+    const booking = pendingBookings.find(b => b.id === bookingId)
     setApprovingId(bookingId)
     try {
       const token = localStorage.getItem('adminToken')
@@ -192,8 +193,14 @@ export function AdminPayments() {
       const data = await response.json()
       if (data.success) {
         setPendingBookings(prev => prev.filter(b => b.id !== bookingId))
-        setSuccess('Payment approved and booking confirmed!')
-        setTimeout(() => setSuccess(''), 3000)
+        
+        // Show success message with meeting link for online appointments
+        if (booking?.appointment_type === 'online' && data.booking?.meeting_link) {
+          setSuccess(`Payment approved! Meeting link generated: ${data.booking.meeting_link}`)
+        } else {
+          setSuccess('Payment approved and booking confirmed!')
+        }
+        setTimeout(() => setSuccess(''), 5000)
       } else {
         throw new Error(data.message || 'Failed to approve payment')
       }

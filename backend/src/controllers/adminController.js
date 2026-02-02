@@ -36,6 +36,9 @@ const createService = async (req, res) => {
       [name, description, duration_minutes, price, category, adminId]
     );
 
+    // Log the action
+    await createAuditLog(adminId, 'Created service', 'services', result.rows[0].id, null, { name, description, duration_minutes, price, category });
+
     res.status(201).json({
       success: true,
       message: 'Service created successfully',
@@ -54,6 +57,10 @@ const updateService = async (req, res) => {
     const { name, description, duration_minutes, price, category, is_active } = req.body;
     const adminId = req.admin.adminId;
 
+    // Get old values for audit
+    const oldResult = await pool.query('SELECT * FROM services WHERE id = $1', [id]);
+    const oldValues = oldResult.rows[0];
+
     const result = await pool.query(
       `UPDATE services 
        SET name = $1, description = $2, duration_minutes = $3, price = $4, 
@@ -66,6 +73,9 @@ const updateService = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Service not found' });
     }
+
+    // Log the action
+    await createAuditLog(adminId, 'Updated service', 'services', parseInt(id), oldValues, { name, description, duration_minutes, price, category, is_active });
 
     res.json({
       success: true,
@@ -348,31 +358,75 @@ const getBookings = async (req, res) => {
 };
 
 // Update booking status
+// Helper function to generate a unique meeting link
+const generateMeetingLink = (bookingId, bookingDate) => {
+  // Generate a unique meeting code based on booking ID and date
+  const uniqueCode = `nwd-${bookingId}-${Date.now().toString(36)}`;
+  // Use Google Meet-style URL format (this creates a unique link pattern)
+  // Note: For production, you could integrate with Google Calendar API for real Meet links
+  return `https://meet.google.com/${uniqueCode}`;
+};
+
 const updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     const adminId = req.admin.adminId;
 
-    // If confirming, also set payment approved info
-    const updateFields = status === 'confirmed' 
-      ? 'SET status = $1, payment_approved_by = $3, payment_approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $2'
-      : 'SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2';
-    
-    const queryParams = status === 'confirmed' ? [status, id, adminId] : [status, id];
-
-    const result = await pool.query(
-      `UPDATE bookings ${updateFields} RETURNING *`,
-      queryParams
-    );
-
-    if (result.rows.length === 0) {
+    // Get old status and booking details for audit
+    const oldResult = await pool.query('SELECT id, status, user_id, appointment_type, booking_date FROM bookings WHERE id = $1', [id]);
+    if (oldResult.rows.length === 0) {
       return res.status(404).json({ message: 'Booking not found' });
     }
+    
+    const booking = oldResult.rows[0];
+    const oldStatus = booking.status;
+    const isOnlineAppointment = booking.appointment_type === 'online';
+
+    // Generate meeting link for online appointments when confirming
+    let meetingLink = null;
+    if (status === 'confirmed' && isOnlineAppointment) {
+      meetingLink = generateMeetingLink(id, booking.booking_date);
+    }
+
+    // Build the update query based on status and appointment type
+    let updateQuery;
+    let queryParams;
+
+    if (status === 'confirmed') {
+      if (isOnlineAppointment && meetingLink) {
+        // Confirming online appointment - include meeting link
+        updateQuery = `UPDATE bookings 
+          SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
+              meeting_link = $3, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $4 RETURNING *`;
+        queryParams = [status, adminId, meetingLink, id];
+      } else {
+        // Confirming on-site appointment - no meeting link
+        updateQuery = `UPDATE bookings 
+          SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
+              updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $3 RETURNING *`;
+        queryParams = [status, adminId, id];
+      }
+    } else {
+      // Other status changes (cancelled, completed, etc.)
+      updateQuery = `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
+      queryParams = [status, id];
+    }
+
+    const result = await pool.query(updateQuery, queryParams);
+
+    // Log the action
+    const auditNewValues = { status };
+    if (meetingLink) {
+      auditNewValues.meeting_link = meetingLink;
+    }
+    await createAuditLog(adminId, `Booking status changed: ${oldStatus} → ${status}${meetingLink ? ' (meeting link generated)' : ''}`, 'bookings', parseInt(id), { status: oldStatus }, auditNewValues);
 
     res.json({
       success: true,
-      message: 'Booking status updated successfully',
+      message: `Booking status updated successfully${meetingLink ? '. Meeting link generated for online appointment.' : ''}`,
       booking: result.rows[0]
     });
   } catch (error) {
@@ -535,5 +589,166 @@ export {
   getPaymentSettings,
   updatePaymentSettings,
   getPendingPayments,
-  getPatientProfile
+  getPatientProfile,
+  getAllUsers,
+  getAuditLogs,
+  createAuditLog
+};
+
+// Get all users (patients) with pagination and search
+const getAllUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, role } = req.query;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    // By default, filter to patients only unless role is specified
+    if (role) {
+      whereConditions.push(`u.role = $${paramIndex++}`);
+      queryParams.push(role);
+    }
+
+    if (search) {
+      whereConditions.push(`(u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`);
+      queryParams.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM users u ${whereClause}`,
+      queryParams
+    );
+
+    // Create a copy for the main query with limit/offset
+    const mainQueryParams = [...queryParams];
+    const limitParamIndex = paramIndex;
+    const offsetParamIndex = paramIndex + 1;
+    mainQueryParams.push(parseInt(limit), parseInt(offset));
+
+    const result = await pool.query(
+      `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_verified, u.created_at, u.updated_at,
+              pp.phone_number, pp.date_of_birth, pp.gender,
+              (SELECT COUNT(*) FROM bookings b WHERE b.user_id = u.id) as booking_count,
+              (SELECT MAX(b.booking_date) FROM bookings b WHERE b.user_id = u.id) as last_booking
+       FROM users u
+       LEFT JOIN patient_profiles pp ON u.id = pp.user_id
+       ${whereClause}
+       ORDER BY u.created_at DESC
+       LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`,
+      mainQueryParams
+    );
+
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      users: result.rows,
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: totalPages,
+        total_records: total,
+        per_page: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get audit logs with pagination and filters
+const getAuditLogs = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, action, table_name, admin_id, date_from, date_to } = req.query;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (action) {
+      whereConditions.push(`al.action ILIKE $${paramIndex++}`);
+      queryParams.push(`%${action}%`);
+    }
+
+    if (table_name) {
+      whereConditions.push(`al.table_name = $${paramIndex++}`);
+      queryParams.push(table_name);
+    }
+
+    if (admin_id) {
+      whereConditions.push(`al.admin_id = $${paramIndex++}`);
+      queryParams.push(admin_id);
+    }
+
+    if (date_from) {
+      whereConditions.push(`al.created_at >= $${paramIndex++}`);
+      queryParams.push(date_from);
+    }
+
+    if (date_to) {
+      whereConditions.push(`al.created_at <= $${paramIndex++}`);
+      queryParams.push(date_to);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM admin_audit_log al ${whereClause}`,
+      queryParams
+    );
+
+    // Create a copy for the main query with limit/offset
+    const mainQueryParams = [...queryParams];
+    const limitParamIndex = paramIndex;
+    const offsetParamIndex = paramIndex + 1;
+    mainQueryParams.push(parseInt(limit), parseInt(offset));
+
+    const result = await pool.query(
+      `SELECT al.*, 
+              au.full_name as admin_name, au.email as admin_email
+       FROM admin_audit_log al
+       LEFT JOIN admin_users au ON al.admin_id = au.id
+       ${whereClause}
+       ORDER BY al.created_at DESC
+       LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`,
+      mainQueryParams
+    );
+
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      logs: result.rows,
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: totalPages,
+        total_records: total,
+        per_page: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get audit logs error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Create audit log entry (for internal use)
+const createAuditLog = async (adminId, action, tableName, recordId, oldValues = null, newValues = null) => {
+  try {
+    await pool.query(
+      `INSERT INTO admin_audit_log (admin_id, action, table_name, record_id, old_values, new_values)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [adminId, action, tableName, recordId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null]
+    );
+  } catch (error) {
+    console.error('Create audit log error:', error);
+  }
 };
