@@ -219,9 +219,14 @@ export default function AdminBookings() {
               >
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-semibold text-gray-900 line-clamp-1">
-                      {booking.service_name}
-                    </h3>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 line-clamp-1">
+                        {booking.service_name}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {booking.patient_name}
+                      </p>
+                    </div>
                     <Badge
                       className={`${statusColors[booking.status]} text-xs flex items-center gap-1`}
                     >
@@ -240,6 +245,10 @@ export default function AdminBookings() {
                       <span>{formatTime(booking.slot_time)}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span className="text-xs truncate">{booking.patient_email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       {booking.appointment_type === 'online' ? (
                         <>
                           <Video className="h-4 w-4 text-blue-500" />
@@ -252,6 +261,21 @@ export default function AdminBookings() {
                         </>
                       )}
                     </div>
+                    {booking.appointment_type === 'online' && booking.video_call_link && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <a
+                          href={booking.video_call_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium"
+                        >
+                          <Video className="h-4 w-4" />
+                          <span>Join Google Meet</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-gray-100">

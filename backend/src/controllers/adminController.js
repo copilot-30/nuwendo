@@ -327,8 +327,18 @@ const getBookings = async (req, res) => {
     queryParams.push(limit, offset);
 
     const result = await pool.query(
-      `SELECT b.*, 
-              u.first_name, u.last_name, u.email,
+      `SELECT b.id, b.user_id, b.service_id, b.status, b.notes, 
+              b.appointment_type, b.payment_status, b.payment_method, 
+              b.payment_reference, b.amount_paid, b.created_at, b.updated_at,
+              b.video_call_link,
+              b.booking_date as slot_date,
+              b.booking_time as slot_time,
+              b.phone_number as booking_phone,
+              b.phone_number as patient_phone,
+              u.first_name, u.last_name, 
+              u.email as patient_email,
+              CONCAT(u.first_name, ' ', u.last_name) as patient_name,
+              b.user_id as patient_id,
               s.name as service_name, s.duration_minutes, s.price
        FROM bookings b
        JOIN users u ON b.user_id = u.id
@@ -436,7 +446,7 @@ const updateBookingStatus = async (req, res) => {
         // Confirming online appointment - include meeting link
         updateQuery = `UPDATE bookings 
           SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
-              meeting_link = $3, updated_at = CURRENT_TIMESTAMP 
+              video_call_link = $3, updated_at = CURRENT_TIMESTAMP 
           WHERE id = $4 RETURNING *`;
         queryParams = [status, adminId, meetingLink, id];
       } else {
@@ -458,7 +468,7 @@ const updateBookingStatus = async (req, res) => {
     // Log the action
     const auditNewValues = { status };
     if (meetingLink) {
-      auditNewValues.meeting_link = meetingLink;
+      auditNewValues.video_call_link = meetingLink;
     }
     await createAuditLog(adminId, `Booking status changed: ${oldStatus} → ${status}${meetingLink ? ' (meeting link generated)' : ''}`, 'bookings', parseInt(id), { status: oldStatus }, auditNewValues);
 

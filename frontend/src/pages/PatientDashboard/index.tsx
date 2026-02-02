@@ -31,7 +31,7 @@ interface Appointment {
   last_name?: string
   phone_number?: string
   duration_minutes?: number
-  meeting_link?: string
+  video_call_link?: string
 }
 
 interface PatientProfile {
@@ -534,8 +534,8 @@ export default function PatientDashboard() {
                       </div>
                       
                       {/* Meeting Link for confirmed online appointments */}
-                      {apt.appointment_type === 'online' && apt.status === 'confirmed' && apt.meeting_link && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 bg-green-50 p-4 rounded-lg">
+                      {apt.appointment_type === 'online' && apt.status === 'confirmed' && apt.video_call_link && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
                           <div className="flex items-start gap-3">
                             <div className="p-2 bg-green-100 rounded-lg">
                               <Video className="w-5 h-5 text-green-600" />
@@ -543,17 +543,14 @@ export default function PatientDashboard() {
                             <div className="flex-1">
                               <p className="font-medium text-gray-900 mb-1">🎥 Video Consultation Link</p>
                               <a
-                                href={apt.meeting_link}
+                                href={apt.video_call_link}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all flex items-center gap-1"
                               >
-                                {apt.meeting_link}
+                                {apt.video_call_link}
                                 <ExternalLink className="w-3 h-3 flex-shrink-0" />
                               </a>
-                              <p className="text-xs text-gray-500 mt-2">
-                                ✓ Room will be ready automatically when you click the link
-                              </p>
                             </div>
                           </div>
                         </div>
