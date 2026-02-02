@@ -96,7 +96,7 @@ export function AdminAuditLog() {
     setIsLoading(true)
     try {
       const token = localStorage.getItem('adminToken')
-      const params = new URLSearchParams({ page: String(page), limit: '50' })
+      const params = new URLSearchParams({ page: String(page), limit: '10' })
       if (searchQuery) params.append('action', searchQuery)
       if (dateFrom) params.append('date_from', dateFrom)
       if (dateTo) params.append('date_to', dateTo)
