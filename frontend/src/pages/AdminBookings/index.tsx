@@ -101,7 +101,8 @@ export default function AdminBookings() {
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
       booking.service_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.patient_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      booking.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.patient_email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
     const matchesType = typeFilter === 'all' || booking.appointment_type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
@@ -169,7 +170,7 @@ export default function AdminBookings() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by service or patient name..."
+              placeholder="Search by service, patient name, or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
