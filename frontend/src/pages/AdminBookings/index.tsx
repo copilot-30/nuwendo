@@ -43,6 +43,7 @@ interface Booking {
   service_name: string;
   slot_date: string;
   slot_time: string;
+  duration_minutes: number;
   appointment_type: 'online' | 'in-person';
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   video_call_link?: string;
@@ -132,6 +133,19 @@ export default function AdminBookings() {
       return `${hour12}:${minutes} ${ampm}`;
     } catch {
       return timeStr;
+    }
+  };
+
+  const calculateEndTime = (startTime: string, durationMinutes: number) => {
+    try {
+      const [hours, minutes] = startTime.split(':');
+      const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
+      const endMinutes = startMinutes + durationMinutes;
+      const endHours = Math.floor(endMinutes / 60) % 24;
+      const endMins = endMinutes % 60;
+      return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+    } catch {
+      return startTime;
     }
   };
 
@@ -242,7 +256,7 @@ export default function AdminBookings() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-400" />
-                      <span>{formatTime(booking.slot_time)}</span>
+                      <span>{formatTime(booking.slot_time)} - {formatTime(calculateEndTime(booking.slot_time, booking.duration_minutes || 30))}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-gray-400" />
@@ -339,7 +353,7 @@ export default function AdminBookings() {
                     <div>
                       <p className="text-xs text-gray-500">Time</p>
                       <p className="font-medium">
-                        {formatTime(selectedBooking.slot_time)}
+                        {formatTime(selectedBooking.slot_time)} - {formatTime(calculateEndTime(selectedBooking.slot_time, selectedBooking.duration_minutes || 30))}
                       </p>
                     </div>
                   </div>

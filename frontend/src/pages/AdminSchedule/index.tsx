@@ -48,7 +48,7 @@ export function AdminSchedule() {
     day_of_week: 1,
     start_time: '07:30',
     end_time: '17:30',
-    appointment_type: 'on-site' as 'online' | 'on-site',
+    appointment_type: 'online' as 'online' | 'on-site',
     slot_interval_minutes: 30,
     is_active: true
   })
@@ -101,6 +101,15 @@ export function AdminSchedule() {
     if (formData.start_time >= formData.end_time) {
       setError('End time must be after start time')
       return
+    }
+
+    // Check if this day already has a different appointment type (only when creating new hours)
+    if (!editingHours) {
+      const existingType = getDayAppointmentType(formData.day_of_week)
+      if (existingType && existingType !== formData.appointment_type) {
+        setError(`This day is already set to ${existingType}. Each day can only have one appointment type. Please delete the existing schedule first.`)
+        return
+      }
     }
 
     try {
@@ -191,7 +200,7 @@ export function AdminSchedule() {
       day_of_week: 1,
       start_time: '07:30',
       end_time: '17:30',
-      appointment_type: 'on-site',
+      appointment_type: 'online',
       slot_interval_minutes: 30,
       is_active: true
     })
@@ -285,7 +294,7 @@ export function AdminSchedule() {
           <Info className="h-5 w-5 text-blue-600 mt-0.5" />
           <div className="text-sm text-blue-900">
             <p className="font-medium">How it works:</p>
-            <p>Set start and end times for each day, and the system automatically generates 30-minute appointment slots. You can have different hours for online vs. on-site appointments on the same day.</p>
+            <p>Set start and end times for each day, and the system automatically generates 30-minute appointment slots. Each day can only have one appointment type (online or on-site).</p>
           </div>
         </div>
 
@@ -344,10 +353,10 @@ export function AdminSchedule() {
 
                 <div>
                   <Label className="block mb-2">Appointment Type *</Label>
-                  {getDayAppointmentType(formData.day_of_week) && getDayAppointmentType(formData.day_of_week) !== formData.appointment_type && (
-                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-900 flex items-start gap-2">
+                  {getDayAppointmentType(formData.day_of_week) && getDayAppointmentType(formData.day_of_week) !== formData.appointment_type && !editingHours && (
+                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-900 flex items-start gap-2">
                       <Info className="h-4 w-4 mt-0.5" />
-                      <span>This day is already set to <strong>{getDayAppointmentType(formData.day_of_week)}</strong>. You can have both types on the same day.</span>
+                      <span>This day is already set to <strong>{getDayAppointmentType(formData.day_of_week)}</strong>. Each day can only have one appointment type.</span>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">

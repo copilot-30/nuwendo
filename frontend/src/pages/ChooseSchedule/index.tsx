@@ -24,7 +24,7 @@ export default function ChooseSchedule() {
   
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
   
-  const [appointmentType, setAppointmentType] = useState<AppointmentType>('on-site')
+  const [appointmentType, setAppointmentType] = useState<AppointmentType>('online')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
