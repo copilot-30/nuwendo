@@ -11,7 +11,8 @@ import {
   Bell, 
   Menu,
   X,
-  Home
+  Home,
+  Cog
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
@@ -34,6 +35,7 @@ const navItems = [
   { path: '/admin/schedule', label: 'Schedule', icon: Clock },
   { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/audit-logs', label: 'Logs', icon: FileText },
+  { path: '/admin/settings', label: 'Settings', icon: Cog },
 ]
 
 export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProps) {

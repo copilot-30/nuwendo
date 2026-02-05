@@ -125,53 +125,62 @@ const createBooking = async (req, res) => {
     const amountPaid = serviceResult.rows[0].price;
     const serviceDuration = serviceResult.rows[0].duration_minutes || 30;
 
-    // For online appointments with 60 min services, we need to book 2 consecutive 30-min slots
-    const slotsToBook = [];
-    slotsToBook.push(bookingTime);
-    
-    if (appointmentType === 'online' && serviceDuration >= 60) {
-      // Calculate the next 30-min slot
-      const [hours, minutes] = bookingTime.split(':').map(Number);
-      const nextSlotMinutes = hours * 60 + minutes + 30;
-      const nextHours = Math.floor(nextSlotMinutes / 60) % 24;
-      const nextMins = nextSlotMinutes % 60;
-      const nextSlotTime = `${String(nextHours).padStart(2, '0')}:${String(nextMins).padStart(2, '0')}`;
-      slotsToBook.push(nextSlotTime);
-    }
+    // Calculate end_time based on booking_time + duration
+    // All times are calculated in 15-minute chunks for precision
+    const [hours, minutes] = bookingTime.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + serviceDuration;
+    const endHours = Math.floor(endMinutes / 60) % 24;
+    const endMins = endMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
-    // Check if all required slots are available
-    for (const slotTime of slotsToBook) {
-      const existingBooking = await pool.query(
-        `SELECT id FROM bookings 
-         WHERE booking_date = $1 
-         AND booking_time = $2 
-         AND appointment_type = $3
-         AND status != 'cancelled'`,
-        [bookingDate, slotTime, appointmentType]
-      );
+    // Check for overlapping bookings using 15-minute precision
+    // A new booking overlaps if: new_start < existing_end AND new_end > existing_start
+    const overlapCheck = await pool.query(
+      `SELECT b.id, b.booking_time, b.end_time, s.duration_minutes
+       FROM bookings b
+       JOIN services s ON b.service_id = s.id
+       WHERE b.booking_date = $1 
+       AND b.appointment_type = $2
+       AND b.status != 'cancelled'`,
+      [bookingDate, appointmentType]
+    );
 
-      if (existingBooking.rows.length > 0) {
+    const newStartMinutes = hours * 60 + minutes;
+    const newEndMinutes = endMinutes;
+
+    for (const existing of overlapCheck.rows) {
+      const [exHours, exMinutes] = existing.booking_time.split(':').map(Number);
+      const existingStart = exHours * 60 + exMinutes;
+      let existingEnd;
+      if (existing.end_time) {
+        const [exEndHours, exEndMinutes] = existing.end_time.split(':').map(Number);
+        existingEnd = exEndHours * 60 + exEndMinutes;
+      } else {
+        existingEnd = existingStart + (existing.duration_minutes || 30);
+      }
+
+      // Check for overlap: new_start < existing_end AND new_end > existing_start
+      if (newStartMinutes < existingEnd && newEndMinutes > existingStart) {
         return res.status(400).json({ 
-          message: slotsToBook.length > 1 
-            ? 'This service requires 2 consecutive slots. One or both slots are no longer available.' 
-            : 'This time slot is no longer available for ' + appointmentType + ' appointments' 
+          message: 'This time slot overlaps with an existing booking. Please select a different time.' 
         });
       }
     }
 
-    // Create booking (we store the start time, duration determines if it spans 2 slots)
+    // Create booking with end_time for proper overlap checking
     const result = await pool.query(
       `INSERT INTO bookings (
-        user_id, service_id, booking_date, booking_time, 
+        user_id, service_id, booking_date, booking_time, end_time,
         appointment_type, phone_number, notes, payment_status, 
         payment_method, payment_reference, amount_paid, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id`,
       [
         userId, 
         serviceId, 
         bookingDate, 
         bookingTime,
+        endTime,
         appointmentType,
         phoneNumber, 
         notes,
@@ -186,8 +195,7 @@ const createBooking = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Booking created successfully',
-      bookingId: result.rows[0].id,
-      slotsBooked: slotsToBook.length
+      bookingId: result.rows[0].id
     });
   } catch (error) {
     console.error('Create booking error:', error);

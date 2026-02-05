@@ -27,18 +27,18 @@ const getServices = async (req, res) => {
 // Create new service
 const createService = async (req, res) => {
   try {
-    const { name, description, duration_minutes, price, category } = req.body;
+    const { name, description, duration_minutes, price, category, availability_type } = req.body;
     const adminId = req.admin.adminId;
 
     const result = await pool.query(
-      `INSERT INTO services (name, description, duration_minutes, price, category, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $6)
+      `INSERT INTO services (name, description, duration_minutes, price, category, availability_type, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
        RETURNING *`,
-      [name, description, duration_minutes, price, category, adminId]
+      [name, description, duration_minutes, price, category, availability_type || 'both', adminId]
     );
 
     // Log the action
-    await createAuditLog(adminId, 'Created service', 'services', result.rows[0].id, null, { name, description, duration_minutes, price, category });
+    await createAuditLog(adminId, 'Created service', 'services', result.rows[0].id, null, { name, description, duration_minutes, price, category, availability_type });
 
     res.status(201).json({
       success: true,
@@ -55,7 +55,7 @@ const createService = async (req, res) => {
 const updateService = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, duration_minutes, price, category, is_active } = req.body;
+    const { name, description, duration_minutes, price, category, is_active, availability_type } = req.body;
     const adminId = req.admin.adminId;
 
     // Get old values for audit
@@ -65,10 +65,10 @@ const updateService = async (req, res) => {
     const result = await pool.query(
       `UPDATE services 
        SET name = $1, description = $2, duration_minutes = $3, price = $4, 
-           category = $5, is_active = $6, updated_by = $7, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $8
+           category = $5, is_active = $6, availability_type = $7, updated_by = $8, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $9
        RETURNING *`,
-      [name, description, duration_minutes, price, category, is_active, adminId, id]
+      [name, description, duration_minutes, price, category, is_active, availability_type || 'both', adminId, id]
     );
 
     if (result.rows.length === 0) {
@@ -76,7 +76,7 @@ const updateService = async (req, res) => {
     }
 
     // Log the action
-    await createAuditLog(adminId, 'Updated service', 'services', parseInt(id), oldValues, { name, description, duration_minutes, price, category, is_active });
+    await createAuditLog(adminId, 'Updated service', 'services', parseInt(id), oldValues, { name, description, duration_minutes, price, category, is_active, availability_type });
 
     res.json({
       success: true,
@@ -125,18 +125,32 @@ const deleteService = async (req, res) => {
   }
 };
 
-// Get all time slots (now working hours)
+// Get all time slots (now availability windows)
 const getTimeSlots = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT wh.*, 
+    // Try availability_windows first, fallback to working_hours
+    let result = await pool.query(
+      `SELECT aw.*, 
               au1.full_name as created_by_name,
               au2.full_name as updated_by_name
-       FROM working_hours wh
-       LEFT JOIN admin_users au1 ON wh.created_by = au1.id
-       LEFT JOIN admin_users au2 ON wh.updated_by = au2.id
-       ORDER BY wh.day_of_week, wh.appointment_type`
+       FROM availability_windows aw
+       LEFT JOIN admin_users au1 ON aw.created_by = au1.id
+       LEFT JOIN admin_users au2 ON aw.updated_by = au2.id
+       ORDER BY aw.day_of_week, aw.appointment_type`
     );
+    
+    // If no availability_windows, try working_hours for backward compatibility
+    if (result.rows.length === 0) {
+      result = await pool.query(
+        `SELECT wh.*, 
+                au1.full_name as created_by_name,
+                au2.full_name as updated_by_name
+         FROM working_hours wh
+         LEFT JOIN admin_users au1 ON wh.created_by = au1.id
+         LEFT JOIN admin_users au2 ON wh.updated_by = au2.id
+         ORDER BY wh.day_of_week, wh.appointment_type`
+      );
+    }
     
     res.json({
       success: true,
@@ -148,10 +162,10 @@ const getTimeSlots = async (req, res) => {
   }
 };
 
-// Create or update working hours for a day
+// Create or update availability window for a day
 const createTimeSlot = async (req, res) => {
   try {
-    const { day_of_week, start_time, end_time, appointment_type, slot_interval_minutes } = req.body;
+    const { day_of_week, start_time, end_time, appointment_type } = req.body;
     const adminId = req.admin.adminId;
 
     // Validate that appointment_type is required
@@ -168,9 +182,24 @@ const createTimeSlot = async (req, res) => {
       });
     }
 
-    // Check if working hours already exist for this day/type combination
+    // Check if a different appointment type already exists for this day
+    const existingDifferentType = await pool.query(
+      `SELECT id, appointment_type FROM availability_windows 
+       WHERE day_of_week = $1 
+       AND appointment_type != $2
+       AND is_active = true`,
+      [day_of_week, appointment_type]
+    );
+
+    if (existingDifferentType.rows.length > 0) {
+      return res.status(400).json({ 
+        message: `This day already has ${existingDifferentType.rows[0].appointment_type} appointments. Each day can only have one appointment type.` 
+      });
+    }
+
+    // Check if availability window already exists for this day/type combination
     const existingResult = await pool.query(
-      `SELECT id FROM working_hours 
+      `SELECT id FROM availability_windows 
        WHERE day_of_week = $1 
        AND appointment_type = $2`,
       [day_of_week, appointment_type]
@@ -178,41 +207,62 @@ const createTimeSlot = async (req, res) => {
 
     let result;
     if (existingResult.rows.length > 0) {
-      // Update existing working hours
+      // Update existing availability window
       result = await pool.query(
-        `UPDATE working_hours 
-         SET start_time = $1, end_time = $2, slot_interval_minutes = $3, 
-             updated_by = $4, updated_at = CURRENT_TIMESTAMP, is_active = TRUE
-         WHERE day_of_week = $5 AND appointment_type = $6
+        `UPDATE availability_windows 
+         SET start_time = $1, end_time = $2, 
+             updated_by = $3, updated_at = CURRENT_TIMESTAMP, is_active = TRUE
+         WHERE day_of_week = $4 AND appointment_type = $5
          RETURNING *`,
-        [start_time, end_time, slot_interval_minutes || 30, adminId, day_of_week, appointment_type]
+        [start_time, end_time, adminId, day_of_week, appointment_type]
       );
     } else {
-      // Create new working hours
+      // Create new availability window
       result = await pool.query(
-        `INSERT INTO working_hours (day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $6)
+        `INSERT INTO availability_windows (day_of_week, start_time, end_time, appointment_type, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $5)
          RETURNING *`,
-        [day_of_week, start_time, end_time, appointment_type, slot_interval_minutes || 30, adminId]
+        [day_of_week, start_time, end_time, appointment_type, adminId]
+      );
+    }
+
+    // Also sync to working_hours for backward compatibility
+    const existingWH = await pool.query(
+      `SELECT id FROM working_hours WHERE day_of_week = $1 AND appointment_type = $2`,
+      [day_of_week, appointment_type]
+    );
+    
+    if (existingWH.rows.length > 0) {
+      await pool.query(
+        `UPDATE working_hours SET start_time = $1, end_time = $2, updated_by = $3, updated_at = CURRENT_TIMESTAMP, is_active = TRUE
+         WHERE day_of_week = $4 AND appointment_type = $5`,
+        [start_time, end_time, adminId, day_of_week, appointment_type]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO working_hours (day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, 30, $5, $5)
+         ON CONFLICT (day_of_week, appointment_type) DO UPDATE SET start_time = $2, end_time = $3, is_active = TRUE`,
+        [day_of_week, start_time, end_time, appointment_type, adminId]
       );
     }
 
     res.status(201).json({
       success: true,
-      message: 'Working hours saved successfully',
+      message: 'Availability window saved successfully',
       timeSlot: result.rows[0]
     });
   } catch (error) {
-    console.error('Create time slot error:', error);
+    console.error('Create availability window error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Update working hours
+// Update availability window
 const updateTimeSlot = async (req, res) => {
   try {
     const { id } = req.params;
-    const { day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, is_active } = req.body;
+    const { day_of_week, start_time, end_time, appointment_type, is_active } = req.body;
     const adminId = req.admin.adminId;
 
     // Validate appointment_type if provided
@@ -230,52 +280,89 @@ const updateTimeSlot = async (req, res) => {
     }
 
     const result = await pool.query(
-      `UPDATE working_hours 
+      `UPDATE availability_windows 
        SET day_of_week = COALESCE($1, day_of_week), 
            start_time = COALESCE($2, start_time), 
            end_time = COALESCE($3, end_time), 
            appointment_type = COALESCE($4, appointment_type), 
-           slot_interval_minutes = COALESCE($5, slot_interval_minutes),
-           is_active = COALESCE($6, is_active), 
-           updated_by = $7,
+           is_active = COALESCE($5, is_active), 
+           updated_by = $6,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $8
+       WHERE id = $7
        RETURNING *`,
-      [day_of_week, start_time, end_time, appointment_type, slot_interval_minutes, is_active, adminId, id]
+      [day_of_week, start_time, end_time, appointment_type, is_active, adminId, id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Working hours not found' });
+      // Try working_hours for backward compatibility
+      const whResult = await pool.query(
+        `UPDATE working_hours 
+         SET day_of_week = COALESCE($1, day_of_week), 
+             start_time = COALESCE($2, start_time), 
+             end_time = COALESCE($3, end_time), 
+             appointment_type = COALESCE($4, appointment_type), 
+             is_active = COALESCE($5, is_active), 
+             updated_by = $6,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $7
+         RETURNING *`,
+        [day_of_week, start_time, end_time, appointment_type, is_active, adminId, id]
+      );
+      
+      if (whResult.rows.length === 0) {
+        return res.status(404).json({ message: 'Availability window not found' });
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Availability window updated successfully',
+        timeSlot: whResult.rows[0]
+      });
     }
 
     res.json({
       success: true,
-      message: 'Working hours updated successfully',
+      message: 'Availability window updated successfully',
       timeSlot: result.rows[0]
     });
   } catch (error) {
-    console.error('Update working hours error:', error);
+    console.error('Update availability window error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Delete working hours
+// Delete availability window
 const deleteTimeSlot = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await pool.query(
-      'DELETE FROM working_hours WHERE id = $1 RETURNING *',
+    // Try availability_windows first
+    let result = await pool.query(
+      'DELETE FROM availability_windows WHERE id = $1 RETURNING *',
       [id]
     );
 
+    // Also delete from working_hours if exists (for backward compatibility)
+    if (result.rows.length > 0) {
+      await pool.query(
+        'DELETE FROM working_hours WHERE day_of_week = $1 AND appointment_type = $2',
+        [result.rows[0].day_of_week, result.rows[0].appointment_type]
+      );
+    } else {
+      // Try working_hours if not found in availability_windows
+      result = await pool.query(
+        'DELETE FROM working_hours WHERE id = $1 RETURNING *',
+        [id]
+      );
+    }
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Working hours not found' });
+      return res.status(404).json({ message: 'Availability window not found' });
     }
 
     res.json({
       success: true,
-      message: 'Working hours deleted successfully'
+      message: 'Availability window deleted successfully'
     });
   } catch (error) {
     console.error('Delete working hours error:', error);

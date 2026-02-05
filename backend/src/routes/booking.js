@@ -1,6 +1,15 @@
 import express from 'express';
 import { body, query, param } from 'express-validator';
-import { getServices, getAvailableSlots, createBooking, getBooking, getPatientBookings, cancelBooking, getPublicPaymentSettings, uploadPaymentReceipt } from '../controllers/bookingController.js';
+import { 
+  getServices, 
+  getAvailableSlots, 
+  createBooking, 
+  getBooking, 
+  getPatientBookings, 
+  cancelBooking, 
+  getPublicPaymentSettings, 
+  uploadPaymentReceipt
+} from '../controllers/bookingController.js';
 
 const router = express.Router();
 

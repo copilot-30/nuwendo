@@ -24,12 +24,19 @@ export default function ChooseSchedule() {
   
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
   
-  const [appointmentType, setAppointmentType] = useState<AppointmentType>('online')
+  // Determine initial appointment type based on service's availability_type
+  const getInitialAppointmentType = (): AppointmentType => {
+    if (service.availability_type === 'on-site') return 'on-site'
+    return 'online' // Default to online for 'both' or 'online' services
+  }
+  
+  const [appointmentType, setAppointmentType] = useState<AppointmentType>(getInitialAppointmentType())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [timeFilter, setTimeFilter] = useState<'AM' | 'PM'>('AM')
 
   useEffect(() => {
     if (!isValidUser || !service.id) {
@@ -53,6 +60,24 @@ export default function ChooseSchedule() {
           const data = await response.json()
           setAvailableSlots(data.availableSlots || [])
           setSelectedSlot(null)
+          
+          // Auto-select AM or PM based on available slots
+          const slots = data.availableSlots || []
+          const hasAM = slots.some((slot: TimeSlot) => {
+            const [hours] = slot.start_time.split(':')
+            return parseInt(hours) < 12
+          })
+          const hasPM = slots.some((slot: TimeSlot) => {
+            const [hours] = slot.start_time.split(':')
+            return parseInt(hours) >= 12
+          })
+          
+          // Default to AM if available, otherwise PM
+          if (hasAM) {
+            setTimeFilter('AM')
+          } else if (hasPM) {
+            setTimeFilter('PM')
+          }
         } catch (err) {
           setAvailableSlots([])
         } finally {
@@ -85,6 +110,19 @@ export default function ChooseSchedule() {
     const displayHour = hour % 12 || 12
     return `${displayHour}:${minutes} ${ampm}`
   }
+
+  const getTimePeriod = (time: string) => {
+    const [hours] = time.split(':')
+    const hour = parseInt(hours)
+    return hour >= 12 ? 'PM' : 'AM'
+  }
+
+  const filteredSlots = availableSlots.filter(slot => 
+    getTimePeriod(slot.start_time) === timeFilter
+  )
+
+  const amSlots = availableSlots.filter(slot => getTimePeriod(slot.start_time) === 'AM')
+  const pmSlots = availableSlots.filter(slot => getTimePeriod(slot.start_time) === 'PM')
 
   const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
   const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay()
@@ -175,70 +213,86 @@ export default function ChooseSchedule() {
           {/* Appointment Type Selection */}
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Type</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setAppointmentType('online')
-                  setSelectedSlot(null)
-                }}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  appointmentType === 'online'
-                    ? 'border-brand bg-brand-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    appointmentType === 'online' ? 'bg-brand-100' : 'bg-gray-100'
-                  }`}>
-                    <Monitor className={`w-6 h-6 ${
-                      appointmentType === 'online' ? 'text-brand' : 'text-gray-600'
-                    }`} />
-                  </div>
-                  <div>
-                    <p className={`font-semibold ${
-                      appointmentType === 'online' ? 'text-brand-900' : 'text-gray-900'
+            <div className={`grid gap-4 ${service.availability_type === 'both' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {/* Online button - only show if service allows online or both */}
+              {(service.availability_type === 'online' || service.availability_type === 'both') && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  whileHover={{ scale: service.availability_type === 'both' ? 1.02 : 1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setAppointmentType('online')
+                    setSelectedSlot(null)
+                  }}
+                  className={`p-6 rounded-xl border-2 transition-all ${
+                    appointmentType === 'online'
+                      ? 'border-brand bg-brand-50 shadow-lg shadow-brand/20'
+                      : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
+                  } ${service.availability_type === 'online' ? 'cursor-default' : ''}`}
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                      appointmentType === 'online' ? 'bg-brand-100 ring-4 ring-brand/10' : 'bg-gray-100'
                     }`}>
-                      Online
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {service.duration_minutes || 30} min video call
-                    </p>
+                      <Monitor className={`w-7 h-7 ${
+                        appointmentType === 'online' ? 'text-brand' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className={`font-semibold text-lg ${
+                        appointmentType === 'online' ? 'text-brand-900' : 'text-gray-900'
+                      }`}>
+                        Online
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {service.duration_minutes || 15} min video call
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </motion.button>
+                </motion.button>
+              )}
 
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setAppointmentType('on-site')
-                  setSelectedSlot(null)
-                }}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  appointmentType === 'on-site'
-                    ? 'border-brand bg-brand-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    appointmentType === 'on-site' ? 'bg-brand-100' : 'bg-gray-100'
-                  }`}>
-                    <Building2 className={`w-6 h-6 ${
-                      appointmentType === 'on-site' ? 'text-brand' : 'text-gray-600'
-                    }`} />
-                  </div>
-                  <div>
-                    <p className={`font-semibold ${
-                      appointmentType === 'on-site' ? 'text-brand-900' : 'text-gray-900'
+              {/* On-site button - only show if service allows on-site or both */}
+              {(service.availability_type === 'on-site' || service.availability_type === 'both') && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2, delay: service.availability_type === 'both' ? 0.1 : 0 }}
+                  whileHover={{ scale: service.availability_type === 'both' ? 1.02 : 1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setAppointmentType('on-site')
+                    setSelectedSlot(null)
+                  }}
+                  className={`p-6 rounded-xl border-2 transition-all ${
+                    appointmentType === 'on-site'
+                      ? 'border-brand bg-brand-50 shadow-lg shadow-brand/20'
+                      : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
+                  } ${service.availability_type === 'on-site' ? 'cursor-default' : ''}`}
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                      appointmentType === 'on-site' ? 'bg-brand-100 ring-4 ring-brand/10' : 'bg-gray-100'
                     }`}>
-                      On-Site
-                    </p>
-                    <p className="text-sm text-gray-600">60 min clinic visit</p>
+                      <Building2 className={`w-7 h-7 ${
+                        appointmentType === 'on-site' ? 'text-brand' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className={`font-semibold text-lg ${
+                        appointmentType === 'on-site' ? 'text-brand-900' : 'text-gray-900'
+                      }`}>
+                        On-Site
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        60 min clinic visit
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </motion.button>
+                </motion.button>
+              )}
             </div>
           </div>
 
@@ -275,9 +329,53 @@ export default function ChooseSchedule() {
           {/* Time Slots */}
           {selectedDate && (
             <div className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="h-5 w-5 text-gray-500" />
-                <span className="font-semibold text-gray-900">Available times</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-gray-500" />
+                  <span className="font-semibold text-gray-900">Available times</span>
+                </div>
+                
+                {/* AM/PM Toggle */}
+                {availableSlots.length > 0 && (
+                  <div className="flex gap-2">
+                    {amSlots.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setTimeFilter('AM')
+                          // Clear selection if current slot is not in AM
+                          if (selectedSlot && getTimePeriod(selectedSlot.start_time) !== 'AM') {
+                            setSelectedSlot(null)
+                          }
+                        }}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          timeFilter === 'AM'
+                            ? 'bg-brand text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        AM ({amSlots.length})
+                      </button>
+                    )}
+                    {pmSlots.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setTimeFilter('PM')
+                          // Clear selection if current slot is not in PM
+                          if (selectedSlot && getTimePeriod(selectedSlot.start_time) !== 'PM') {
+                            setSelectedSlot(null)
+                          }
+                        }}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          timeFilter === 'PM'
+                            ? 'bg-brand text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        PM ({pmSlots.length})
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               
               {isLoading ? (
@@ -288,9 +386,13 @@ export default function ChooseSchedule() {
                 <p className="text-center text-gray-500 py-8 bg-gray-50 rounded-xl">
                   No available slots for this date
                 </p>
+              ) : filteredSlots.length === 0 ? (
+                <p className="text-center text-gray-500 py-8 bg-gray-50 rounded-xl">
+                  No {timeFilter} slots available. Try {timeFilter === 'AM' ? 'PM' : 'AM'}.
+                </p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {availableSlots.map((slot, index) => {
+                  {filteredSlots.map((slot, index) => {
                     const isSelected = selectedSlot?.start_time === slot.start_time
                     return (
                       <button

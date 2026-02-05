@@ -3,8 +3,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { 
   Plus, 
   Edit, 
@@ -12,15 +19,19 @@ import {
   DollarSign, 
   Clock, 
   Save,
-  X,
   ToggleLeft,
   ToggleRight,
-  Loader2
+  Loader2,
+  Monitor,
+  Building2,
+  Globe
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
 
 const API_URL = 'http://localhost:5000/api'
+
+type AvailabilityType = 'online' | 'on-site' | 'both'
 
 interface Service {
   id: number
@@ -29,6 +40,7 @@ interface Service {
   duration_minutes: number
   price: string
   category: string
+  availability_type: AvailabilityType
   is_active: boolean
   created_at: string
   updated_at: string
@@ -52,6 +64,7 @@ export function AdminServices() {
     duration_minutes: 30,
     price: '',
     category: '',
+    availability_type: 'both' as AvailabilityType,
     is_active: true
   })
 
@@ -193,6 +206,7 @@ export function AdminServices() {
       duration_minutes: 30,
       price: '',
       category: '',
+      availability_type: 'both',
       is_active: true
     })
     setShowCustomCategory(false)
@@ -208,6 +222,7 @@ export function AdminServices() {
       duration_minutes: service.duration_minutes,
       price: service.price,
       category: service.category,
+      availability_type: service.availability_type || 'both',
       is_active: service.is_active
     })
     setEditingService(service)
@@ -260,145 +275,180 @@ export function AdminServices() {
           </div>
         )}
 
-        {/* Service Form */}
-        {showForm && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>{editingService ? 'Edit Service' : 'Add New Service'}</CardTitle>
-              <CardDescription>
+        {/* Service Form Modal */}
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingService ? 'Edit Service' : 'Add New Service'}</DialogTitle>
+              <DialogDescription>
                 {editingService ? 'Update service information' : 'Create a new healthcare service'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Service Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
-                      placeholder="e.g. General Consultation"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category *</Label>
-                    <select
-                      id="category"
-                      value={formData.category === '__custom__' || !allCategories.includes(formData.category) && formData.category ? '__custom__' : formData.category}
-                      onChange={(e) => {
-                        if (e.target.value === '__custom__') {
-                          setShowCustomCategory(true)
-                          setFormData({...formData, category: ''})
-                        } else {
-                          setShowCustomCategory(false)
-                          setCustomCategory('')
-                          setFormData({...formData, category: e.target.value})
-                        }
-                      }}
-                      required={!showCustomCategory}
-                      className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select category</option>
-                      {allCategories.map((cat: string) => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                      <option value="__custom__">+ Add New Category</option>
-                    </select>
-                  </div>
-
-                  {showCustomCategory && (
-                    <div className="space-y-2">
-                      <Label htmlFor="customCategory">New Category Name *</Label>
-                      <Input
-                        id="customCategory"
-                        type="text"
-                        value={customCategory}
-                        onChange={(e) => {
-                          setCustomCategory(e.target.value)
-                          setFormData({...formData, category: e.target.value})
-                        }}
-                        required
-                        placeholder="Enter new category name"
-                      />
-                      <p className="text-sm text-gray-500">This will create a new category</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (minutes) *</Label>
-                    <select
-                      id="duration"
-                      value={formData.duration_minutes}
-                      onChange={(e) => setFormData({...formData, duration_minutes: parseInt(e.target.value)})}
-                      required
-                      className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value={30}>30 minutes</option>
-                      <option value={60}>60 minutes</option>
-                    </select>
-                    <p className="text-xs text-gray-500">
-                      • Online: 30 min uses 1 slot, 60 min uses 2 consecutive slots<br/>
-                      • On-site: Always 60 minutes (1 slot)
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price (PHP) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      required
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
+              </DialogDescription>
+            </DialogHeader>
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description *</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  <Label htmlFor="name">Service Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
-                    placeholder="Describe the service..."
-                    rows={3}
+                    placeholder="e.g. General Consultation"
                   />
                 </div>
 
-                {editingService && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="is_active"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                      className="h-4 w-4"
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <select
+                    id="category"
+                    value={formData.category === '__custom__' || !allCategories.includes(formData.category) && formData.category ? '__custom__' : formData.category}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setShowCustomCategory(true)
+                        setFormData({...formData, category: ''})
+                      } else {
+                        setShowCustomCategory(false)
+                        setCustomCategory('')
+                        setFormData({...formData, category: e.target.value})
+                      }
+                    }}
+                    required={!showCustomCategory}
+                    className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select category</option>
+                    {allCategories.map((cat: string) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                    <option value="__custom__">+ Add New Category</option>
+                  </select>
+                </div>
+
+                {showCustomCategory && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="customCategory">New Category Name *</Label>
+                    <Input
+                      id="customCategory"
+                      type="text"
+                      value={customCategory}
+                      onChange={(e) => {
+                        setCustomCategory(e.target.value)
+                        setFormData({...formData, category: e.target.value})
+                      }}
+                      required
+                      placeholder="Enter new category name"
                     />
-                    <Label htmlFor="is_active">Active (available for booking)</Label>
+                    <p className="text-sm text-gray-500">This will create a new category</p>
                   </div>
                 )}
 
-                <div className="flex gap-3">
-                  <Button type="submit">
-                    <Save className="h-4 w-4 mr-2" />
-                    {editingService ? 'Update Service' : 'Create Service'}
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Duration (minutes) *</Label>
+                  <select
+                    id="duration"
+                    value={formData.duration_minutes}
+                    onChange={(e) => setFormData({...formData, duration_minutes: parseInt(e.target.value)})}
+                    required
+                    className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={15}>15 minutes</option>
+                    <option value={30}>30 minutes</option>
+                    <option value={45}>45 minutes</option>
+                    <option value={60}>60 minutes</option>
+                    <option value={90}>90 minutes</option>
+                    <option value={120}>120 minutes</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price (PHP) *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    required
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Availability Type *</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant={formData.availability_type === 'online' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFormData({...formData, availability_type: 'online'})}
+                    className={formData.availability_type === 'online' ? 'bg-[#2c4d5c] hover:bg-[#3a6275]' : ''}
+                  >
+                    <Globe className="h-4 w-4 mr-1" />
+                    Online Only
                   </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
+                  <Button
+                    type="button"
+                    variant={formData.availability_type === 'on-site' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFormData({...formData, availability_type: 'on-site'})}
+                    className={formData.availability_type === 'on-site' ? 'bg-[#2c4d5c] hover:bg-[#3a6275]' : ''}
+                  >
+                    <Building2 className="h-4 w-4 mr-1" />
+                    On-Site Only
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.availability_type === 'both' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFormData({...formData, availability_type: 'both'})}
+                    className={formData.availability_type === 'both' ? 'bg-[#2c4d5c] hover:bg-[#3a6275]' : ''}
+                  >
+                    <Monitor className="h-4 w-4 mr-1" />
+                    Both
                   </Button>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+                <p className="text-sm text-gray-500">Choose how this service can be accessed by patients</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  required
+                  placeholder="Describe the service..."
+                  rows={3}
+                />
+              </div>
+
+              {editingService && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="is_active">Active (available for booking)</Label>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-brand hover:bg-brand/90">
+                  <Save className="h-4 w-4 mr-2" />
+                  {editingService ? 'Update Service' : 'Create Service'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Category Filter */}
         <div className="mb-6">
@@ -431,9 +481,26 @@ export function AdminServices() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="font-semibold text-lg mb-1">{service.name}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {service.category}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant="secondary" className="text-xs">
+                        {service.category}
+                      </Badge>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs ${
+                          service.availability_type === 'online' 
+                            ? 'border-blue-500 text-blue-600 bg-blue-50' 
+                            : service.availability_type === 'on-site'
+                              ? 'border-green-500 text-green-600 bg-green-50'
+                              : 'border-purple-500 text-purple-600 bg-purple-50'
+                        }`}
+                      >
+                        {service.availability_type === 'online' && <Globe className="h-3 w-3 mr-1" />}
+                        {service.availability_type === 'on-site' && <Building2 className="h-3 w-3 mr-1" />}
+                        {service.availability_type === 'both' && <Monitor className="h-3 w-3 mr-1" />}
+                        {service.availability_type === 'online' ? 'Online' : service.availability_type === 'on-site' ? 'On-Site' : 'Both'}
+                      </Badge>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleToggleActive(service)}
@@ -450,12 +517,9 @@ export function AdminServices() {
                 <p className="text-sm text-gray-600 mb-4">{service.description}</p>
 
                 <div className="flex items-center gap-4 mb-4 text-sm">
-                  <div className="flex items-center gap-1" title={service.duration_minutes >= 60 ? 'Online: uses 2 slots | On-site: 1 slot' : 'Online: 1 slot | On-site: 1 slot (60 min)'}>
+                  <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4 text-gray-400" />
-                    <span>
-                      {service.duration_minutes} min
-                      {service.duration_minutes >= 60 && <span className="text-xs text-amber-600 ml-1">(2 online slots)</span>}
-                    </span>
+                    <span>{service.duration_minutes} min</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <DollarSign className="h-4 w-4 text-brand" />

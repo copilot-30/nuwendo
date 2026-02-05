@@ -2,13 +2,21 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { 
   ArrowLeft, 
   Loader2, 
   Check, 
   Clock, 
   Stethoscope,
-  Pill
+  Pill,
+  Monitor,
+  Building2
 } from 'lucide-react'
 
 interface Service {
@@ -18,6 +26,7 @@ interface Service {
   price: string
   duration_minutes: number
   category: string
+  availability_type: 'online' | 'on-site' | 'both'
 }
 
 const categoryIcons: Record<string, any> = {
@@ -151,6 +160,7 @@ export default function ChooseService() {
               <p className="text-red-600">{error}</p>
             </div>
           ) : (
+            <TooltipProvider>
             <div className="space-y-8 mb-8">
               {sortedCategories.map((category) => {
                 const Icon = categoryIcons[category] || Stethoscope
@@ -197,6 +207,31 @@ export default function ChooseService() {
                                 <span className="font-semibold text-brand">
                                   {formatPrice(service.price)}
                                 </span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full cursor-help ${
+                                      service.availability_type === 'online' 
+                                        ? 'bg-blue-100 text-blue-700' 
+                                        : service.availability_type === 'on-site'
+                                          ? 'bg-green-100 text-green-700'
+                                          : 'bg-purple-100 text-purple-700'
+                                    }`}>
+                                      {service.availability_type === 'online' && <Monitor className="h-3 w-3" />}
+                                      {service.availability_type === 'on-site' && <Building2 className="h-3 w-3" />}
+                                      {service.availability_type === 'both' && <Monitor className="h-3 w-3" />}
+                                      {service.availability_type === 'online' ? 'Online' : service.availability_type === 'on-site' ? 'Clinic' : 'Both'}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>
+                                      {service.availability_type === 'online' 
+                                        ? 'Available for online consultations only' 
+                                        : service.availability_type === 'on-site'
+                                          ? 'Available for in-clinic visits only'
+                                          : 'Available for both online and in-clinic visits'}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
                               </div>
                             </div>
                           </div>
@@ -207,6 +242,7 @@ export default function ChooseService() {
                 )
               })}
             </div>
+            </TooltipProvider>
           )}
 
         <Button 

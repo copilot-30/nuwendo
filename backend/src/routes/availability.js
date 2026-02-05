@@ -3,16 +3,34 @@ import pool from '../config/database.js';
 
 const router = express.Router();
 
-// Helper function to add minutes to a time string
-const addMinutesToTime = (timeStr, minutes) => {
+// Helper function to convert time string to minutes since midnight
+const timeToMinutes = (timeStr) => {
   const [hours, mins] = timeStr.split(':').map(Number);
-  const totalMinutes = hours * 60 + mins + minutes;
-  const newHours = Math.floor(totalMinutes / 60) % 24;
-  const newMins = totalMinutes % 60;
-  return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+  return hours * 60 + mins;
 };
 
-// Get available time slots for a specific date (public endpoint)
+// Helper function to convert minutes since midnight to time string
+const minutesToTime = (minutes) => {
+  const hours = Math.floor(minutes / 60) % 24;
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
+// Helper function to normalize time format (remove seconds if present)
+const normalizeTime = (time) => {
+  if (!time) return null;
+  const parts = time.toString().split(':');
+  return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+};
+
+/**
+ * Get available time slots for a specific date
+ * 
+ * This uses the dynamic availability window system:
+ * 1. Get availability window for the day of week
+ * 2. Get all existing bookings for that date
+ * 3. Calculate valid start times where the service duration fits without overlap
+ */
 router.get('/', async (req, res) => {
   try {
     const { date, type, serviceId } = req.query;
@@ -24,8 +42,8 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // Validate appointment type
-    const appointmentType = type || 'on-site';
+    // Validate appointment type (default to online now)
+    const appointmentType = type || 'online';
     if (!['online', 'on-site'].includes(appointmentType)) {
       return res.status(400).json({
         success: false,
@@ -33,8 +51,8 @@ router.get('/', async (req, res) => {
       });
     }
     
-    // Get service duration if serviceId is provided
-    let serviceDuration = 0;
+    // Get service duration (required for proper slot calculation)
+    let serviceDuration = 30; // Default 30 minutes
     if (serviceId) {
       const serviceResult = await pool.query(
         'SELECT duration_minutes FROM services WHERE id = $1',
@@ -61,25 +79,38 @@ router.get('/', async (req, res) => {
     if (requestedDate < minBookingDate) {
       return res.status(400).json({
         success: false,
-        message: `Bookings must be made at least ${minAdvanceHours} hours in advance. Please select a date on or after ${minBookingDate.toISOString().split('T')[0]}.`
+        message: `Bookings must be made at least ${minAdvanceHours} hours in advance.`
       });
     }
     
     // Get day of week (0 = Sunday, 6 = Saturday)
     const dayOfWeek = requestedDate.getDay();
     
-    // Get working hours for this day of week and appointment type
-    const workingHoursResult = await pool.query(
-      `SELECT start_time, end_time, slot_interval_minutes 
-       FROM working_hours 
+    // Step 1: Get availability window for this day and appointment type
+    // First try new availability_windows table, fallback to working_hours
+    let availabilityResult = await pool.query(
+      `SELECT start_time, end_time 
+       FROM availability_windows 
        WHERE day_of_week = $1 
        AND is_active = true 
        AND appointment_type = $2`,
       [dayOfWeek, appointmentType]
     );
     
-    // If no working hours defined for this day/type, return empty
-    if (workingHoursResult.rows.length === 0) {
+    // Fallback to working_hours if availability_windows is empty
+    if (availabilityResult.rows.length === 0) {
+      availabilityResult = await pool.query(
+        `SELECT start_time, end_time 
+         FROM working_hours 
+         WHERE day_of_week = $1 
+         AND is_active = true 
+         AND appointment_type = $2`,
+        [dayOfWeek, appointmentType]
+      );
+    }
+    
+    // If no availability defined for this day/type, return empty
+    if (availabilityResult.rows.length === 0) {
       return res.json({
         success: true,
         date,
@@ -90,43 +121,13 @@ router.get('/', async (req, res) => {
       });
     }
     
-    const workingHours = workingHoursResult.rows[0];
-    const slotInterval = workingHours.slot_interval_minutes || 30;
+    const availability = availabilityResult.rows[0];
+    const windowStart = timeToMinutes(normalizeTime(availability.start_time));
+    const windowEnd = timeToMinutes(normalizeTime(availability.end_time));
     
-    // Generate time slots based on working hours
-    const generateTimeSlots = () => {
-      const slots = [];
-      // Normalize time format (remove seconds if present)
-      const normalizeTime = (time) => {
-        const parts = time.split(':');
-        return `${parts[0]}:${parts[1]}`;
-      };
-      
-      let currentTime = normalizeTime(workingHours.start_time);
-      const endTime = normalizeTime(workingHours.end_time);
-      
-      while (currentTime < endTime) {
-        const nextTime = addMinutesToTime(currentTime, slotInterval);
-        
-        // Only add slots that don't extend past end time
-        if (nextTime <= endTime) {
-          slots.push({
-            start_time: currentTime,
-            end_time: nextTime
-          });
-        }
-        
-        currentTime = nextTime;
-      }
-      
-      return slots;
-    };
-    
-    const timeSlotsResult = { rows: generateTimeSlots() };
-    
-    // Get already booked slots for this date and type, including service duration
-    const bookedResult = await pool.query(
-      `SELECT b.booking_time, s.duration_minutes 
+    // Step 2: Get all existing bookings for this date and type
+    const bookingsResult = await pool.query(
+      `SELECT b.booking_time, b.end_time, s.duration_minutes
        FROM bookings b
        JOIN services s ON b.service_id = s.id
        WHERE b.booking_date = $1 
@@ -135,65 +136,71 @@ router.get('/', async (req, res) => {
       [date, appointmentType]
     );
     
-    // Build list of blocked times based on service durations
-    const blockedTimes = new Set();
-    
-    bookedResult.rows.forEach(row => {
-      const startTime = row.booking_time;
-      const durationMinutes = row.duration_minutes;
-      
-      // Block the start time
-      blockedTimes.add(startTime);
-      
-      // For online appointments: each slot is 30 minutes
-      // Block all 30-minute slots that this appointment occupies
-      if (appointmentType === 'online') {
-        // Calculate how many 30-minute slots this service needs
-        const slotsNeeded = Math.ceil(durationMinutes / 30);
-        
-        // Block all subsequent slots
-        for (let i = 1; i < slotsNeeded; i++) {
-          const blockedSlot = addMinutesToTime(startTime, i * 30);
-          blockedTimes.add(blockedSlot);
-        }
+    // Convert bookings to time ranges (in minutes)
+    const bookedRanges = bookingsResult.rows.map(row => {
+      const startMinutes = timeToMinutes(normalizeTime(row.booking_time));
+      // Use end_time if available, otherwise calculate from duration
+      let endMinutes;
+      if (row.end_time) {
+        endMinutes = timeToMinutes(normalizeTime(row.end_time));
+      } else {
+        endMinutes = startMinutes + (row.duration_minutes || 30);
       }
-      // For on-site appointments: each slot is 60 minutes
-      // Block all 60-minute slots that this appointment occupies
-      else if (appointmentType === 'on-site') {
-        // Calculate how many 60-minute slots this service needs
-        const slotsNeeded = Math.ceil(durationMinutes / 60);
-        
-        // Block all subsequent slots
-        for (let i = 1; i < slotsNeeded; i++) {
-          const blockedSlot = addMinutesToTime(startTime, i * 60);
-          blockedTimes.add(blockedSlot);
-        }
-      }
+      return { start: startMinutes, end: endMinutes };
     });
     
-    // Filter out booked/blocked slots
-    const availableSlots = timeSlotsResult.rows.filter(slot => {
-      // Check if this slot is blocked
-      if (blockedTimes.has(slot.start_time)) {
-        return false;
+    // Step 3: Calculate valid start times
+    // Base interval is always 15 minutes for maximum precision
+    // All time calculations use 15-minute chunks to avoid wasted time
+    
+    const BASE_INTERVAL = 15; // Base unit: 15 minutes
+    const allAvailableSlots = [];
+    
+    // Generate ALL possible 15-minute slots first
+    for (let startMinutes = windowStart; startMinutes < windowEnd; startMinutes += BASE_INTERVAL) {
+      const endMinutes = startMinutes + serviceDuration;
+      
+      // Check if the entire appointment fits within the availability window
+      if (endMinutes > windowEnd) {
+        continue; // This start time doesn't work - appointment would extend past availability
       }
       
-      // If we have a service duration, check if enough consecutive slots are available
-      if (serviceDuration > 0) {
-        const slotInterval = appointmentType === 'online' ? 30 : 60;
-        const slotsNeeded = Math.ceil(serviceDuration / slotInterval);
-        
-        // Check if the next (slotsNeeded - 1) slots are also available
-        for (let i = 1; i < slotsNeeded; i++) {
-          const nextSlot = addMinutesToTime(slot.start_time, i * slotInterval);
-          if (blockedTimes.has(nextSlot)) {
-            return false; // One of the required consecutive slots is blocked
-          }
+      // Check if this slot overlaps with any existing booking
+      let hasOverlap = false;
+      for (const booking of bookedRanges) {
+        // Overlap occurs if: new_start < existing_end AND new_end > existing_start
+        if (startMinutes < booking.end && endMinutes > booking.start) {
+          hasOverlap = true;
+          break;
         }
       }
       
-      return true;
-    });
+      if (!hasOverlap) {
+        allAvailableSlots.push({
+          start_time: minutesToTime(startMinutes),
+          end_time: minutesToTime(endMinutes),
+          startMinutes: startMinutes // Keep for display interval filtering
+        });
+      }
+    }
+    
+    // Step 4: Filter slots for display based on service duration
+    // Display interval adapts to service duration for better UX
+    let displayInterval;
+    if (serviceDuration <= 15) {
+      displayInterval = 15; // Show every 15 minutes for 15-min services
+    } else if (serviceDuration <= 30) {
+      displayInterval = 30; // Show every 30 minutes for 30-min services
+    } else {
+      displayInterval = 30; // Show every 30 minutes for 60-min+ services
+    }
+    
+    const availableSlots = allAvailableSlots.filter(slot => 
+      slot.startMinutes % displayInterval === 0
+    ).map(slot => ({
+      start_time: slot.start_time,
+      end_time: slot.end_time
+    }));
     
     res.json({
       success: true,
