@@ -17,8 +17,7 @@ import {
   Check,
   Loader2,
   Video,
-  ExternalLink,
-  RefreshCw
+  ExternalLink
 } from 'lucide-react'
 
 interface Appointment {
@@ -442,17 +441,6 @@ export default function PatientDashboard() {
               <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => {
-                  checkShopAccess()
-                  console.log('Shop access check triggered, token:', sessionStorage.getItem('authToken') ? 'exists' : 'missing')
-                }}
-                title="Refresh shop access"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
               <Button variant="ghost" size="sm">
                 <Bell className="h-4 w-4" />
               </Button>

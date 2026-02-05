@@ -65,6 +65,122 @@ const statusIcons: Record<string, React.ReactNode> = {
   completed: <CheckCircle className="h-3 w-3" />,
 };
 
+// Calendar View Component
+interface CalendarViewProps {
+  bookings: Booking[];
+  onDateClick: (date: Date, bookings: Booking[]) => void;
+  onBookingClick: (booking: Booking) => void;
+}
+
+function CalendarView({ bookings, onDateClick, onBookingClick }: CalendarViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    return { daysInMonth, startingDayOfWeek, year, month };
+  };
+  
+  const getBookingsForDate = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return bookings.filter(booking => booking.slot_date === dateString);
+  };
+  
+  const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  const previousMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+  
+  const nextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
+  };
+  
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">
+          {monthNames[month]} {year}
+        </h2>
+        <div className="flex gap-2">
+          <Button onClick={previousMonth} variant="outline" size="sm">
+            ←
+          </Button>
+          <Button onClick={nextMonth} variant="outline" size="sm">
+            →
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-7 gap-2">
+        {dayNames.map(day => (
+          <div key={day} className="text-center font-semibold text-gray-600 py-2">
+            {day}
+          </div>
+        ))}
+        
+        {Array.from({ length: startingDayOfWeek }).map((_, index) => (
+          <div key={`empty-${index}`} className="aspect-square" />
+        ))}
+        
+        {Array.from({ length: daysInMonth }).map((_, index) => {
+          const day = index + 1;
+          const date = new Date(year, month, day);
+          const dayBookings = getBookingsForDate(date);
+          const isToday = new Date().toDateString() === date.toDateString();
+          
+          return (
+            <div
+              key={day}
+              className={`aspect-square border rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors ${
+                isToday ? 'border-brand bg-brand/5' : 'border-gray-200'
+              }`}
+              onClick={() => {
+                if (dayBookings.length > 0) {
+                  onDateClick(date, dayBookings);
+                }
+              }}
+            >
+              <div className="font-semibold text-sm mb-1">{day}</div>
+              {dayBookings.length > 0 && (
+                <div className="space-y-1">
+                  {dayBookings.slice(0, 2).map(booking => (
+                    <div
+                      key={booking.id}
+                      className={`text-xs px-1 py-0.5 rounded truncate ${
+                        statusColors[booking.status]
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBookingClick(booking);
+                      }}
+                    >
+                      {booking.slot_time.substring(0, 5)} - {booking.patient_name}
+                    </div>
+                  ))}
+                  {dayBookings.length > 2 && (
+                    <div className="text-xs text-gray-500">
+                      +{dayBookings.length - 2} more
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +189,8 @@ export default function AdminBookings() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const fetchBookings = async () => {
     try {
@@ -160,10 +278,20 @@ export default function AdminBookings() {
               Manage all appointment bookings
             </p>
           </div>
-          <Button onClick={fetchBookings} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')} 
+              variant="outline" 
+              size="sm"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              {viewMode === 'list' ? 'Calendar View' : 'List View'}
+            </Button>
+            <Button onClick={fetchBookings} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -200,7 +328,23 @@ export default function AdminBookings() {
           </Select>
         </div>
 
-        {loading ? (
+        {viewMode === 'calendar' ? (
+          <CalendarView 
+            bookings={filteredBookings} 
+            onDateClick={(date, dayBookings) => {
+              setSelectedDate(date);
+              // Open a dialog showing bookings for that day
+              if (dayBookings.length > 0) {
+                setSelectedBooking(dayBookings[0]);
+                setIsModalOpen(true);
+              }
+            }}
+            onBookingClick={(booking) => {
+              setSelectedBooking(booking);
+              setIsModalOpen(true);
+            }}
+          />
+        ) : loading ? (
           <div className="flex justify-center items-center py-12">
             <RefreshCw className="h-8 w-8 animate-spin text-[#2c4d5c]" />
           </div>
