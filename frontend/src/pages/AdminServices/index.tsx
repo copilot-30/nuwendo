@@ -68,7 +68,7 @@ export function AdminServices() {
     is_active: true
   })
 
-  const defaultCategories = ['Services', 'Peptides']
+  const defaultCategories = ['Services']
   
   // Get unique categories from existing services
   const existingCategories = Array.from(new Set(services.map(s => s.category).filter(Boolean)))

@@ -105,7 +105,7 @@ export default function Login() {
       }
 
       sessionStorage.setItem('patientEmail', email)
-      sessionStorage.setItem('authToken', data.token)
+      sessionStorage.setItem('authToken', data.data.token)
       sessionStorage.setItem('isAuthenticated', 'true')
       
       navigate('/dashboard')

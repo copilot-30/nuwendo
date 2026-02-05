@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   Home,
-  Cog
+  Cog,
+  ShoppingBag
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
@@ -32,6 +33,7 @@ const navItems = [
   { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { path: '/admin/payments', label: 'Payments', icon: CreditCard },
   { path: '/admin/services', label: 'Services', icon: Settings },
+  { path: '/admin/shop', label: 'Shop', icon: ShoppingBag },
   { path: '/admin/schedule', label: 'Schedule', icon: Clock },
   { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/audit-logs', label: 'Logs', icon: FileText },

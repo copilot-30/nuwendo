@@ -12,6 +12,7 @@ import PatientDashboard from '@/pages/PatientDashboard'
 import { AdminLogin } from '@/pages/AdminLogin'
 import AdminDashboard from '@/pages/AdminDashboard'
 import { AdminServices } from '@/pages/AdminServices'
+import { AdminShop } from '@/pages/AdminShop'
 import { AdminSchedule } from '@/pages/AdminSchedule'
 import { AdminPayments } from '@/pages/AdminPayments'
 import { AdminUsers } from '@/pages/AdminUsers'
@@ -42,6 +43,7 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/services" element={<AdminServices />} />
+        <Route path="/admin/shop" element={<AdminShop />} />
         <Route path="/admin/schedule" element={<AdminSchedule />} />
         <Route path="/admin/payments" element={<AdminPayments />} />
         <Route path="/admin/bookings" element={<AdminBookings />} />

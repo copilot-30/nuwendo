@@ -9,6 +9,8 @@ import adminRoutes from './src/routes/admin.js';
 import servicesRoutes from './src/routes/services.js';
 import availabilityRoutes from './src/routes/availability.js';
 import googleAuthRoutes from './src/routes/googleAuth.js';
+import shopRoutes from './src/routes/shop.js';
+import patientShopRoutes from './src/routes/patientShop.js';
 import pool from './src/config/database.js';
 
 dotenv.config();
@@ -59,7 +61,9 @@ app.use('/api/booking', bookingRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
+app.use('/api/admin/shop', shopRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/shop', patientShopRoutes);
 app.use('/api/oauth', googleAuthRoutes); // Google OAuth routes
 
 // Error handling middleware

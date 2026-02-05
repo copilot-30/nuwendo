@@ -47,7 +47,7 @@ interface PatientProfile {
   healthGoals?: string[]
 }
 
-type TabType = 'home' | 'services' | 'account'
+type TabType = 'home' | 'services' | 'shop' | 'account'
 
 export default function PatientDashboard() {
   const navigate = useNavigate()
@@ -57,6 +57,8 @@ export default function PatientDashboard() {
   const [loading, setLoading] = useState(true)
   const [cancellingId, setCancellingId] = useState<number | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [hasShopAccess, setHasShopAccess] = useState(false)
+  const [shopItems, setShopItems] = useState<any[]>([])
   
   // Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -83,7 +85,54 @@ export default function PatientDashboard() {
 
     fetchPatientProfile(patientEmail)
     fetchDashboardData(patientEmail)
+    checkShopAccess()
   }, [navigate])
+
+  const checkShopAccess = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken')
+      if (!token) {
+        console.log('No auth token found')
+        return
+      }
+
+      const response = await fetch('http://localhost:5000/api/shop/access', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        setHasShopAccess(data.hasAccess)
+        if (data.hasAccess) {
+          fetchShopItems()
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check shop access:', error)
+    }
+  }
+
+  const fetchShopItems = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken')
+      if (!token) return
+
+      const response = await fetch('http://localhost:5000/api/shop/items', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        setShopItems(data.items)
+      }
+    } catch (error) {
+      console.error('Failed to fetch shop items:', error)
+    }
+  }
 
   const fetchPatientProfile = async (email: string) => {
     try {
@@ -361,7 +410,7 @@ export default function PatientDashboard() {
       <nav className="bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center">
           <div className="inline-flex bg-gray-100 rounded-full p-1 my-4">
-            {(['home', 'services', 'account'] as TabType[]).map((tab) => (
+            {(['home', 'services', ...(hasShopAccess ? ['shop' as const] : []), 'account'] as TabType[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -589,6 +638,62 @@ export default function PatientDashboard() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'shop' && (
+          <div className="space-y-6">
+            <h1 className="text-2xl font-semibold text-gray-900">Shop</h1>
+            <p className="text-gray-600">Browse and purchase available products</p>
+            
+            {shopItems.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-gray-500">No items available at the moment.</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {shopItems.map((item) => (
+                  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <CardContent className="p-0">
+                      {item.image_url && (
+                        <div className="h-48 bg-gray-100 overflow-hidden">
+                          <img 
+                            src={item.image_url} 
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
+                        {item.category && (
+                          <p className="text-xs text-gray-500 mb-2">{item.category}</p>
+                        )}
+                        {item.description && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold text-brand">
+                            ₱{parseFloat(item.price).toLocaleString()}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            Stock: {item.stock_quantity}
+                          </span>
+                        </div>
+                        <Button 
+                          className="w-full mt-3 bg-brand hover:bg-brand/90"
+                          disabled={item.stock_quantity === 0}
+                        >
+                          {item.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
           </div>
