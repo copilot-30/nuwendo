@@ -4,6 +4,54 @@ import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Check shop access by email (public endpoint for legacy sessions)
+router.get('/access/by-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email is required' 
+      });
+    }
+
+    // Get user by email
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.json({ 
+        success: true, 
+        hasAccess: false 
+      });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Check shop access
+    const accessResult = await pool.query(
+      'SELECT has_access FROM patient_shop_access WHERE user_id = $1',
+      [userId]
+    );
+    
+    const hasAccess = accessResult.rows.length > 0 ? accessResult.rows[0].has_access : false;
+    
+    res.json({ 
+      success: true, 
+      hasAccess 
+    });
+  } catch (error) {
+    console.error('Error checking shop access by email:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to check shop access' 
+    });
+  }
+});
+
 // Check if patient has shop access
 router.get('/access', authMiddleware, async (req, res) => {
   try {
@@ -23,6 +71,76 @@ router.get('/access', authMiddleware, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to check shop access' 
+    });
+  }
+});
+
+// Get shop items by email (public endpoint for legacy sessions)
+router.get('/items/by-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email is required' 
+      });
+    }
+
+    // Get user by email
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Check if patient has access
+    const accessResult = await pool.query(
+      'SELECT has_access FROM patient_shop_access WHERE user_id = $1',
+      [userId]
+    );
+    
+    const hasAccess = accessResult.rows.length > 0 ? accessResult.rows[0].has_access : false;
+    
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You do not have access to the shop' 
+      });
+    }
+
+    // Fetch shop items
+    const result = await pool.query(`
+      SELECT 
+        id,
+        name,
+        description,
+        price,
+        category,
+        image_url,
+        stock_quantity
+      FROM shop_items
+      WHERE is_active = true
+      ORDER BY category, name
+    `);
+    
+    res.json({ 
+      success: true, 
+      items: result.rows 
+    });
+  } catch (error) {
+    console.error('Error fetching shop items by email:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch shop items' 
     });
   }
 });

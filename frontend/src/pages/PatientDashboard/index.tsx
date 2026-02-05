@@ -17,7 +17,8 @@ import {
   Check,
   Loader2,
   Video,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react'
 
 interface Appointment {
@@ -86,11 +87,45 @@ export default function PatientDashboard() {
     fetchPatientProfile(patientEmail)
     fetchDashboardData(patientEmail)
     checkShopAccess()
+
+    // Check shop access every 5 seconds
+    const shopAccessInterval = setInterval(() => {
+      checkShopAccess()
+    }, 5000)
+
+    // Also check when window/tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkShopAccess()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(shopAccessInterval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [navigate])
 
   const checkShopAccess = async () => {
     try {
       const token = sessionStorage.getItem('authToken')
+      const email = sessionStorage.getItem('patientEmail')
+      
+      // If no token, use email-based endpoint (for legacy sessions)
+      if (!token && email) {
+        const response = await fetch(`http://localhost:5000/api/shop/access/by-email?email=${encodeURIComponent(email)}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          setHasShopAccess(data.hasAccess)
+          if (data.hasAccess) {
+            fetchShopItems() // Now this will work for legacy sessions too!
+          }
+        }
+        return
+      }
+
       if (!token) {
         console.log('No auth token found')
         return
@@ -117,6 +152,19 @@ export default function PatientDashboard() {
   const fetchShopItems = async () => {
     try {
       const token = sessionStorage.getItem('authToken')
+      const email = sessionStorage.getItem('patientEmail')
+      
+      // If no token, use email-based endpoint (for legacy sessions)
+      if (!token && email) {
+        const response = await fetch(`http://localhost:5000/api/shop/items/by-email?email=${encodeURIComponent(email)}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          setShopItems(data.items)
+        }
+        return
+      }
+
       if (!token) return
 
       const response = await fetch('http://localhost:5000/api/shop/items', {
@@ -394,6 +442,17 @@ export default function PatientDashboard() {
               <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  checkShopAccess()
+                  console.log('Shop access check triggered, token:', sessionStorage.getItem('authToken') ? 'exists' : 'missing')
+                }}
+                title="Refresh shop access"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="sm">
                 <Bell className="h-4 w-4" />
               </Button>
