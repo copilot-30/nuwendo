@@ -32,6 +32,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface Booking {
   id: number;
@@ -196,7 +197,7 @@ export default function AdminBookings() {
     try {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/bookings', {
+      const response = await fetch(`${API_URL}/admin/bookings`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

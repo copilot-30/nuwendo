@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ArrowLeft, Loader2, User } from 'lucide-react'
+import { BASE_URL } from '@/config/api'
 
 export default function PatientDetails() {
   const navigate = useNavigate()
@@ -65,7 +66,7 @@ export default function PatientDetails() {
       sessionStorage.setItem('patientDetails', JSON.stringify(formData))
       
       // Also save to backend
-      await fetch(`http://localhost:5000/api/patient/profile/${encodeURIComponent(email)}`, {
+      await fetch(`${BASE_URL}/api/patient/profile/${encodeURIComponent(email)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

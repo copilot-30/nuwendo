@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Heart, Shield, Clock, MessageCircle, RefreshCw } from 'lucide-react'
+import { API_URL, BASE_URL } from '@/config/api'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -35,7 +36,7 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/patient-login/send-code', {
+      const response = await fetch(`${BASE_URL}/api/auth/patient-login/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -92,7 +93,7 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/patient-login/verify-code', {
+      const response = await fetch(`${BASE_URL}/api/auth/patient-login/verify-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: fullCode })
@@ -126,7 +127,7 @@ export default function Login() {
     setIsResending(true)
     setError('')
     try {
-      const response = await fetch('http://localhost:5000/api/auth/patient-login/send-code', {
+      const response = await fetch(`${BASE_URL}/api/auth/patient-login/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })

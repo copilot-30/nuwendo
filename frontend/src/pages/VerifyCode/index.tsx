@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2, RefreshCw, Mail } from 'lucide-react'
+import { BASE_URL } from '@/config/api'
 
 export default function VerifyCode() {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ export default function VerifyCode() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/verify-code', {
+      const response = await fetch(`${BASE_URL}/api/auth/verify-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: fullCode }),
@@ -92,7 +93,7 @@ export default function VerifyCode() {
     setIsResending(true)
     
     try {
-      const response = await fetch('http://localhost:5000/api/auth/send-code', {
+      const response = await fetch(`${BASE_URL}/api/auth/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

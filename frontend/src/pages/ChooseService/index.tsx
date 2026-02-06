@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { BASE_URL } from '@/config/api'
 import { 
   ArrowLeft, 
   Loader2, 
@@ -71,7 +72,7 @@ export default function ChooseService() {
 
     const fetchServices = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/services')
+        const response = await fetch(`${BASE_URL}/api/services`)
         const data = await response.json()
         setServices(data.services || [])
       } catch (err) {

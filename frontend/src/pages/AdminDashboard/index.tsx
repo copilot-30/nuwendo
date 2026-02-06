@@ -20,6 +20,7 @@ import {
   Activity,
   CreditCard,
 } from 'lucide-react';
+import { API_URL } from '@/config/api';
 
 interface Booking {
   id: number;
@@ -52,7 +53,7 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch('http://localhost:5000/api/admin/auth/dashboard/stats', {
+        const response = await fetch(`${API_URL}/admin/auth/dashboard/stats`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

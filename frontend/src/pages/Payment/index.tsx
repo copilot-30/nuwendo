@@ -1,8 +1,9 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2, Calendar, Clock, Upload, CheckCircle, AlertCircle, ImageIcon } from 'lucide-react'
+import { BASE_URL } from '@/config/api'
 
 interface PaymentSettings {
   payment_qr_code: string
@@ -46,7 +47,7 @@ export default function Payment() {
 
   const fetchPaymentSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/booking/payment-settings')
+      const response = await fetch(`${BASE_URL}/api/booking/payment-settings`)
       const data = await response.json()
       if (data.success) {
         setPaymentSettings(data.settings)
@@ -84,7 +85,7 @@ export default function Payment() {
     setIsLoading(true)
     setError('')
     try {
-      const bookingRes = await fetch('http://localhost:5000/api/booking/create', {
+      const bookingRes = await fetch(`${BASE_URL}/api/booking/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,7 +99,7 @@ export default function Payment() {
       const bookingData = await bookingRes.json()
       if (!bookingRes.ok) throw new Error(bookingData.message || 'Failed to create booking')
       
-      const receiptRes = await fetch(`http://localhost:5000/api/booking/${bookingData.bookingId}/receipt`, {
+      const receiptRes = await fetch(`${BASE_URL}/api/booking/${bookingData.bookingId}/receipt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ receiptData: receiptPreview, email }),

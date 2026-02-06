@@ -27,7 +27,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
 
-const API_URL = 'http://localhost:5000/api'
+import { API_URL } from '@/config/api'
 
 interface AvailabilityWindow {
   id: number

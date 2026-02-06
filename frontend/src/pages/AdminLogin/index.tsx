@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { User, Lock, Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
-const API_URL = 'http://localhost:5000/api'
+import { API_URL } from '@/config/api'
 
 export function AdminLogin() {
   const navigate = useNavigate()

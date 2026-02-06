@@ -2,14 +2,31 @@
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+frontend/.env.local
+frontend/.env.production
+!frontend/.env.example
 
 # Backend
 backend/node_modules/
 backend/.env
 backend/*.log
+!backend/.env.example
 
 # Database
 database/*.backup
+
+# Cloudflare
+.cloudflared/
+*.json
+!package.json
+!tsconfig.json
+!components.json
+cloudflared-config*.yml
+
+# Scripts
+fix-*.ps1
+setup-*.ps1
+start-*.ps1
 
 # IDE
 .vscode/

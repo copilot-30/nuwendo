@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2, Clock, ChevronLeft, ChevronRight, Monitor, Building2 } from 'lucide-react'
+import { API_URL, BASE_URL } from '@/config/api'
 
 interface TimeSlot {
   id: number
@@ -56,7 +57,7 @@ export default function ChooseSchedule() {
           const dateStr = `${year}-${month}-${day}`
           
           // Include serviceId so backend can check for consecutive slot availability
-          const response = await fetch(`http://localhost:5000/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${service.id}`)
+          const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${service.id}`)
           const data = await response.json()
           setAvailableSlots(data.availableSlots || [])
           setSelectedSlot(null)

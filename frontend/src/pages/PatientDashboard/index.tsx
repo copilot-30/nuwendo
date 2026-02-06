@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { API_URL, BASE_URL } from '@/config/api'
 import { 
   Calendar, 
   LogOut, 
@@ -113,7 +114,7 @@ export default function PatientDashboard() {
       
       // If no token, use email-based endpoint (for legacy sessions)
       if (!token && email) {
-        const response = await fetch(`http://localhost:5000/api/shop/access/by-email?email=${encodeURIComponent(email)}`)
+        const response = await fetch(`${BASE_URL}/api/shop/access/by-email?email=${encodeURIComponent(email)}`)
         const data = await response.json()
         
         if (data.success) {
@@ -130,7 +131,7 @@ export default function PatientDashboard() {
         return
       }
 
-      const response = await fetch('http://localhost:5000/api/shop/access', {
+      const response = await fetch(`${BASE_URL}/api/shop/access`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -155,7 +156,7 @@ export default function PatientDashboard() {
       
       // If no token, use email-based endpoint (for legacy sessions)
       if (!token && email) {
-        const response = await fetch(`http://localhost:5000/api/shop/items/by-email?email=${encodeURIComponent(email)}`)
+        const response = await fetch(`${BASE_URL}/api/shop/items/by-email?email=${encodeURIComponent(email)}`)
         const data = await response.json()
         
         if (data.success) {
@@ -166,7 +167,7 @@ export default function PatientDashboard() {
 
       if (!token) return
 
-      const response = await fetch('http://localhost:5000/api/shop/items', {
+      const response = await fetch(`${BASE_URL}/api/shop/items`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -183,7 +184,7 @@ export default function PatientDashboard() {
 
   const fetchPatientProfile = async (email: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/patient/profile?email=${encodeURIComponent(email)}`)
+      const response = await fetch(`${BASE_URL}/api/patient/profile?email=${encodeURIComponent(email)}`)
       const data = await response.json()
       
       if (response.ok && data.success) {
@@ -242,7 +243,7 @@ export default function PatientDashboard() {
 
   const fetchDashboardData = async (email: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/booking/patient?email=${encodeURIComponent(email)}`)
+      const response = await fetch(`${BASE_URL}/api/booking/patient?email=${encodeURIComponent(email)}`)
       const data = await response.json()
       
       if (response.ok && data.success) {
@@ -262,7 +263,7 @@ export default function PatientDashboard() {
       const email = sessionStorage.getItem('patientEmail')
       if (!email) return
 
-      const response = await fetch(`http://localhost:5000/api/patient/profile/${encodeURIComponent(email)}`, {
+      const response = await fetch(`${BASE_URL}/api/patient/profile/${encodeURIComponent(email)}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -355,7 +356,7 @@ export default function PatientDashboard() {
     setCancelError(null)
     
     try {
-      const response = await fetch(`http://localhost:5000/api/booking/${appointmentId}/cancel`, {
+      const response = await fetch(`${BASE_URL}/api/booking/${appointmentId}/cancel`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Heart, Shield, Clock, MessageCircle } from 'lucide-react'
+import { BASE_URL } from '@/config/api'
 
 export default function SignUp() {
   const navigate = useNavigate()
@@ -20,7 +21,7 @@ export default function SignUp() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/send-code', {
+      const response = await fetch(`${BASE_URL}/api/auth/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
