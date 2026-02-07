@@ -1,4 +1,14 @@
-import pool from './src/config/database.js';
+const { Pool } = require('pg');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'nuwendo_db',
+  password: process.env.DB_PASSWORD || 'postgres',
+  port: process.env.DB_PORT || 5432,
+});
 
 async function seedTimeSlots() {
   // Generate time slots from 9 AM to 5 PM, every 30 minutes, for weekdays (Mon-Fri)
