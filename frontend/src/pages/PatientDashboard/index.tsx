@@ -18,7 +18,8 @@ import {
   Check,
   Loader2,
   Video,
-  ExternalLink
+  ExternalLink,
+  CalendarClock
 } from 'lucide-react'
 
 interface Appointment {
@@ -60,6 +61,17 @@ export default function PatientDashboard() {
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [hasShopAccess, setHasShopAccess] = useState(false)
   const [shopItems, setShopItems] = useState<any[]>([])
+  
+  // Reschedule states
+  const [reschedulingId, setReschedulingId] = useState<number | null>(null)
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [rescheduleForm, setRescheduleForm] = useState({
+    new_date: '',
+    new_time: '',
+    reason: ''
+  })
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null)
   
   // Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -385,6 +397,70 @@ export default function PatientDashboard() {
     }
   }
 
+  const canRescheduleAppointment = (bookingDate: string, bookingTime: string) => {
+    const dateStr = bookingDate.split('T')[0]
+    const appointmentDateTime = new Date(`${dateStr}T${bookingTime}`)
+    const now = new Date()
+    const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+    return hoursUntilAppointment >= 24 // Same as cancel - 24 hour restriction
+  }
+
+  const handleRescheduleClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment)
+    setRescheduleForm({
+      new_date: '',
+      new_time: '',
+      reason: ''
+    })
+    setRescheduleError(null)
+    setShowRescheduleDialog(true)
+  }
+
+  const handleRescheduleSubmit = async () => {
+    if (!selectedAppointment || !rescheduleForm.new_date || !rescheduleForm.new_time) {
+      setRescheduleError('Please select a new date and time')
+      return
+    }
+
+    setReschedulingId(selectedAppointment.id)
+    setRescheduleError(null)
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/reschedule/booking/${selectedAppointment.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          new_date: rescheduleForm.new_date,
+          new_time: rescheduleForm.new_time,
+          reason: rescheduleForm.reason,
+          user_type: 'patient',
+          rescheduled_by_email: profile?.email
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setShowRescheduleDialog(false)
+        setSelectedAppointment(null)
+        // Refresh appointments
+        const patientEmail = sessionStorage.getItem('patientEmail')
+        if (patientEmail) {
+          fetchDashboardData(patientEmail)
+        }
+      } else {
+        setRescheduleError(data.message || 'Failed to reschedule appointment')
+      }
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error)
+      setRescheduleError('Failed to reschedule appointment')
+    } finally {
+      setReschedulingId(null)
+    }
+  }
+
   const handleNewAppointment = () => {
     if (profile) {
       const patientDetails = {
@@ -653,32 +729,44 @@ export default function PatientDashboard() {
                         </div>
                       )}
                       
-                      {/* Cancel button - only show if 24+ hours before */}
+                      {/* Reschedule and Cancel buttons - only show if 24+ hours before */}
                       {apt.status !== 'cancelled' && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-2">
                           {isCancellable ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCancelAppointment(apt.id)}
-                              disabled={isCancelling}
-                              className="text-red-600 border-red-200 hover:bg-red-50"
-                            >
-                              {isCancelling ? (
-                                <>
-                                  <span className="animate-spin mr-2">⏳</span>
-                                  Cancelling...
-                                </>
-                              ) : (
-                                <>
-                                  <X className="w-4 h-4 mr-2" />
-                                  Cancel Appointment
-                                </>
-                              )}
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRescheduleClick(apt)}
+                                disabled={isCancelling}
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                              >
+                                <CalendarClock className="w-4 h-4 mr-2" />
+                                Reschedule
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCancelAppointment(apt.id)}
+                                disabled={isCancelling}
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                              >
+                                {isCancelling ? (
+                                  <>
+                                    <span className="animate-spin mr-2">⏳</span>
+                                    Cancelling...
+                                  </>
+                                ) : (
+                                  <>
+                                    <X className="w-4 h-4 mr-2" />
+                                    Cancel Appointment
+                                  </>
+                                )}
+                              </Button>
+                            </>
                           ) : (
                             <p className="text-sm text-gray-400">
-                              Cancellation not available (less than 24 hours before appointment)
+                              Cancellation/Reschedule not available (less than 24 hours before appointment)
                             </p>
                           )}
                         </div>
@@ -1034,6 +1122,113 @@ export default function PatientDashboard() {
           </div>
         </div>
       </footer>
+
+      {/* Reschedule Dialog */}
+      {showRescheduleDialog && selectedAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl"
+          >
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              Reschedule Appointment
+            </h3>
+            
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-gray-600">
+                <strong>Current:</strong> {selectedAppointment.service_name}
+              </p>
+              <p className="text-sm text-gray-600">
+                {new Date(selectedAppointment.booking_date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                })} at {selectedAppointment.booking_time}
+              </p>
+            </div>
+
+            {rescheduleError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-600">{rescheduleError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-900 block mb-1">
+                  New Date
+                </label>
+                <Input
+                  type="date"
+                  value={rescheduleForm.new_date}
+                  onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_date: e.target.value }))}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-900 block mb-1">
+                  New Time
+                </label>
+                <Input
+                  type="time"
+                  value={rescheduleForm.new_time}
+                  onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-900 block mb-1">
+                  Reason (Optional)
+                </label>
+                <Textarea
+                  value={rescheduleForm.reason}
+                  onChange={(e) => setRescheduleForm(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="Why are you rescheduling?"
+                  rows={3}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRescheduleDialog(false)
+                  setSelectedAppointment(null)
+                  setRescheduleError(null)
+                }}
+                disabled={reschedulingId !== null}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRescheduleSubmit}
+                disabled={reschedulingId !== null || !rescheduleForm.new_date || !rescheduleForm.new_time}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {reschedulingId ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Rescheduling...
+                  </>
+                ) : (
+                  <>
+                    <CalendarClock className="w-4 h-4 mr-2" />
+                    Confirm Reschedule
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   )
 }

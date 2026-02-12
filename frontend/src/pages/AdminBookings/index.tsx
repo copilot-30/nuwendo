@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -31,6 +32,7 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
+  CalendarClock,
 } from 'lucide-react';
 import { API_URL } from '@/config/api';
 
@@ -193,6 +195,16 @@ export default function AdminBookings() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
+  // Reschedule states
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    new_date: '',
+    new_time: '',
+    reason: ''
+  });
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -230,6 +242,59 @@ export default function AdminBookings() {
   const handleBookingClick = (booking: Booking) => {
     setSelectedBooking(booking);
     setIsModalOpen(true);
+  };
+
+  const handleRescheduleClick = () => {
+    setRescheduleForm({
+      new_date: '',
+      new_time: '',
+      reason: ''
+    });
+    setRescheduleError(null);
+    setShowRescheduleDialog(true);
+    setIsModalOpen(false); // Close the booking details dialog
+  };
+
+  const handleRescheduleSubmit = async () => {
+    if (!selectedBooking || !rescheduleForm.new_date || !rescheduleForm.new_time) {
+      setRescheduleError('Please select a new date and time');
+      return;
+    }
+
+    setRescheduling(true);
+    setRescheduleError(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/reschedule/booking/${selectedBooking.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          new_date: rescheduleForm.new_date,
+          new_time: rescheduleForm.new_time,
+          reason: rescheduleForm.reason,
+          user_type: 'admin'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setShowRescheduleDialog(false);
+        setSelectedBooking(null);
+        fetchBookings(); // Refresh bookings list
+      } else {
+        setRescheduleError(data.message || 'Failed to reschedule appointment');
+      }
+    } catch (error) {
+      console.error('Error rescheduling booking:', error);
+      setRescheduleError('Failed to reschedule appointment');
+    } finally {
+      setRescheduling(false);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -566,9 +631,125 @@ export default function AdminBookings() {
                   </div>
                 )}
 
+                {/* Reschedule button - only for pending/confirmed bookings */}
+                {(selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
+                  <div className="border-t pt-4">
+                    <Button
+                      onClick={handleRescheduleClick}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      <CalendarClock className="w-4 h-4 mr-2" />
+                      Reschedule Appointment
+                    </Button>
+                  </div>
+                )}
+
                 <div className="border-t pt-4 text-xs text-gray-400">
                   <p>Booking ID: #{selectedBooking.id}</p>
                   <p>Created: {formatDate(selectedBooking.created_at)}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Reschedule Dialog */}
+        <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Reschedule Appointment</DialogTitle>
+            </DialogHeader>
+            {selectedBooking && (
+              <div className="space-y-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600">
+                    <strong>Service:</strong> {selectedBooking.service_name}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Patient:</strong> {selectedBooking.patient_name}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Current:</strong> {formatDate(selectedBooking.slot_date)} at {formatTime(selectedBooking.slot_time)}
+                  </p>
+                </div>
+
+                {rescheduleError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-600">{rescheduleError}</p>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-900 block mb-1">
+                      New Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={rescheduleForm.new_date}
+                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_date: e.target.value }))}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-900 block mb-1">
+                      New Time
+                    </label>
+                    <Input
+                      type="time"
+                      value={rescheduleForm.new_time}
+                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-900 block mb-1">
+                      Reason (Optional)
+                    </label>
+                    <Textarea
+                      value={rescheduleForm.reason}
+                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, reason: e.target.value }))}
+                      placeholder="Reason for rescheduling"
+                      rows={3}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowRescheduleDialog(false);
+                      setRescheduleError(null);
+                      setIsModalOpen(true); // Reopen booking details
+                    }}
+                    disabled={rescheduling}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRescheduleSubmit}
+                    disabled={rescheduling || !rescheduleForm.new_date || !rescheduleForm.new_time}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    {rescheduling ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Rescheduling...
+                      </>
+                    ) : (
+                      <>
+                        <CalendarClock className="w-4 h-4 mr-2" />
+                        Confirm Reschedule
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             )}

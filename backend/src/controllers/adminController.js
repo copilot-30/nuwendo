@@ -485,23 +485,27 @@ const updateBookingStatus = async (req, res) => {
     let meetingLink = null;
     if (status === 'confirmed' && isOnlineAppointment) {
       try {
-        // Create appointment date/time - handle both Date objects and strings
+        // Create appointment date/time
         let appointmentDateTime;
-        if (booking.booking_date instanceof Date) {
-          // If booking_date is already a Date object
-          const dateStr = booking.booking_date.toISOString().split('T')[0]; // YYYY-MM-DD
-          const timeStr = booking.booking_time; // Should be HH:MM:SS or HH:MM
-          appointmentDateTime = new Date(`${dateStr}T${timeStr}`);
-        } else {
-          // If booking_date is a string
-          appointmentDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
-        }
         
-        console.log('Appointment DateTime:', appointmentDateTime);
+        // Handle different date formats
+        const dateStr = booking.booking_date instanceof Date 
+          ? booking.booking_date.toISOString().split('T')[0]
+          : String(booking.booking_date).split('T')[0]; // Handle both Date and string
+        
+        const timeStr = String(booking.booking_time).substring(0, 8); // Ensure HH:MM:SS format
+        
+        appointmentDateTime = new Date(`${dateStr}T${timeStr}`);
+        
+        console.log('Creating Google Meet link for:', {
+          dateStr,
+          timeStr,
+          appointmentDateTime: appointmentDateTime.toISOString()
+        });
         
         // Validate the date
         if (isNaN(appointmentDateTime.getTime())) {
-          throw new Error(`Invalid date/time: ${booking.booking_date} ${booking.booking_time}`);
+          throw new Error(`Invalid date/time: date=${dateStr}, time=${timeStr}`);
         }
         
         // Use Google Calendar service to create meet link
@@ -514,13 +518,18 @@ const updateBookingStatus = async (req, res) => {
         });
         
         meetingLink = meetResult.meetLink;
-        console.log('Google Meet link created:', meetingLink);
+        console.log('✅ Google Meet link created successfully:', meetingLink);
       } catch (error) {
-        console.error('Error creating Google Meet link:', error);
-        return res.status(500).json({ 
-          message: 'Failed to create Google Meet link', 
-          error: error.message 
+        console.error('❌ Error creating Google Meet link:', error.message);
+        console.error('Booking details:', {
+          booking_date: booking.booking_date,
+          booking_time: booking.booking_time,
+          service_name: booking.service_name
         });
+        
+        // Don't fail the entire request - just log the error and continue without meeting link
+        // The admin can manually add a meeting link later
+        console.warn('⚠️ Continuing without Google Meet link');
       }
     }
 

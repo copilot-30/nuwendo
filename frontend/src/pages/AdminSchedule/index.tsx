@@ -22,7 +22,8 @@ import {
   Monitor,
   Building2,
   Info,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -56,6 +57,17 @@ export function AdminSchedule() {
     appointment_type: 'online' as 'online' | 'on-site',
     is_active: true
   })
+  
+  // Reschedule settings state
+  const [showRescheduleSettings, setShowRescheduleSettings] = useState(false)
+  const [rescheduleSettings, setRescheduleSettings] = useState({
+    patient_min_hours_before: 24,
+    admin_min_hours_before: 1,
+    max_reschedules_per_booking: 3,
+    allow_patient_reschedule: true,
+    allow_admin_reschedule: true
+  })
+  const [savingSettings, setSavingSettings] = useState(false)
 
   const dayNames = [
     'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
@@ -68,6 +80,7 @@ export function AdminSchedule() {
       return
     }
     fetchAvailability()
+    fetchRescheduleSettings()
   }, [navigate])
 
   const fetchAvailability = async () => {
@@ -94,6 +107,54 @@ export function AdminSchedule() {
       setError(err.message || 'Failed to load availability')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchRescheduleSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/reschedule/settings`)
+      const data = await response.json()
+      
+      if (data.success && data.settings) {
+        setRescheduleSettings({
+          patient_min_hours_before: data.settings.patient_min_hours_before,
+          admin_min_hours_before: data.settings.admin_min_hours_before,
+          max_reschedules_per_booking: data.settings.max_reschedules_per_booking,
+          allow_patient_reschedule: data.settings.allow_patient_reschedule,
+          allow_admin_reschedule: data.settings.allow_admin_reschedule
+        })
+      }
+    } catch (err: any) {
+      console.error('Failed to load reschedule settings:', err)
+    }
+  }
+
+  const handleSaveRescheduleSettings = async () => {
+    setSavingSettings(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch(`${API_URL}/reschedule/settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(rescheduleSettings)
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update settings')
+      }
+
+      setShowRescheduleSettings(false)
+      // Show success message
+      setError('')
+    } catch (err: any) {
+      setError(err.message || 'Failed to save settings')
+    } finally {
+      setSavingSettings(false)
     }
   }
 
@@ -282,10 +343,20 @@ export function AdminSchedule() {
             <h1 className="text-2xl font-bold text-gray-900">Manage Schedule</h1>
             <p className="text-gray-500">Set working hours for each day</p>
           </div>
-          <Button onClick={() => setShowForm(true)} disabled={showForm} className="bg-brand hover:bg-brand/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Availability
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowRescheduleSettings(true)} 
+              variant="outline"
+              className="border-gray-300"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+            <Button onClick={() => setShowForm(true)} disabled={showForm} className="bg-brand hover:bg-brand/90">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Availability
+            </Button>
+          </div>
         </div>
         {error && (
           <div className="p-4 mb-6 text-red-600 bg-red-50 border border-red-200 rounded-md">
@@ -495,6 +566,159 @@ export function AdminSchedule() {
             )
           })}
         </div>
+
+        {/* Reschedule Settings Dialog */}
+        <Dialog open={showRescheduleSettings} onOpenChange={setShowRescheduleSettings}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Reschedule Settings</DialogTitle>
+              <DialogDescription>
+                Configure time restrictions and limits for rescheduling appointments
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Patient Restrictions */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Patient Restrictions</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="patient_hours">Minimum Hours Before Appointment</Label>
+                  <Input
+                    id="patient_hours"
+                    type="number"
+                    min="0"
+                    value={rescheduleSettings.patient_min_hours_before}
+                    onChange={(e) => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      patient_min_hours_before: parseInt(e.target.value)
+                    })}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Patients cannot reschedule within this many hours before the appointment
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Allow Patient Reschedule</Label>
+                    <p className="text-xs text-gray-500">Enable patients to reschedule their appointments</p>
+                  </div>
+                  <button
+                    onClick={() => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      allow_patient_reschedule: !rescheduleSettings.allow_patient_reschedule
+                    })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      rescheduleSettings.allow_patient_reschedule ? 'bg-brand' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        rescheduleSettings.allow_patient_reschedule ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Admin Restrictions */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-medium text-gray-900">Admin Restrictions</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="admin_hours">Minimum Hours Before Appointment</Label>
+                  <Input
+                    id="admin_hours"
+                    type="number"
+                    min="0"
+                    value={rescheduleSettings.admin_min_hours_before}
+                    onChange={(e) => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      admin_min_hours_before: parseInt(e.target.value)
+                    })}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Admins cannot reschedule within this many hours before the appointment
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Allow Admin Reschedule</Label>
+                    <p className="text-xs text-gray-500">Enable admins to reschedule appointments</p>
+                  </div>
+                  <button
+                    onClick={() => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      allow_admin_reschedule: !rescheduleSettings.allow_admin_reschedule
+                    })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      rescheduleSettings.allow_admin_reschedule ? 'bg-brand' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        rescheduleSettings.allow_admin_reschedule ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* General Restrictions */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-medium text-gray-900">General Limits</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="max_reschedules">Maximum Reschedules Per Booking</Label>
+                  <Input
+                    id="max_reschedules"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={rescheduleSettings.max_reschedules_per_booking}
+                    onChange={(e) => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      max_reschedules_per_booking: parseInt(e.target.value)
+                    })}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Maximum number of times a booking can be rescheduled
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRescheduleSettings(false)}
+                  disabled={savingSettings}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveRescheduleSettings}
+                  disabled={savingSettings}
+                  className="bg-brand hover:bg-brand/90"
+                >
+                  {savingSettings ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Settings
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   )

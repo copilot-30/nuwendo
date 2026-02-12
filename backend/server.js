@@ -11,6 +11,7 @@ import availabilityRoutes from './src/routes/availability.js';
 import googleAuthRoutes from './src/routes/googleAuth.js';
 import shopRoutes from './src/routes/shop.js';
 import patientShopRoutes from './src/routes/patientShop.js';
+import rescheduleRoutes from './src/routes/reschedule.js';
 import pool from './src/config/database.js';
 
 dotenv.config();
@@ -60,6 +61,7 @@ app.use('/api/patient', patientRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/availability', availabilityRoutes);
+app.use('/api/reschedule', rescheduleRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/shop', shopRoutes);
 app.use('/api/admin', adminRoutes);

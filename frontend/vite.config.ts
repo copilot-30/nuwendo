@@ -15,7 +15,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     hmr: {
-      clientPort: 443, // Use HTTPS port for HMR through Cloudflare
+      // Only use port 443 for production through Cloudflare
+      clientPort: process.env.NODE_ENV === 'production' ? 443 : 5173,
     },
     cors: true,
     allowedHosts: [
