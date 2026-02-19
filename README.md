@@ -156,6 +156,11 @@ nowendo/
 ### Admin Dashboard
 - ✅ View all bookings
 - ✅ Approve/reject appointments
+- ✅ **Appointment Status Management** (NEW!)
+  - Mark as Completed (with notes)
+  - Mark as No Show
+  - Track actual completion vs scheduled time
+  - See time status (upcoming/in_progress/past)
 - ✅ Auto-generate Google Meet links
 - ✅ Manage services
 - ✅ Configure working hours/schedule
@@ -165,6 +170,8 @@ nowendo/
 - ✅ Audit logs
 - ✅ Reschedule appointments (1hr notice)
 - ✅ Calendar view
+
+> **📋 New Feature:** [Appointment Status System](./APPOINTMENT_STATUS_VISUAL_GUIDE.md) - Admin can now manually mark appointments as completed, no-show, or cancelled. Time passing alone no longer determines completion status.
 
 ---
 

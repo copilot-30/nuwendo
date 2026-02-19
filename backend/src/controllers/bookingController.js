@@ -422,6 +422,44 @@ const uploadPaymentReceipt = async (req, res) => {
   }
 };
 
+// Helper function: Get time-based status
+const getTimeStatus = (bookingDate, bookingTime) => {
+  try {
+    const now = new Date();
+    
+    // Parse booking date and time
+    const dateStr = bookingDate instanceof Date 
+      ? bookingDate.toISOString().split('T')[0]
+      : String(bookingDate).split('T')[0];
+    
+    const timeStr = String(bookingTime).substring(0, 8);
+    const bookingDateTime = new Date(`${dateStr}T${timeStr}`);
+    
+    if (isNaN(bookingDateTime.getTime())) {
+      return 'unknown';
+    }
+    
+    const diffMs = bookingDateTime.getTime() - now.getTime();
+    const diffMinutes = diffMs / (1000 * 60);
+    
+    // If appointment is in the past (more than 30 minutes ago)
+    if (diffMinutes < -30) {
+      return 'past';
+    }
+    
+    // If appointment is happening now (within 30 minutes before or after start time)
+    if (diffMinutes >= -30 && diffMinutes <= 30) {
+      return 'in_progress';
+    }
+    
+    // If appointment is in the future
+    return 'upcoming';
+  } catch (error) {
+    console.error('Error calculating time status:', error);
+    return 'unknown';
+  }
+};
+
 export {
   getServices,
   getAvailableSlots,
@@ -430,5 +468,6 @@ export {
   getPatientBookings,
   cancelBooking,
   getPublicPaymentSettings,
-  uploadPaymentReceipt
+  uploadPaymentReceipt,
+  getTimeStatus
 };

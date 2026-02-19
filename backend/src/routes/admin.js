@@ -12,6 +12,7 @@ import {
   deleteTimeSlot,
   getBookings,
   updateBookingStatus,
+  updateBookingBusinessStatus,
   getPaymentSettings,
   updatePaymentSettings,
   getPendingPayments,
@@ -94,6 +95,11 @@ router.get('/bookings', [
 router.patch('/bookings/:id/status', [
   body('status').isIn(['pending', 'confirmed', 'completed', 'cancelled']).withMessage('Invalid status')
 ], updateBookingStatus);
+
+router.patch('/bookings/:id/business-status', [
+  body('business_status').isIn(['scheduled', 'completed', 'cancelled', 'no_show']).withMessage('Invalid business status'),
+  body('admin_notes').optional().isString().withMessage('Admin notes must be a string')
+], updateBookingBusinessStatus);
 
 // Payment settings management
 router.get('/payment-settings', getPaymentSettings);

@@ -414,10 +414,10 @@ const getBookings = async (req, res) => {
     queryParams.push(limit, offset);
 
     const result = await pool.query(
-      `SELECT b.id, b.user_id, b.service_id, b.status, b.notes, 
+      `SELECT b.id, b.user_id, b.service_id, b.status, b.business_status, b.notes, 
               b.appointment_type, b.payment_status, b.payment_method, 
               b.payment_reference, b.amount_paid, b.created_at, b.updated_at,
-              b.video_call_link,
+              b.video_call_link, b.admin_notes, b.completed_at, b.completed_by,
               b.booking_date as slot_date,
               b.booking_time as slot_time,
               b.phone_number as booking_phone,
@@ -426,10 +426,12 @@ const getBookings = async (req, res) => {
               u.email as patient_email,
               CONCAT(u.first_name, ' ', u.last_name) as patient_name,
               b.user_id as patient_id,
-              s.name as service_name, s.duration_minutes, s.price
+              s.name as service_name, s.duration_minutes, s.price,
+              admin_user.full_name as completed_by_name
        FROM bookings b
        JOIN users u ON b.user_id = u.id
        JOIN services s ON b.service_id = s.id
+       LEFT JOIN admin_users admin_user ON b.completed_by = admin_user.id
        ${whereClause}
        ORDER BY b.created_at DESC
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
@@ -439,9 +441,18 @@ const getBookings = async (req, res) => {
     const total = parseInt(countResult.rows[0].total);
     const totalPages = Math.ceil(total / limit);
 
+    // Import getTimeStatus helper
+    const { getTimeStatus } = await import('./bookingController.js');
+    
+    // Add time_status to each booking
+    const bookingsWithTimeStatus = result.rows.map(booking => ({
+      ...booking,
+      time_status: getTimeStatus(booking.slot_date, booking.slot_time)
+    }));
+
     res.json({
       success: true,
-      bookings: result.rows,
+      bookings: bookingsWithTimeStatus,
       pagination: {
         current_page: parseInt(page),
         total_pages: totalPages,
@@ -575,6 +586,95 @@ const updateBookingStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Update booking status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update booking business status (completed, cancelled, no_show)
+const updateBookingBusinessStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { business_status, admin_notes } = req.body;
+    const adminId = req.admin.adminId;
+
+    // Validate business_status
+    const validStatuses = ['scheduled', 'completed', 'cancelled', 'no_show'];
+    if (!validStatuses.includes(business_status)) {
+      return res.status(400).json({ 
+        message: `Invalid business status. Must be one of: ${validStatuses.join(', ')}` 
+      });
+    }
+
+    // Get current booking details
+    const oldResult = await pool.query(`
+      SELECT b.id, b.business_status, b.user_id,
+             u.email, u.first_name, u.last_name,
+             s.name as service_name
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      JOIN services s ON b.service_id = s.id
+      WHERE b.id = $1
+    `, [id]);
+    
+    if (oldResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    const booking = oldResult.rows[0];
+    const oldBusinessStatus = booking.business_status;
+
+    // Build update query
+    let updateQuery;
+    let queryParams;
+
+    if (business_status === 'completed') {
+      // Mark as completed with timestamp and admin who completed it
+      updateQuery = `
+        UPDATE bookings 
+        SET business_status = $1, 
+            admin_notes = $2, 
+            completed_at = CURRENT_TIMESTAMP,
+            completed_by = $3,
+            updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $4 
+        RETURNING *`;
+      queryParams = [business_status, admin_notes || null, adminId, id];
+    } else {
+      // Other status changes
+      updateQuery = `
+        UPDATE bookings 
+        SET business_status = $1, 
+            admin_notes = $2,
+            updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $3 
+        RETURNING *`;
+      queryParams = [business_status, admin_notes || null, id];
+    }
+
+    const result = await pool.query(updateQuery, queryParams);
+
+    // Log the action
+    const auditNewValues = { 
+      business_status,
+      ...(admin_notes && { admin_notes })
+    };
+    
+    await createAuditLog(
+      adminId, 
+      `Appointment status changed: ${oldBusinessStatus} → ${business_status}${admin_notes ? ` (Note: ${admin_notes})` : ''}`, 
+      'bookings', 
+      parseInt(id), 
+      { business_status: oldBusinessStatus }, 
+      auditNewValues
+    );
+
+    res.json({
+      success: true,
+      message: `Appointment marked as ${business_status}`,
+      booking: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update booking business status error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -730,6 +830,7 @@ export {
   deleteTimeSlot,
   getBookings,
   updateBookingStatus,
+  updateBookingBusinessStatus,
   getPaymentSettings,
   updatePaymentSettings,
   getPendingPayments,

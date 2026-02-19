@@ -49,8 +49,13 @@ interface Booking {
   duration_minutes: number;
   appointment_type: 'online' | 'in-person';
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  business_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  time_status?: 'upcoming' | 'in_progress' | 'past';
   video_call_link?: string;
   notes?: string;
+  admin_notes?: string;
+  completed_at?: string;
+  completed_by_name?: string;
   created_at: string;
 }
 
@@ -59,6 +64,19 @@ const statusColors: Record<string, string> = {
   confirmed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   completed: 'bg-blue-100 text-blue-800',
+};
+
+const businessStatusColors: Record<string, string> = {
+  scheduled: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+  no_show: 'bg-orange-100 text-orange-800',
+};
+
+const timeStatusColors: Record<string, string> = {
+  upcoming: 'bg-gray-100 text-gray-700',
+  in_progress: 'bg-purple-100 text-purple-800',
+  past: 'bg-gray-200 text-gray-600',
 };
 
 const statusIcons: Record<string, React.ReactNode> = {
@@ -198,6 +216,14 @@ export default function AdminBookings() {
   // Reschedule states
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  
+  // Business status update states
+  const [showBusinessStatusDialog, setShowBusinessStatusDialog] = useState(false);
+  const [updatingBusinessStatus, setUpdatingBusinessStatus] = useState(false);
+  const [businessStatusForm, setBusinessStatusForm] = useState({
+    business_status: '',
+    admin_notes: ''
+  });
   const [rescheduleForm, setRescheduleForm] = useState({
     new_date: '',
     new_time: '',
@@ -234,7 +260,7 @@ export default function AdminBookings() {
       booking.service_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.patient_email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || booking.business_status === statusFilter;
     const matchesType = typeFilter === 'all' || booking.appointment_type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -297,6 +323,50 @@ export default function AdminBookings() {
     }
   };
 
+  const handleBusinessStatusClick = (status: string) => {
+    setBusinessStatusForm({
+      business_status: status,
+      admin_notes: ''
+    });
+    setShowBusinessStatusDialog(true);
+    setIsModalOpen(false); // Close the booking details dialog
+  };
+
+  const handleBusinessStatusSubmit = async () => {
+    if (!selectedBooking || !businessStatusForm.business_status) {
+      return;
+    }
+
+    setUpdatingBusinessStatus(true);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/admin/bookings/${selectedBooking.id}/business-status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(businessStatusForm)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setShowBusinessStatusDialog(false);
+        setSelectedBooking(null);
+        fetchBookings(); // Refresh bookings list
+      } else {
+        alert(data.message || 'Failed to update appointment status');
+      }
+    } catch (error) {
+      console.error('Error updating business status:', error);
+      alert('Failed to update appointment status');
+    } finally {
+      setUpdatingBusinessStatus(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleDateString('en-US', {
@@ -318,6 +388,29 @@ export default function AdminBookings() {
       return `${hour12}:${minutes} ${ampm}`;
     } catch {
       return timeStr;
+    }
+  };
+
+  const hasAppointmentEnded = (bookingDate: string, bookingTime: string, durationMinutes: number) => {
+    try {
+      const now = new Date();
+      
+      // Parse booking date and time
+      const dateStr = typeof bookingDate === 'string' && bookingDate.includes('T')
+        ? bookingDate.split('T')[0]
+        : String(bookingDate).split('T')[0];
+      
+      const timeStr = String(bookingTime).substring(0, 8);
+      
+      // Create appointment end time
+      const appointmentStart = new Date(`${dateStr}T${timeStr}`);
+      const appointmentEnd = new Date(appointmentStart.getTime() + (durationMinutes * 60 * 1000));
+      
+      // Return true if current time is after appointment end time
+      return now > appointmentEnd;
+    } catch (error) {
+      console.error('Error checking if appointment ended:', error);
+      return false; // Default to false to hide buttons if there's an error
     }
   };
 
@@ -376,9 +469,9 @@ export default function AdminBookings() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="no_show">No Show</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
@@ -432,13 +525,13 @@ export default function AdminBookings() {
                 className="cursor-pointer hover:shadow-lg transition-shadow duration-200 border-l-4"
                 style={{
                   borderLeftColor:
-                    booking.status === 'confirmed'
-                      ? '#22c55e'
-                      : booking.status === 'pending'
-                      ? '#eab308'
-                      : booking.status === 'cancelled'
-                      ? '#ef4444'
-                      : '#3b82f6',
+                    booking.business_status === 'completed'
+                      ? '#22c55e'  // Green
+                      : booking.business_status === 'no_show'
+                      ? '#f97316'  // Orange
+                      : booking.business_status === 'cancelled'
+                      ? '#ef4444'  // Red
+                      : '#3b82f6',  // Blue (scheduled)
                 }}
                 onClick={() => handleBookingClick(booking)}
               >
@@ -452,12 +545,20 @@ export default function AdminBookings() {
                         {booking.patient_name}
                       </p>
                     </div>
-                    <Badge
-                      className={`${statusColors[booking.status]} text-xs flex items-center gap-1`}
-                    >
-                      {statusIcons[booking.status]}
-                      {booking.status}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        className={`${businessStatusColors[booking.business_status]} text-xs`}
+                      >
+                        {booking.business_status}
+                      </Badge>
+                      {booking.time_status && (
+                        <Badge
+                          className={`${timeStatusColors[booking.time_status]} text-xs`}
+                        >
+                          {booking.time_status.replace('_', ' ')}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600">
@@ -625,11 +726,83 @@ export default function AdminBookings() {
                 {selectedBooking.notes && (
                   <div className="border-t pt-4">
                     <h4 className="text-sm font-medium text-gray-500 mb-2">
-                      Notes
+                      Patient Notes
                     </h4>
                     <p className="text-gray-700 text-sm">{selectedBooking.notes}</p>
                   </div>
                 )}
+
+                {selectedBooking.admin_notes && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">
+                      Admin Notes
+                    </h4>
+                    <p className="text-gray-700 text-sm">{selectedBooking.admin_notes}</p>
+                  </div>
+                )}
+
+                {/* Business Status Management */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-500 mb-3">
+                    Appointment Status
+                  </h4>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge className={businessStatusColors[selectedBooking.business_status]}>
+                      Business: {selectedBooking.business_status}
+                    </Badge>
+                    {selectedBooking.time_status && (
+                      <Badge className={timeStatusColors[selectedBooking.time_status]}>
+                        Time: {selectedBooking.time_status.replace('_', ' ')}
+                      </Badge>
+                    )}
+                    <Badge className={statusColors[selectedBooking.status]}>
+                      Payment: {selectedBooking.status}
+                    </Badge>
+                  </div>
+                  
+                  {selectedBooking.completed_at && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Completed on {formatDate(selectedBooking.completed_at)} 
+                      {selectedBooking.completed_by_name && ` by ${selectedBooking.completed_by_name}`}
+                    </p>
+                  )}
+
+                  {/* Only show action buttons if appointment has ended AND status is not completed/cancelled */}
+                  {selectedBooking.business_status !== 'completed' && 
+                   selectedBooking.business_status !== 'cancelled' && 
+                   hasAppointmentEnded(selectedBooking.slot_date, selectedBooking.slot_time, selectedBooking.duration_minutes) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => handleBusinessStatusClick('completed')}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Mark Completed
+                      </Button>
+                      <Button
+                        onClick={() => handleBusinessStatusClick('no_show')}
+                        size="sm"
+                        variant="outline"
+                        className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        No Show
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Show message if appointment hasn't ended yet */}
+                  {selectedBooking.business_status !== 'completed' && 
+                   selectedBooking.business_status !== 'cancelled' && 
+                   !hasAppointmentEnded(selectedBooking.slot_date, selectedBooking.slot_time, selectedBooking.duration_minutes) && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        ⏰ Status actions will be available after the appointment ends
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Reschedule button - only for pending/confirmed bookings */}
                 {(selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
@@ -747,6 +920,144 @@ export default function AdminBookings() {
                       <>
                         <CalendarClock className="w-4 h-4 mr-2" />
                         Confirm Reschedule
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Business Status Update Dialog */}
+        <Dialog open={showBusinessStatusDialog} onOpenChange={setShowBusinessStatusDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update Appointment Status</DialogTitle>
+            </DialogHeader>
+            {selectedBooking && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600">
+                    <strong>Service:</strong> {selectedBooking.service_name}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Patient:</strong> {selectedBooking.patient_name}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Date:</strong> {formatDate(selectedBooking.slot_date)} at {formatTime(selectedBooking.slot_time)}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-900 block mb-2">
+                      New Status
+                    </label>
+                    <div className="flex gap-2">
+                      <Badge 
+                        className={`text-base py-2 px-4 cursor-pointer ${
+                          businessStatusForm.business_status === 'completed' 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-green-100 text-green-800'
+                        }`}
+                        onClick={() => setBusinessStatusForm(prev => ({ ...prev, business_status: 'completed' }))}
+                      >
+                        Completed
+                      </Badge>
+                      <Badge 
+                        className={`text-base py-2 px-4 cursor-pointer ${
+                          businessStatusForm.business_status === 'no_show' 
+                            ? 'bg-orange-600 text-white' 
+                            : 'bg-orange-100 text-orange-800'
+                        }`}
+                        onClick={() => setBusinessStatusForm(prev => ({ ...prev, business_status: 'no_show' }))}
+                      >
+                        No Show
+                      </Badge>
+                      <Badge 
+                        className={`text-base py-2 px-4 cursor-pointer ${
+                          businessStatusForm.business_status === 'cancelled' 
+                            ? 'bg-red-600 text-white' 
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                        onClick={() => setBusinessStatusForm(prev => ({ ...prev, business_status: 'cancelled' }))}
+                      >
+                        Cancelled
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-900 block mb-1">
+                      Notes (Optional)
+                    </label>
+                    <Textarea
+                      value={businessStatusForm.admin_notes}
+                      onChange={(e) => setBusinessStatusForm(prev => ({ ...prev, admin_notes: e.target.value }))}
+                      placeholder="Add notes about this status change (e.g., completion notes, cancellation reason, no-show details)"
+                      rows={3}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {businessStatusForm.business_status === 'completed' && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-700">
+                        ✓ This will mark the appointment as successfully completed
+                      </p>
+                    </div>
+                  )}
+
+                  {businessStatusForm.business_status === 'no_show' && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <p className="text-sm text-orange-700">
+                        ⚠️ This will mark that the patient did not show up for their appointment
+                      </p>
+                    </div>
+                  )}
+
+                  {businessStatusForm.business_status === 'cancelled' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-700">
+                        ✗ This will mark the appointment as cancelled
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowBusinessStatusDialog(false);
+                      setIsModalOpen(true); // Reopen booking details
+                    }}
+                    disabled={updatingBusinessStatus}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleBusinessStatusSubmit}
+                    disabled={updatingBusinessStatus || !businessStatusForm.business_status}
+                    className={`flex-1 ${
+                      businessStatusForm.business_status === 'completed' 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : businessStatusForm.business_status === 'no_show'
+                        ? 'bg-orange-600 hover:bg-orange-700'
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {updatingBusinessStatus ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Confirm Update
                       </>
                     )}
                   </Button>
