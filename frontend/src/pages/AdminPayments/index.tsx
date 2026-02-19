@@ -82,7 +82,7 @@ export function AdminPayments() {
   useEffect(() => {
     const adminToken = localStorage.getItem('adminToken')
     if (!adminToken) {
-      navigate('/admin/login')
+      navigate('/login')
       return
     }
     fetchData()

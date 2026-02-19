@@ -70,7 +70,7 @@ export function AdminUsers() {
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
     if (!token) {
-      navigate('/admin/login')
+      navigate('/login')
       return
     }
     fetchUsers()
@@ -90,7 +90,7 @@ export function AdminUsers() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          navigate('/admin/login')
+          navigate('/login')
           return
         }
         throw new Error(data.message || 'Failed to fetch users')

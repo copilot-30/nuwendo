@@ -2,10 +2,15 @@
   "name": "nuwendo-database",
   "version": "1.0.0",
   "description": "Database migrations for Nuwendo",
+  "type": "module",
   "scripts": {
+    "setup": "node setup.js",
     "migrate": "node migrate.js up",
     "migrate:down": "node migrate.js down",
-    "migrate:status": "node status.js"
+    "migrate:status": "node status.js",
+    "seed": "psql -U admin -d nuwendo_db -f seed.sql",
+    "seed:services": "psql -U admin -d nuwendo_db -f seed-services.sql",
+    "seed:schedule": "psql -U admin -d nuwendo_db -f seed-schedule.sql"
   },
   "dependencies": {
     "pg": "^8.11.3",

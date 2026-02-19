@@ -56,7 +56,7 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
     }
     localStorage.removeItem('adminToken')
     localStorage.removeItem('adminUser')
-    navigate('/admin/login')
+    navigate('/login')
   }
 
   const isActive = (path: string) => location.pathname === path

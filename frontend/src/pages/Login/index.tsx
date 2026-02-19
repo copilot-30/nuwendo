@@ -9,9 +9,11 @@ import { API_URL, BASE_URL } from '@/config/api'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [step, setStep] = useState<'email' | 'code' | 'password'>('email')
   const [email, setEmail] = useState(sessionStorage.getItem('loginEmail') || '')
+  const [password, setPassword] = useState('')
   const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [error, setError] = useState('')
@@ -48,11 +50,48 @@ export default function Login() {
         throw new Error(data.message || 'Failed to send verification code')
       }
 
-      sessionStorage.setItem('loginEmail', email)
-      setStep('code')
-      setTimeLeft(60)
+      // Check if this is an admin account
+      if (data.isAdmin) {
+        setIsAdmin(true)
+        setStep('password')
+      } else {
+        setIsAdmin(false)
+        sessionStorage.setItem('loginEmail', email)
+        setStep('code')
+        setTimeLeft(60)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to send verification code')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAdminPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Invalid email or password')
+      }
+
+      // Store admin token and redirect to admin dashboard
+      localStorage.setItem('adminToken', data.data.token)
+      localStorage.setItem('adminUser', JSON.stringify(data.data.admin))
+      
+      navigate('/admin/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password')
     } finally {
       setIsLoading(false)
     }
@@ -242,6 +281,72 @@ export default function Login() {
                   </div>
                 ))}
               </div>
+            </>
+          ) : step === 'password' ? (
+            <>
+              {/* Admin Password Step */}
+              <div className="mb-8">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
+                  Admin Login
+                </h1>
+                <p className="text-lg text-gray-600">
+                  Logging in as{' '}
+                  <span className="font-medium text-gray-900">{email}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleAdminPasswordSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 text-base"
+                    required
+                    disabled={isLoading}
+                    autoFocus
+                  />
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+                  disabled={isLoading || !password}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setStep('email')
+                    setPassword('')
+                    setError('')
+                  }}
+                  className="w-full"
+                >
+                  Back to email
+                </Button>
+              </form>
             </>
           ) : (
             <>

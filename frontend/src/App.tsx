@@ -9,7 +9,6 @@ import Payment from '@/pages/Payment'
 import Confirmation from '@/pages/Confirmation'
 import Login from '@/pages/Login'
 import PatientDashboard from '@/pages/PatientDashboard'
-import { AdminLogin } from '@/pages/AdminLogin'
 import AdminDashboard from '@/pages/AdminDashboard'
 import { AdminServices } from '@/pages/AdminServices'
 import { AdminShop } from '@/pages/AdminShop'
@@ -37,8 +36,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<PatientDashboard />} />
         
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
+        {/* Admin Routes - login redirects to /login */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/services" element={<AdminServices />} />

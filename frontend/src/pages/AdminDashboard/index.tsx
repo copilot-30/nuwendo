@@ -50,6 +50,13 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if admin is logged in
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) {
+      navigate('/login');
+      return;
+    }
+
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('adminToken');
@@ -58,6 +65,15 @@ export default function AdminDashboard() {
             Authorization: `Bearer ${token}`,
           },
         });
+        
+        // If unauthorized, redirect to login
+        if (response.status === 401) {
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('adminUser');
+          navigate('/login');
+          return;
+        }
+        
         if (response.ok) {
           const data = await response.json();
           setStats(data.stats);
@@ -70,7 +86,7 @@ export default function AdminDashboard() {
     };
 
     fetchStats();
-  }, []);
+  }, [navigate]);
 
   const formatDate = (dateStr: string) => {
     try {

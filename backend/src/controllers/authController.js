@@ -399,6 +399,20 @@ export const patientLoginSendCode = async (req, res) => {
 
     const { email } = req.body;
 
+    // Check if this email belongs to an admin
+    const adminCheck = await pool.query(
+      'SELECT id FROM admin_users WHERE email = $1 AND is_active = true',
+      [email]
+    );
+
+    if (adminCheck.rows.length > 0) {
+      return res.status(200).json({ 
+        success: true,
+        isAdmin: true,
+        message: 'Admin account detected. Please use password to login.' 
+      });
+    }
+
     // Check if user exists and is verified
     const userResult = await pool.query(
       'SELECT id, email, is_verified FROM users WHERE email = $1 AND role = $2',
@@ -438,6 +452,7 @@ export const patientLoginSendCode = async (req, res) => {
 
     res.json({
       success: true,
+      isAdmin: false,
       message: 'Verification code sent to your email',
       data: {
         email,
@@ -449,6 +464,102 @@ export const patientLoginSendCode = async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Server error sending verification code' 
+    });
+  }
+};
+
+// Admin Login with Password (unified endpoint)
+export const adminPasswordLogin = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
+    }
+
+    const { email, password } = req.body;
+
+    // Check if admin exists
+    const adminResult = await pool.query(
+      'SELECT id, username, email, password_hash, full_name, role, is_active FROM admin_users WHERE email = $1',
+      [email]
+    );
+
+    if (adminResult.rows.length === 0) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password' 
+      });
+    }
+
+    const admin = adminResult.rows[0];
+
+    // Check if admin is active
+    if (!admin.is_active) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Admin account is inactive' 
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, admin.password_hash);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password' 
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        adminId: admin.id, 
+        username: admin.username,
+        role: admin.role,
+        email: admin.email
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    // Create session in database
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await pool.query(
+      `INSERT INTO admin_sessions (admin_id, token, expires_at) 
+       VALUES ($1, $2, $3)`,
+      [admin.id, token, expiresAt]
+    );
+
+    // Update last login
+    await pool.query(
+      'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [admin.id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Admin login successful',
+      data: {
+        token,
+        admin: {
+          id: admin.id,
+          username: admin.username,
+          email: admin.email,
+          fullName: admin.full_name,
+          role: admin.role
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during admin login' 
     });
   }
 };

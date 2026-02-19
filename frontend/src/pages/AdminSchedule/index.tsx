@@ -76,7 +76,7 @@ export function AdminSchedule() {
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
     if (!token) {
-      navigate('/admin/login')
+      navigate('/login')
       return
     }
     fetchAvailability()
@@ -96,7 +96,7 @@ export function AdminSchedule() {
       
       if (!response.ok) {
         if (response.status === 401) {
-          navigate('/admin/login')
+          navigate('/login')
           return
         }
         throw new Error(data.message || 'Failed to fetch availability')
