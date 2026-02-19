@@ -422,6 +422,8 @@ const getBookings = async (req, res) => {
               b.booking_time as slot_time,
               b.phone_number as booking_phone,
               b.phone_number as patient_phone,
+              b.reschedule_count, b.original_booking_date, b.original_booking_time,
+              b.rescheduled_at, b.rescheduled_by, b.reschedule_reason,
               u.first_name, u.last_name, 
               u.email as patient_email,
               CONCAT(u.first_name, ' ', u.last_name) as patient_name,

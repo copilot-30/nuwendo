@@ -57,6 +57,11 @@ interface Booking {
   completed_at?: string;
   completed_by_name?: string;
   created_at: string;
+  reschedule_count?: number;
+  original_booking_date?: string;
+  original_booking_time?: string;
+  rescheduled_at?: string;
+  rescheduled_by?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -216,6 +221,8 @@ export default function AdminBookings() {
   // Reschedule states
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   
   // Business status update states
   const [showBusinessStatusDialog, setShowBusinessStatusDialog] = useState(false);
@@ -277,8 +284,32 @@ export default function AdminBookings() {
       reason: ''
     });
     setRescheduleError(null);
+    setAvailableSlots([]);
     setShowRescheduleDialog(true);
     setIsModalOpen(false); // Close the booking details dialog
+  };
+
+  const fetchAvailableSlots = async (date: string) => {
+    if (!date || !selectedBooking) return;
+    
+    setLoadingSlots(true);
+    try {
+      // Include appointment type from the selected booking
+      const appointmentType = selectedBooking.appointment_type || 'on-site';
+      const response = await fetch(`${API_URL}/reschedule/available-slots?date=${date}&appointment_type=${appointmentType}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAvailableSlots(data.availableSlots || []);
+      } else {
+        setAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
   };
 
   const handleRescheduleSubmit = async () => {
@@ -558,13 +589,25 @@ export default function AdminBookings() {
                           {booking.time_status.replace('_', ' ')}
                         </Badge>
                       )}
+                      {booking.reschedule_count && booking.reschedule_count > 0 && (
+                        <Badge className="bg-orange-100 text-orange-700 text-xs">
+                          ↻ Rescheduled ({booking.reschedule_count}x)
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-400" />
-                      <span>{formatDate(booking.slot_date)}</span>
+                      <div className="flex-1">
+                        <span>{formatDate(booking.slot_date)}</span>
+                        {booking.reschedule_count && booking.reschedule_count > 0 && booking.original_booking_date && (
+                          <div className="text-xs text-orange-600 mt-0.5">
+                            Originally: {formatDate(booking.original_booking_date)} at {formatTime(booking.original_booking_time || '')}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gray-400" />
@@ -670,6 +713,34 @@ export default function AdminBookings() {
                     </div>
                   </div>
                 </div>
+
+                {/* Reschedule Information */}
+                {selectedBooking.reschedule_count && selectedBooking.reschedule_count > 0 && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <div className="bg-orange-100 rounded-full p-1">
+                        <svg className="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-orange-900">
+                          This appointment has been rescheduled {selectedBooking.reschedule_count} time(s)
+                        </p>
+                        {selectedBooking.original_booking_date && selectedBooking.original_booking_time && (
+                          <p className="text-xs text-orange-700 mt-1">
+                            Originally scheduled: {formatDate(selectedBooking.original_booking_date)} at {formatTime(selectedBooking.original_booking_time)}
+                          </p>
+                        )}
+                        {selectedBooking.rescheduled_at && (
+                          <p className="text-xs text-orange-600 mt-1">
+                            Last rescheduled: {new Date(selectedBooking.rescheduled_at).toLocaleString()} by {selectedBooking.rescheduled_by || 'unknown'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t pt-4">
                   <h4 className="text-sm font-medium text-gray-500 mb-3">
@@ -861,7 +932,10 @@ export default function AdminBookings() {
                     <Input
                       type="date"
                       value={rescheduleForm.new_date}
-                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_date: e.target.value }))}
+                      onChange={(e) => {
+                        setRescheduleForm(prev => ({ ...prev, new_date: e.target.value, new_time: '' }));
+                        fetchAvailableSlots(e.target.value);
+                      }}
                       min={new Date().toISOString().split('T')[0]}
                       className="w-full"
                     />
@@ -869,14 +943,37 @@ export default function AdminBookings() {
 
                   <div>
                     <label className="text-sm font-medium text-gray-900 block mb-1">
-                      New Time
+                      New Time {loadingSlots && <span className="text-xs text-gray-500">(Loading available slots...)</span>}
                     </label>
-                    <Input
-                      type="time"
-                      value={rescheduleForm.new_time}
-                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
-                      className="w-full"
-                    />
+                    {rescheduleForm.new_date && availableSlots.length > 0 ? (
+                      <select
+                        value={rescheduleForm.new_time}
+                        onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select available time slot</option>
+                        {availableSlots.map((slot) => (
+                          <option key={slot.id} value={slot.start_time}>
+                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : rescheduleForm.new_date && !loadingSlots && availableSlots.length === 0 ? (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-700">
+                          ⚠️ No available time slots for this date. Please select a different date.
+                        </p>
+                      </div>
+                    ) : (
+                      <Input
+                        type="time"
+                        value={rescheduleForm.new_time}
+                        onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
+                        className="w-full"
+                        disabled={!rescheduleForm.new_date}
+                        placeholder="Select a date first"
+                      />
+                    )}
                   </div>
 
                   <div>

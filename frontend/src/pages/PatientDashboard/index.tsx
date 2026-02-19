@@ -34,6 +34,11 @@ interface Appointment {
   phone_number?: string
   duration_minutes?: number
   video_call_link?: string
+  reschedule_count?: number
+  original_booking_date?: string
+  original_booking_time?: string
+  rescheduled_at?: string
+  rescheduled_by?: string
 }
 
 interface PatientProfile {
@@ -72,6 +77,8 @@ export default function PatientDashboard() {
     reason: ''
   })
   const [rescheduleError, setRescheduleError] = useState<string | null>(null)
+  const [availableSlots, setAvailableSlots] = useState<any[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
   
   // Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -405,6 +412,29 @@ export default function PatientDashboard() {
     return hoursUntilAppointment >= 24 // Same as cancel - 24 hour restriction
   }
 
+  const fetchAvailableSlots = async (date: string) => {
+    if (!date || !selectedAppointment) return
+    
+    setLoadingSlots(true)
+    try {
+      // Include appointment type from the selected appointment
+      const appointmentType = selectedAppointment.appointment_type || 'on-site';
+      const response = await fetch(`${BASE_URL}/api/reschedule/available-slots?date=${date}&appointment_type=${appointmentType}`)
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        setAvailableSlots(data.availableSlots || [])
+      } else {
+        setAvailableSlots([])
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error)
+      setAvailableSlots([])
+    } finally {
+      setLoadingSlots(false)
+    }
+  }
+
   const handleRescheduleClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment)
     setRescheduleForm({
@@ -413,6 +443,7 @@ export default function PatientDashboard() {
       reason: ''
     })
     setRescheduleError(null)
+    setAvailableSlots([])
     setShowRescheduleDialog(true)
   }
 
@@ -620,10 +651,22 @@ export default function PatientDashboard() {
                           <Calendar className="w-6 h-6 text-brand" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
+                            {apt.reschedule_count && apt.reschedule_count > 0 && (
+                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+                                ↻ Rescheduled
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-500">
                             {formatDate(apt.booking_date)} at {formatTime(apt.booking_time)} - {formatTime(getEndTime(apt.booking_time, apt.duration_minutes || 30))}
                           </p>
+                          {apt.reschedule_count && apt.reschedule_count > 0 && apt.original_booking_date && (
+                            <p className="text-xs text-orange-600 mt-1">
+                              Originally: {formatDate(apt.original_booking_date)} at {formatTime(apt.original_booking_time || '')}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -678,10 +721,22 @@ export default function PatientDashboard() {
                             <Calendar className="w-6 h-6 text-brand" />
                           </div>
                           <div>
-                            <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
+                              {apt.reschedule_count && apt.reschedule_count > 0 && (
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+                                  ↻ Rescheduled ({apt.reschedule_count}x)
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-500">
                               {formatDate(apt.booking_date)} at {formatTime(apt.booking_time)} - {formatTime(getEndTime(apt.booking_time, apt.duration_minutes || 30))}
                             </p>
+                            {apt.reschedule_count && apt.reschedule_count > 0 && apt.original_booking_date && (
+                              <p className="text-xs text-orange-600 mt-1">
+                                Originally scheduled: {formatDate(apt.original_booking_date)} at {formatTime(apt.original_booking_time || '')}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1163,7 +1218,15 @@ export default function PatientDashboard() {
                 <Input
                   type="date"
                   value={rescheduleForm.new_date}
-                  onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_date: e.target.value }))}
+                  onChange={(e) => {
+                    const newDate = e.target.value
+                    setRescheduleForm(prev => ({ ...prev, new_date: newDate, new_time: '' }))
+                    if (newDate) {
+                      fetchAvailableSlots(newDate)
+                    } else {
+                      setAvailableSlots([])
+                    }
+                  }}
                   min={new Date().toISOString().split('T')[0]}
                   className="w-full"
                 />
@@ -1171,14 +1234,34 @@ export default function PatientDashboard() {
 
               <div>
                 <label className="text-sm font-medium text-gray-900 block mb-1">
-                  New Time
+                  New Time {loadingSlots && <span className="text-xs text-gray-500">(Loading available slots...)</span>}
                 </label>
-                <Input
-                  type="time"
-                  value={rescheduleForm.new_time}
-                  onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
-                  className="w-full"
-                />
+                {rescheduleForm.new_date && availableSlots.length > 0 ? (
+                  <select
+                    value={rescheduleForm.new_time}
+                    onChange={(e) => setRescheduleForm(prev => ({ ...prev, new_time: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select available time slot</option>
+                    {availableSlots.map((slot) => (
+                      <option key={slot.id} value={slot.start_time}>
+                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                      </option>
+                    ))}
+                  </select>
+                ) : rescheduleForm.new_date && !loadingSlots && availableSlots.length === 0 ? (
+                  <div className="w-full px-3 py-2 border border-orange-300 bg-orange-50 rounded-md text-sm text-orange-700">
+                    ⚠️ No available time slots for this date. Please select a different date.
+                  </div>
+                ) : (
+                  <Input
+                    type="time"
+                    value={rescheduleForm.new_time}
+                    disabled
+                    placeholder="Select a date first"
+                    className="w-full"
+                  />
+                )}
               </div>
 
               <div>

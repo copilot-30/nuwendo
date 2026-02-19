@@ -134,11 +134,19 @@ const canReschedule = async (bookingId, userType) => {
       };
     }
 
-    // Check booking status
-    if (!['pending', 'approved'].includes(booking.status)) {
+    // Check booking status - can't reschedule cancelled bookings
+    if (booking.status === 'cancelled') {
       return { 
         allowed: false, 
-        reason: 'Can only reschedule pending or approved bookings' 
+        reason: 'Cannot reschedule a cancelled booking' 
+      };
+    }
+
+    // Check business status - can't reschedule completed or no-show appointments
+    if (['completed', 'no_show'].includes(booking.business_status)) {
+      return { 
+        allowed: false, 
+        reason: `Cannot reschedule ${booking.business_status === 'completed' ? 'completed' : 'no-show'} appointments` 
       };
     }
 
@@ -175,6 +183,102 @@ export const rescheduleBooking = async (req, res) => {
 
     const booking = permission.booking;
 
+    // ✅ CRITICAL: Validate that the service supports the appointment type
+    const serviceCheck = await client.query(
+      `SELECT availability_type, name 
+       FROM services 
+       WHERE id = $1 AND is_active = true`,
+      [booking.service_id]
+    );
+
+    if (serviceCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Service not found or inactive' 
+      });
+    }
+
+    const service = serviceCheck.rows[0];
+    const appointmentType = booking.appointment_type;
+
+    // Check if service availability matches appointment type
+    // availability_type can be: 'online', 'on-site', or 'both'
+    if (service.availability_type === 'online' && appointmentType !== 'online') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        success: false, 
+        message: `This service (${service.name}) is only available for online appointments. You cannot reschedule an online appointment to on-site.` 
+      });
+    }
+
+    if (service.availability_type === 'on-site' && appointmentType !== 'on-site') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        success: false, 
+        message: `This service (${service.name}) is only available for on-site appointments. You cannot reschedule an on-site appointment to online.` 
+      });
+    }
+
+    // If availability_type is 'both', allow either appointment type
+
+    // ✅ CRITICAL: Check if the new time slot is available
+    const conflictCheck = await client.query(
+      `SELECT id, service_id, user_id, booking_date, booking_time 
+       FROM bookings 
+       WHERE booking_date = $1 
+       AND booking_time = $2 
+       AND id != $3
+       AND status NOT IN ('cancelled')
+       AND business_status NOT IN ('cancelled')`,
+      [new_date, new_time, bookingId]
+    );
+
+    if (conflictCheck.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ 
+        success: false, 
+        message: 'This time slot is already booked. Please select a different date or time.',
+        conflict: true
+      });
+    }
+
+    // ✅ Check if the new time slot is within working hours
+    const dayOfWeek = new Date(new_date).getDay();
+    
+    // Use the same appointment type from the booking (already validated above)
+    const workingHoursCheck = await client.query(
+      `SELECT start_time, end_time, slot_interval_minutes 
+       FROM working_hours 
+       WHERE day_of_week = $1 
+       AND appointment_type = $2
+       AND is_active = true`,
+      [dayOfWeek, appointmentType]
+    );
+
+    if (workingHoursCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No working hours configured for this day and appointment type.',
+        invalid_timeslot: true
+      });
+    }
+
+    // Validate that the selected time is within working hours range
+    const workingHours = workingHoursCheck.rows[0];
+    const selectedTime = new_time;
+    
+    // Check if selected time falls within working hours range
+    if (selectedTime < workingHours.start_time || selectedTime >= workingHours.end_time) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Selected time is not available in our schedule. Please choose from available time slots.',
+        invalid_timeslot: true
+      });
+    }
+
     // Store original dates if this is the first reschedule
     let originalDate = booking.original_booking_date || booking.booking_date;
     let originalTime = booking.original_booking_time || booking.booking_time;
@@ -199,6 +303,7 @@ export const rescheduleBooking = async (req, res) => {
     );
 
     // Update booking
+    // Reset business_status to 'scheduled' when rescheduled (fresh appointment)
     const updateResult = await client.query(
       `UPDATE bookings 
        SET booking_date = $1,
@@ -208,7 +313,8 @@ export const rescheduleBooking = async (req, res) => {
            reschedule_count = reschedule_count + 1,
            rescheduled_by = $5,
            rescheduled_at = CURRENT_TIMESTAMP,
-           reschedule_reason = $6
+           reschedule_reason = $6,
+           business_status = 'scheduled'
        WHERE id = $7
        RETURNING *`,
       [new_date, new_time, originalDate, originalTime, userType, reason, bookingId]
@@ -284,6 +390,114 @@ export const checkReschedulePermission = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Failed to check reschedule permission' 
+    });
+  }
+};
+
+/**
+ * Get available time slots for rescheduling (excludes already booked slots)
+ */
+export const getAvailableTimeSlotsForReschedule = async (req, res) => {
+  try {
+    const { date, appointment_type = 'on-site' } = req.query;
+    
+    if (!date) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Date is required' 
+      });
+    }
+
+    const bookingDate = new Date(date);
+    const dayOfWeek = bookingDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Get working hours for this day of week
+    const workingHoursResult = await pool.query(
+      `SELECT start_time, end_time, slot_interval_minutes 
+       FROM working_hours 
+       WHERE day_of_week = $1 
+       AND appointment_type = $2 
+       AND is_active = true`,
+      [dayOfWeek, appointment_type]
+    );
+
+    if (workingHoursResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        date,
+        dayOfWeek,
+        availableSlots: [],
+        bookedSlots: 0,
+        message: 'No working hours configured for this day'
+      });
+    }
+
+    const workingHours = workingHoursResult.rows[0];
+    const intervalMinutes = workingHours.slot_interval_minutes || 30;
+
+    // Generate time slots from working hours
+    const generateTimeSlots = (startTime, endTime, interval) => {
+      const slots = [];
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      for (let minutes = startMinutes; minutes < endMinutes; minutes += interval) {
+        const hour = Math.floor(minutes / 60);
+        const min = minutes % 60;
+        const nextMin = minutes + interval;
+        const nextHour = Math.floor(nextMin / 60);
+        const nextMinute = nextMin % 60;
+        
+        const startTimeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+        const endTimeStr = `${String(nextHour).padStart(2, '0')}:${String(nextMinute).padStart(2, '0')}:00`;
+        
+        slots.push({
+          start_time: startTimeStr,
+          end_time: endTimeStr
+        });
+      }
+      
+      return slots;
+    };
+
+    const allSlots = generateTimeSlots(
+      workingHours.start_time,
+      workingHours.end_time,
+      intervalMinutes
+    );
+
+    // Get already booked slots for this date (excluding cancelled)
+    const bookedResult = await pool.query(
+      `SELECT booking_time 
+       FROM bookings 
+       WHERE booking_date = $1 
+       AND status NOT IN ('cancelled')
+       AND business_status NOT IN ('cancelled')`,
+      [date]
+    );
+
+    const bookedTimes = bookedResult.rows.map(row => row.booking_time);
+
+    // Filter out booked slots
+    const availableSlots = allSlots.filter(slot => {
+      return !bookedTimes.includes(slot.start_time);
+    });
+
+    res.json({
+      success: true,
+      date,
+      dayOfWeek,
+      availableSlots,
+      bookedSlots: bookedTimes.length
+    });
+  } catch (error) {
+    console.error('Error getting available slots for reschedule:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to get available time slots' 
     });
   }
 };

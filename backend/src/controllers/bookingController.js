@@ -259,7 +259,9 @@ const getPatientBookings = async (req, res) => {
     // Get all bookings for this user
     const result = await pool.query(
       `SELECT b.*, s.name as service_name, s.description as service_description,
-              s.price, s.duration_minutes
+              s.price, s.duration_minutes,
+              b.reschedule_count, b.original_booking_date, b.original_booking_time,
+              b.rescheduled_at, b.rescheduled_by, b.reschedule_reason
        FROM bookings b
        JOIN services s ON b.service_id = s.id
        WHERE b.user_id = $1
