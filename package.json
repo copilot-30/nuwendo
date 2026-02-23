@@ -6,8 +6,7 @@
   "scripts": {
     "install:frontend": "cd frontend && npm install",
     "install:backend": "cd backend && npm install",
-    "install:database": "cd database && npm install",
-    "install:all": "npm run install:frontend && npm run install:backend && npm run install:database",
+    "install:all": "npm run install:frontend && npm run install:backend",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
