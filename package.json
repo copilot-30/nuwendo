@@ -2,15 +2,29 @@
   "name": "nowendo",
   "version": "1.0.0",
   "description": "Full-stack application with React, Node.js, and PostgreSQL",
+  "type": "module",
   "scripts": {
     "install:frontend": "cd frontend && npm install",
     "install:backend": "cd backend && npm install",
-    "install:all": "npm run install:frontend && npm run install:backend",
+    "install:database": "cd database && npm install",
+    "install:all": "npm run install:frontend && npm run install:backend && npm run install:database",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
-    "build:frontend": "cd frontend && npm run build"
+    "build:frontend": "cd frontend && npm run build",
+    "db:migrate": "node nuwendo.js db:migrate",
+    "db:fresh": "node nuwendo.js db:fresh",
+    "db:seed": "node nuwendo.js db:seed",
+    "db:setup": "node nuwendo.js db:setup",
+    "db:status": "node nuwendo.js db:status",
+    "db:rollback": "node nuwendo.js db:rollback",
+    "db:create": "node nuwendo.js db:create",
+    "db:drop": "node nuwendo.js db:drop"
   },
   "keywords": ["react", "nodejs", "express", "postgresql", "fullstack"],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  }
 }
