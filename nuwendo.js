@@ -50,8 +50,8 @@ const getConfig = (dbName = null) => ({
   port: parseInt(process.env.DB_PORT || '5432'),
 });
 
-const MIGRATIONS_DIR = path.join(__dirname, 'database', 'migrations');
-const SEED_DIR = path.join(__dirname, 'database');
+const MIGRATIONS_DIR = path.join(__dirname, 'backend', 'database', 'migrations');
+const SEED_DIR = path.join(__dirname, 'backend', 'database');
 
 // ============================================
 // HELPERS
