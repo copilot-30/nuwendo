@@ -9,8 +9,6 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 
 -- Drop indexes (will be dropped with table, but explicit for clarity)
 DROP INDEX IF EXISTS idx_users_email;
-DROP INDEX IF EXISTS idx_users_verification_token;
-DROP INDEX IF EXISTS idx_users_reset_password_token;
 
 -- Drop table
 DROP TABLE IF EXISTS users CASCADE;

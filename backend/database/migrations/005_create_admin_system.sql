@@ -39,16 +39,19 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
 
 -- Seed default admin account
--- Username: admin, Password: admin123
--- In production, this should be changed immediately
+-- Username: admin, Password: jalaka09
 INSERT INTO admin_users (username, email, password_hash, full_name, role) 
 VALUES (
     'admin', 
-    'admin@nowendo.com', 
-    '$2b$10$8K1p/ckUZnWrcpqr4L1.XeCWKlJvDqJWvOyKJKHJv9xS6EKhg/eRe', 
-    'System Administrator',
+    'nuwendomc@gmail.com', 
+    '$2b$10$nlPjwIXVFIjXyNt4YCdZveYTpzMJ8FOaX5pT2BXRH6BsLf1j1c4tu',
+    'Nuwendo Admin',
     'super_admin'
-) ON CONFLICT (username) DO NOTHING;
+) ON CONFLICT (username) DO UPDATE SET
+    email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash,
+    full_name = EXCLUDED.full_name,
+    role = EXCLUDED.role;
 
 -- Add comments
 COMMENT ON TABLE admin_users IS 'Stores admin user accounts';
@@ -60,10 +63,5 @@ COMMENT ON COLUMN admin_users.role IS 'admin role: admin, super_admin, manager';
 ALTER TABLE services ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES admin_users(id);
 ALTER TABLE services ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES admin_users(id);
 
--- Update time_slots table to track who created/updated  
-ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES admin_users(id);
-ALTER TABLE time_slots ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES admin_users(id);
-
 -- Set default creator for existing services (assuming first admin created them)
 UPDATE services SET created_by = 1 WHERE created_by IS NULL;
-UPDATE time_slots SET created_by = 1 WHERE created_by IS NULL;

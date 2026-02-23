@@ -415,8 +415,8 @@ export const patientLoginSendCode = async (req, res) => {
 
     // Check if user exists and is verified
     const userResult = await pool.query(
-      'SELECT id, email, is_verified FROM users WHERE email = $1 AND role = $2',
-      [email, 'patient']
+      'SELECT id, email, is_verified FROM users WHERE email = $1',
+      [email]
     );
 
     if (userResult.rows.length === 0) {
@@ -580,10 +580,10 @@ export const patientLoginVerifyCode = async (req, res) => {
 
     // Find user with matching email and code
     const result = await pool.query(
-      `SELECT id, email, first_name, last_name, role, verification_code, verification_code_expires 
+      `SELECT id, email, first_name, last_name, verification_code, verification_code_expires 
        FROM users 
-       WHERE email = $1 AND role = $2`,
-      [email, 'patient']
+       WHERE email = $1`,
+      [email]
     );
 
     if (result.rows.length === 0) {
@@ -629,8 +629,7 @@ export const patientLoginVerifyCode = async (req, res) => {
           id: user.id,
           email: user.email,
           firstName: user.first_name,
-          lastName: user.last_name,
-          role: user.role
+          lastName: user.last_name
         }
       }
     });

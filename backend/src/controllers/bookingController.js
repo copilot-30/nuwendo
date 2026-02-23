@@ -21,55 +21,6 @@ const getServices = async (req, res) => {
   }
 };
 
-// Get available time slots for a specific date
-const getAvailableSlots = async (req, res) => {
-  try {
-    const { date } = req.query;
-    
-    if (!date) {
-      return res.status(400).json({ message: 'Date is required' });
-    }
-
-    const bookingDate = new Date(date);
-    const dayOfWeek = bookingDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-    // Get time slots for this day of week
-    const slotsResult = await pool.query(
-      `SELECT id, start_time, end_time 
-       FROM time_slots 
-       WHERE day_of_week = $1 AND is_active = true
-       ORDER BY start_time`,
-      [dayOfWeek]
-    );
-
-    // Get already booked slots for this date
-    const bookedResult = await pool.query(
-      `SELECT booking_time 
-       FROM bookings 
-       WHERE booking_date = $1 AND status != 'cancelled'`,
-      [date]
-    );
-
-    const bookedTimes = bookedResult.rows.map(row => row.booking_time);
-
-    // Filter out booked slots
-    const availableSlots = slotsResult.rows.filter(slot => {
-      const slotTime = slot.start_time;
-      return !bookedTimes.includes(slotTime);
-    });
-
-    res.json({
-      success: true,
-      date,
-      dayOfWeek,
-      availableSlots
-    });
-  } catch (error) {
-    console.error('Get available slots error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
 // Create a booking
 const createBooking = async (req, res) => {
   try {
@@ -464,7 +415,6 @@ const getTimeStatus = (bookingDate, bookingTime) => {
 
 export {
   getServices,
-  getAvailableSlots,
   createBooking,
   getBooking,
   getPatientBookings,

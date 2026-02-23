@@ -364,7 +364,7 @@ const dbSeed = async () => {
     // 1. Seed admin user
     log.step('Seeding admin user...');
     try {
-      // Use a resilient upsert approach — ON CONFLICT on email (most reliable)
+      // Use a resilient upsert approach — ON CONFLICT on username (most reliable)
       await client.query(`
         INSERT INTO admin_users (username, email, password_hash, full_name, role) 
         VALUES (
@@ -373,7 +373,8 @@ const dbSeed = async () => {
           '$2b$10$nlPjwIXVFIjXyNt4YCdZveYTpzMJ8FOaX5pT2BXRH6BsLf1j1c4tu',
           'Nuwendo Admin',
           'super_admin'
-        ) ON CONFLICT (email) DO UPDATE SET
+        ) ON CONFLICT (username) DO UPDATE SET
+          email = EXCLUDED.email,
           password_hash = EXCLUDED.password_hash,
           full_name = EXCLUDED.full_name,
           role = EXCLUDED.role;

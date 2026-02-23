@@ -3,12 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 // Helper function to create audit log
-const createAuditLog = async (adminId, action, tableName = null, recordId = null, oldValues = null, newValues = null) => {
+const createAuditLog = async (adminId, action, resourceType = null, resourceId = null, oldValues = null, newValues = null) => {
   try {
     await pool.query(
-      `INSERT INTO admin_audit_log (admin_id, action, table_name, record_id, old_values, new_values)
+      `INSERT INTO admin_audit_log (admin_id, action, resource_type, resource_id, old_values, new_values)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [adminId, action, tableName, recordId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null]
+      [adminId, action, resourceType, resourceId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null]
     );
   } catch (error) {
     console.error('Create audit log error:', error);

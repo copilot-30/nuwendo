@@ -158,70 +158,6 @@ export const isAuthenticated = () => {
   return !!localStorage.getItem('authToken');
 };
 
-// Get dashboard stats
-export const getDashboardStats = async () => {
-  const response = await fetch(`${API_URL}/patient/dashboard/stats`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch dashboard stats');
-  }
-
-  return data;
-};
-
-// Get appointments
-export const getAppointments = async () => {
-  const response = await fetch(`${API_URL}/patient/appointments`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch appointments');
-  }
-
-  return data;
-};
-
-// Get medications
-export const getMedications = async () => {
-  const response = await fetch(`${API_URL}/patient/medications`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch medications');
-  }
-
-  return data;
-};
-
-// Get medical records
-export const getMedicalRecords = async () => {
-  const response = await fetch(`${API_URL}/patient/medical-records`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch medical records');
-  }
-
-  return data;
-};
-
 // =============== BOOKING FUNNEL API ===============
 
 // Service type
@@ -232,13 +168,6 @@ export interface Service {
   duration_minutes: number;
   price: string;
   category: string;
-}
-
-// Time slot type
-export interface TimeSlot {
-  id: number;
-  start_time: string;
-  end_time: string;
 }
 
 // Get all services
@@ -252,22 +181,6 @@ export const getServices = async (): Promise<{ success: boolean; services: Servi
   
   if (!response.ok) {
     throw new Error(data.message || 'Failed to fetch services');
-  }
-
-  return data;
-};
-
-// Get available time slots for a date
-export const getAvailableSlots = async (date: string): Promise<{ success: boolean; availableSlots: TimeSlot[] }> => {
-  const response = await fetch(`${API_URL}/booking/slots?date=${date}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' }
-  });
-
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch available slots');
   }
 
   return data;

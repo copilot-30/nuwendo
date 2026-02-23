@@ -845,18 +845,12 @@ export {
 // Get all users (patients) with pagination and search
 const getAllUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, role } = req.query;
+    const { page = 1, limit = 20, search } = req.query;
     const offset = (page - 1) * limit;
 
     let whereConditions = [];
     let queryParams = [];
     let paramIndex = 1;
-
-    // By default, filter to patients only unless role is specified
-    if (role) {
-      whereConditions.push(`u.role = $${paramIndex++}`);
-      queryParams.push(role);
-    }
 
     if (search) {
       whereConditions.push(`(u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`);
@@ -878,7 +872,7 @@ const getAllUsers = async (req, res) => {
     mainQueryParams.push(parseInt(limit), parseInt(offset));
 
     const result = await pool.query(
-      `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_verified, u.created_at, u.updated_at,
+      `SELECT u.id, u.email, u.first_name, u.last_name, u.is_verified, u.created_at, u.updated_at,
               pp.phone_number, pp.date_of_birth, pp.gender,
               (SELECT COUNT(*) FROM bookings b WHERE b.user_id = u.id) as booking_count,
               (SELECT MAX(b.booking_date) FROM bookings b WHERE b.user_id = u.id) as last_booking
@@ -912,7 +906,7 @@ const getAllUsers = async (req, res) => {
 // Get audit logs with pagination and filters
 const getAuditLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 50, action, table_name, admin_id, date_from, date_to } = req.query;
+    const { page = 1, limit = 50, action, resource_type, admin_id, date_from, date_to } = req.query;
     const offset = (page - 1) * limit;
 
     let whereConditions = [];
@@ -924,9 +918,9 @@ const getAuditLogs = async (req, res) => {
       queryParams.push(`%${action}%`);
     }
 
-    if (table_name) {
-      whereConditions.push(`al.table_name = $${paramIndex++}`);
-      queryParams.push(table_name);
+    if (resource_type) {
+      whereConditions.push(`al.resource_type = $${paramIndex++}`);
+      queryParams.push(resource_type);
     }
 
     if (admin_id) {

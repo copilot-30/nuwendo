@@ -2,7 +2,6 @@ import express from 'express';
 import { body, query, param } from 'express-validator';
 import { 
   getServices, 
-  getAvailableSlots, 
   createBooking, 
   getBooking, 
   getPatientBookings, 
@@ -15,11 +14,6 @@ const router = express.Router();
 
 // Get all services
 router.get('/services', getServices);
-
-// Get available time slots for a date
-router.get('/slots', [
-  query('date').notEmpty().withMessage('Date is required')
-], getAvailableSlots);
 
 // Get public payment settings (QR code, instructions)
 router.get('/payment-settings', getPublicPaymentSettings);
