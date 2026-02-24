@@ -653,7 +653,7 @@ export default function PatientDashboard() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
-                            {apt.reschedule_count && apt.reschedule_count > 0 && (
+                            {(apt.reschedule_count ?? 0) > 0 && (
                               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
                                 ↻ Rescheduled
                               </span>
@@ -662,7 +662,7 @@ export default function PatientDashboard() {
                           <p className="text-sm text-gray-500">
                             {formatDate(apt.booking_date)} at {formatTime(apt.booking_time)} - {formatTime(getEndTime(apt.booking_time, apt.duration_minutes || 30))}
                           </p>
-                          {apt.reschedule_count && apt.reschedule_count > 0 && apt.original_booking_date && (
+                          {(apt.reschedule_count ?? 0) > 0 && apt.original_booking_date && (
                             <p className="text-xs text-orange-600 mt-1">
                               Originally: {formatDate(apt.original_booking_date)} at {formatTime(apt.original_booking_time || '')}
                             </p>
@@ -723,7 +723,7 @@ export default function PatientDashboard() {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
-                              {apt.reschedule_count && apt.reschedule_count > 0 && (
+                              {(apt.reschedule_count ?? 0) > 0 && (
                                 <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
                                   ↻ Rescheduled ({apt.reschedule_count}x)
                                 </span>
@@ -732,7 +732,7 @@ export default function PatientDashboard() {
                             <p className="text-sm text-gray-500">
                               {formatDate(apt.booking_date)} at {formatTime(apt.booking_time)} - {formatTime(getEndTime(apt.booking_time, apt.duration_minutes || 30))}
                             </p>
-                            {apt.reschedule_count && apt.reschedule_count > 0 && apt.original_booking_date && (
+                            {(apt.reschedule_count ?? 0) > 0 && apt.original_booking_date && (
                               <p className="text-xs text-orange-600 mt-1">
                                 Originally scheduled: {formatDate(apt.original_booking_date)} at {formatTime(apt.original_booking_time || '')}
                               </p>

@@ -4,6 +4,19 @@ import pool from '../config/database.js';
 
 const router = express.Router();
 
+// Step 0: Check Google OAuth status
+router.get('/google/status', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT setting_key FROM system_settings WHERE setting_key = 'google_refresh_token'`
+    );
+    const connected = result.rows.length > 0;
+    res.json({ connected });
+  } catch (error) {
+    res.json({ connected: false });
+  }
+});
+
 // Step 1: Redirect admin to Google for authorization
 router.get('/google/authorize', (req, res) => {
   const authUrl = getAuthUrl();

@@ -589,7 +589,7 @@ export default function AdminBookings() {
                           {booking.time_status.replace('_', ' ')}
                         </Badge>
                       )}
-                      {booking.reschedule_count && booking.reschedule_count > 0 && (
+                      {(booking.reschedule_count ?? 0) > 0 && (
                         <Badge className="bg-orange-100 text-orange-700 text-xs">
                           ↻ Rescheduled ({booking.reschedule_count}x)
                         </Badge>
@@ -602,7 +602,7 @@ export default function AdminBookings() {
                       <Calendar className="h-4 w-4 text-gray-400" />
                       <div className="flex-1">
                         <span>{formatDate(booking.slot_date)}</span>
-                        {booking.reschedule_count && booking.reschedule_count > 0 && booking.original_booking_date && (
+                        {(booking.reschedule_count ?? 0) > 0 && booking.original_booking_date && (
                           <div className="text-xs text-orange-600 mt-0.5">
                             Originally: {formatDate(booking.original_booking_date)} at {formatTime(booking.original_booking_time || '')}
                           </div>
@@ -715,7 +715,7 @@ export default function AdminBookings() {
                 </div>
 
                 {/* Reschedule Information */}
-                {selectedBooking.reschedule_count && selectedBooking.reschedule_count > 0 && (
+                {(selectedBooking.reschedule_count ?? 0) > 0 && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                     <div className="flex items-start gap-2">
                       <div className="bg-orange-100 rounded-full p-1">

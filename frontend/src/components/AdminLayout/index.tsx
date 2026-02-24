@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { 
   Calendar, 
@@ -12,10 +12,12 @@ import {
   Menu,
   X,
   Home,
-  ShoppingBag
+  ShoppingBag,
+  Cog,
+  Video
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { API_URL } from '@/config/api'
+import { API_URL, BASE_URL } from '@/config/api'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -35,12 +37,22 @@ const navItems = [
   { path: '/admin/schedule', label: 'Schedule', icon: Clock },
   { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/audit-logs', label: 'Logs', icon: FileText },
+  { path: '/admin/settings', label: 'Settings', icon: Cog },
 ]
 
 export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/oauth/google/status`)
+      .then(r => r.json())
+      .then(d => setGoogleConnected(d.connected))
+      .catch(() => setGoogleConnected(false))
+  }, [location.pathname]) // recheck on every page change
 
   const handleLogout = async () => {
     try {
@@ -163,6 +175,37 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Floating Google warning — bottom-right, visible on every page */}
+      {googleConnected === false && !bannerDismissed && location.pathname !== '/admin/settings' && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full shadow-lg rounded-xl border border-red-200 bg-white overflow-hidden">
+          <div className="bg-red-600 px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-white shrink-0" />
+              <span className="text-sm font-semibold text-white">Google Account Not Connected</span>
+            </div>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-white/80 hover:text-white ml-2"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-sm text-gray-600">
+              Online appointments won't receive a Google Meet link until you connect your Google account.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => navigate('/admin/settings')}
+              className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white"
+            >
+              Connect Now
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

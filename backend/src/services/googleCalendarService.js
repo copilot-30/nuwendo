@@ -42,23 +42,60 @@ const getStoredTokens = async () => {
 };
 
 /**
+ * Save refreshed access token back to database
+ */
+const saveAccessToken = async (accessToken) => {
+  try {
+    await pool.query(
+      `INSERT INTO system_settings (setting_key, setting_value)
+       VALUES ('google_access_token', $1)
+       ON CONFLICT (setting_key)
+       DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP`,
+      [accessToken]
+    );
+  } catch (error) {
+    console.error('Error saving refreshed access token:', error);
+  }
+};
+
+/**
+ * Get an authenticated OAuth2 client, automatically refreshing the access token
+ * if it has expired using the stored refresh token.
+ */
+const getAuthenticatedClient = async () => {
+  const tokens = await getStoredTokens();
+
+  if (!tokens || !tokens.refresh_token) {
+    throw new Error('Google OAuth not configured. Please authorize the application first by visiting /api/oauth/google/authorize');
+  }
+
+  // Always set both tokens — the client will use refresh_token to renew automatically
+  oauth2Client.setCredentials({
+    access_token: tokens.access_token || null,
+    refresh_token: tokens.refresh_token
+  });
+
+  // Listen for token refresh events and persist the new access token
+  oauth2Client.on('tokens', async (newTokens) => {
+    if (newTokens.access_token) {
+      console.log('Google access token refreshed automatically');
+      await saveAccessToken(newTokens.access_token);
+    }
+  });
+
+  return oauth2Client;
+};
+
+/**
  * Create a Google Calendar event with Meet link
  * @param {Object} appointmentDetails - Details of the appointment
  * @returns {Promise<{meetLink: string, eventId: string}>}
  */
 export const createGoogleMeetLink = async (appointmentDetails) => {
   try {
-    // Get stored tokens
-    const tokens = await getStoredTokens();
-    
-    if (!tokens || !tokens.access_token) {
-      throw new Error('Google OAuth not configured. Please authorize the application first by visiting /api/oauth/google/authorize');
-    }
-
-    // Set credentials
-    oauth2Client.setCredentials(tokens);
-    
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    // Get authenticated client — automatically refreshes expired access token
+    const auth = await getAuthenticatedClient();
+    const calendar = google.calendar({ version: 'v3', auth });
     
     const { summary, description, startDateTime, durationMinutes, attendeeEmail } = appointmentDetails;
     
