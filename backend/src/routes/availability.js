@@ -3,6 +3,65 @@ import pool from '../config/database.js';
 
 const router = express.Router();
 
+/**
+ * Get which appointment types have working hours configured for a specific date.
+ * Used by the booking UI to only show types that actually have slots available.
+ */
+router.get('/types', async (req, res) => {
+  try {
+    const { date, serviceId } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'Date parameter is required' });
+    }
+
+    const requestedDate = new Date(date);
+    const dayOfWeek = requestedDate.getDay();
+
+    // Check which appointment types exist in working_hours (or availability_windows) for this day
+    const result = await pool.query(
+      `SELECT DISTINCT appointment_type FROM (
+        SELECT appointment_type FROM availability_windows
+        WHERE day_of_week = $1 AND is_active = true
+        UNION
+        SELECT appointment_type FROM working_hours
+        WHERE day_of_week = $1 AND is_active = true
+      ) AS combined`,
+      [dayOfWeek]
+    );
+
+    const scheduledTypes = result.rows.map(r => r.appointment_type);
+
+    // If a serviceId is given, also filter by what the service supports
+    let allowedTypes = scheduledTypes;
+    if (serviceId) {
+      const serviceResult = await pool.query(
+        'SELECT availability_type FROM services WHERE id = $1',
+        [serviceId]
+      );
+      if (serviceResult.rows.length > 0) {
+        const serviceAvailability = serviceResult.rows[0].availability_type;
+        if (serviceAvailability === 'online') {
+          allowedTypes = scheduledTypes.filter(t => t === 'online');
+        } else if (serviceAvailability === 'on-site') {
+          allowedTypes = scheduledTypes.filter(t => t === 'on-site');
+        }
+        // 'both' => keep all scheduled types
+      }
+    }
+
+    res.json({
+      success: true,
+      date,
+      dayOfWeek,
+      availableTypes: allowedTypes  // e.g. ['on-site'] or ['online', 'on-site'] or []
+    });
+  } catch (error) {
+    console.error('Error fetching availability types:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch availability types' });
+  }
+});
+
 // Helper function to convert time string to minutes since midnight
 const timeToMinutes = (timeStr) => {
   const [hours, mins] = timeStr.split(':').map(Number);
