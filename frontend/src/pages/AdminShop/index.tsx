@@ -16,19 +16,25 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  DollarSign, 
   Save,
   ToggleLeft,
   ToggleRight,
   Loader2,
   Package,
   Users,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
-
 import { API_URL } from '@/config/api'
+
+interface ShopVariant {
+  id?: number
+  name: string
+  price: string | number
+  is_active: boolean
+}
 
 interface ShopItem {
   id: number
@@ -42,6 +48,7 @@ interface ShopItem {
   created_at: string
   updated_at: string
   created_by_name: string | null
+  variants: ShopVariant[]
 }
 
 interface Patient {
@@ -71,19 +78,17 @@ export function AdminShop() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    price: '',
     category: '',
     image_url: '',
     stock_quantity: 0,
     is_active: true
   })
+  const [variants, setVariants] = useState<ShopVariant[]>([
+    { name: '', price: '', is_active: true }
+  ])
 
   const defaultCategories = ['Peptides', 'Supplements', 'Equipment']
-  
-  // Get unique categories from existing items
   const existingCategories = Array.from(new Set(items.map(s => s.category).filter(Boolean)))
-  
-  // Combine default and existing categories
   const allCategories = Array.from(new Set([...defaultCategories, ...existingCategories])).sort()
 
   useEffect(() => {
@@ -161,7 +166,6 @@ export function AdminShop() {
       const url = editingItem 
         ? `${API_URL}/admin/shop/${editingItem.id}`
         : `${API_URL}/admin/shop`
-      
       const method = editingItem ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
@@ -170,14 +174,11 @@ export function AdminShop() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, variants })
       })
 
       const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to save item')
-      }
+      if (!response.ok) throw new Error(data.message || 'Failed to save item')
 
       await fetchItems()
       resetForm()
@@ -270,13 +271,12 @@ export function AdminShop() {
     setFormData({
       name: '',
       description: '',
-      price: '',
       category: '',
       image_url: '',
       stock_quantity: 0,
       is_active: true
     })
-    setEditingItem(null)
+    setVariants([{ name: '', price: '', is_active: true }])
     setShowItemForm(false)
     setShowCustomCategory(false)
     setCustomCategory('')
@@ -287,13 +287,31 @@ export function AdminShop() {
     setFormData({
       name: item.name,
       description: item.description,
-      price: item.price,
       category: item.category,
       image_url: item.image_url,
       stock_quantity: item.stock_quantity,
       is_active: item.is_active
     })
+    setVariants(
+      item.variants && item.variants.length > 0
+        ? item.variants.map(v => ({ name: v.name, price: v.price, is_active: v.is_active }))
+        : [{ name: '', price: '', is_active: true }]
+    )
     setShowItemForm(true)
+  }
+
+  const addVariant = () => {
+    setVariants([...variants, { name: '', price: '', is_active: true }])
+  }
+
+  const removeVariant = (index: number) => {
+    setVariants(variants.filter((_, i) => i !== index))
+  }
+
+  const updateVariant = (index: number, field: keyof ShopVariant, value: string | number | boolean) => {
+    const updated = [...variants]
+    updated[index] = { ...updated[index], [field]: value }
+    setVariants(updated)
   }
 
   const filteredItems = selectedCategory === 'all' 
@@ -383,30 +401,40 @@ export function AdminShop() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="price">Price (PHP) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    required
-                    placeholder="0.00"
-                  />
+              {/* Variants */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Variants (e.g. 50mg, 30mg, Per Shot) *</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Variant
+                  </Button>
                 </div>
-
-                <div>
-                  <Label htmlFor="stock">Stock Quantity *</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={formData.stock_quantity}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
-                    required
-                    placeholder="0"
-                  />
+                <div className="space-y-2">
+                  {variants.map((v, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Name (e.g. 50mg)"
+                        value={v.name}
+                        onChange={e => updateVariant(i, 'name', e.target.value)}
+                        required
+                        className="flex-1"
+                      />
+                      <Input
+                        placeholder="Price (PHP)"
+                        type="number"
+                        step="0.01"
+                        value={v.price}
+                        onChange={e => updateVariant(i, 'price', e.target.value)}
+                        required
+                        className="w-36"
+                      />
+                      {variants.length > 1 && (
+                        <button type="button" onClick={() => removeVariant(i)} className="text-red-400 hover:text-red-600">
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -620,16 +648,17 @@ export function AdminShop() {
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between text-sm mb-3">
-                      <span className="flex items-center text-gray-600">
-                        <DollarSign className="h-4 w-4 mr-1" />
-                        ₱{parseFloat(item.price).toLocaleString()}
-                      </span>
-                      <span className="flex items-center text-gray-600">
-                        <Package className="h-4 w-4 mr-1" />
-                        Stock: {item.stock_quantity}
-                      </span>
-                    </div>
+                    {/* Variants */}
+                    {item.variants && item.variants.length > 0 && (
+                      <div className="mb-3 space-y-1">
+                        {item.variants.map((v, i) => (
+                          <div key={i} className="flex justify-between text-sm">
+                            <span className="text-gray-600">{v.name}</span>
+                            <span className="font-medium text-gray-900">₱{parseFloat(String(v.price)).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="flex gap-2">
                       <Button

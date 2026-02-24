@@ -836,9 +836,11 @@ export default function PatientDashboard() {
 
         {activeTab === 'shop' && (
           <div className="space-y-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Shop</h1>
-            <p className="text-gray-600">Browse and purchase available products</p>
-            
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Shop</h1>
+              <p className="text-gray-600">Browse and purchase available products</p>
+            </div>
+
             {shopItems.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-gray-500">No items available at the moment.</p>
@@ -850,8 +852,8 @@ export default function PatientDashboard() {
                     <CardContent className="p-0">
                       {item.image_url && (
                         <div className="h-48 bg-gray-100 overflow-hidden">
-                          <img 
-                            src={item.image_url} 
+                          <img
+                            src={item.image_url}
                             alt={item.name}
                             className="w-full h-full object-cover"
                           />
@@ -860,26 +862,30 @@ export default function PatientDashboard() {
                       <div className="p-4">
                         <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
                         {item.category && (
-                          <p className="text-xs text-gray-500 mb-2">{item.category}</p>
+                          <p className="text-xs text-brand mb-2">{item.category}</p>
                         )}
                         {item.description && (
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                             {item.description}
                           </p>
                         )}
-                        <div className="flex items-center justify-between">
-                          <span className="text-lg font-bold text-brand">
-                            ₱{parseFloat(item.price).toLocaleString()}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            Stock: {item.stock_quantity}
-                          </span>
-                        </div>
-                        <Button 
-                          className="w-full mt-3 bg-brand hover:bg-brand/90"
-                          disabled={item.stock_quantity === 0}
-                        >
-                          {item.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+
+                        {/* Variants pricing list */}
+                        {item.variants && item.variants.length > 0 ? (
+                          <div className="space-y-1.5 mb-4">
+                            {item.variants.map((v: any) => (
+                              <div key={v.id} className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">{v.name}</span>
+                                <span className="font-semibold text-gray-900">
+                                  ₱{parseFloat(v.price).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <Button className="w-full bg-brand hover:bg-brand/90">
+                          Order
                         </Button>
                       </div>
                     </CardContent>

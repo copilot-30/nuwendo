@@ -117,19 +117,32 @@ router.get('/items/by-email', async (req, res) => {
       });
     }
 
-    // Fetch shop items
+    // Fetch shop items with variants
     const result = await pool.query(`
       SELECT 
-        id,
-        name,
-        description,
-        price,
-        category,
-        image_url,
-        stock_quantity
-      FROM shop_items
-      WHERE is_active = true
-      ORDER BY category, name
+        si.id,
+        si.name,
+        si.description,
+        si.category,
+        si.image_url,
+        si.is_active,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', siv.id,
+              'name', siv.name,
+              'price', siv.price,
+              'is_active', siv.is_active,
+              'sort_order', siv.sort_order
+            ) ORDER BY siv.sort_order, siv.id
+          ) FILTER (WHERE siv.id IS NOT NULL AND siv.is_active = true),
+          '[]'
+        ) as variants
+      FROM shop_items si
+      LEFT JOIN shop_item_variants siv ON siv.shop_item_id = si.id
+      WHERE si.is_active = true
+      GROUP BY si.id
+      ORDER BY si.category, si.name
     `);
     
     res.json({ 
@@ -165,16 +178,29 @@ router.get('/items', authMiddleware, async (req, res) => {
 
     const result = await pool.query(`
       SELECT 
-        id,
-        name,
-        description,
-        price,
-        category,
-        image_url,
-        stock_quantity
-      FROM shop_items
-      WHERE is_active = true
-      ORDER BY category, name
+        si.id,
+        si.name,
+        si.description,
+        si.category,
+        si.image_url,
+        si.is_active,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', siv.id,
+              'name', siv.name,
+              'price', siv.price,
+              'is_active', siv.is_active,
+              'sort_order', siv.sort_order
+            ) ORDER BY siv.sort_order, siv.id
+          ) FILTER (WHERE siv.id IS NOT NULL AND siv.is_active = true),
+          '[]'
+        ) as variants
+      FROM shop_items si
+      LEFT JOIN shop_item_variants siv ON siv.shop_item_id = si.id
+      WHERE si.is_active = true
+      GROUP BY si.id
+      ORDER BY si.category, si.name
     `);
     
     res.json({ 
