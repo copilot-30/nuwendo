@@ -1,38 +1,45 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Get Supabase credentials from environment variables
-// Note: dotenv is already loaded in server.js
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Note: dotenv is loaded via src/config/env.js before server.js imports
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Supabase URL:', supabaseUrl);
-  console.error('Supabase Key exists:', !!supabaseServiceKey);
-  throw new Error('Missing Supabase credentials in .env file');
-}
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase credentials in .env file (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
+  }
 
-console.log('✓ Supabase Storage initialized');
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  return createClient(supabaseUrl, supabaseServiceKey);
+};
 
 /**
- * Upload a file to Supabase Storage
+ * Upload a file to Supabase Storage (retries once on timeout — handles cold-start paused projects)
  * @param {string} bucket - The storage bucket name
  * @param {string} filePath - The path/name for the file in storage
  * @param {Buffer} fileBuffer - The file data as a buffer
  * @param {string} contentType - The MIME type of the file
  * @returns {Promise<{url: string}>} - The public URL of the uploaded file
  */
-export const uploadFile = async (bucket, filePath, fileBuffer, contentType) => {
+export const uploadFile = async (bucket, filePath, fileBuffer, contentType, attempt = 1) => {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(filePath, fileBuffer, {
         contentType,
-        upsert: false
+        upsert: true
       });
 
     if (error) {
+      // Retry once on timeout errors (Supabase project cold start after pause)
+      const isTimeout = error.message?.toLowerCase().includes('timeout') || 
+                        error.message?.toLowerCase().includes('timed out');
+      if (isTimeout && attempt === 1) {
+        console.log('Supabase timeout on first attempt, retrying in 3s...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        return uploadFile(bucket, filePath, fileBuffer, contentType, 2);
+      }
       console.error('Supabase upload error:', error);
       throw new Error(`Failed to upload file: ${error.message}`);
     }
@@ -57,6 +64,7 @@ export const uploadFile = async (bucket, filePath, fileBuffer, contentType) => {
  */
 export const deleteFile = async (bucket, filePath) => {
   try {
+    const supabase = getSupabaseClient();
     const { error } = await supabase.storage
       .from(bucket)
       .remove([filePath]);
@@ -108,4 +116,4 @@ export const uploadBase64Image = async (base64Data, folder = 'receipts') => {
   }
 };
 
-export default supabase;
+export default getSupabaseClient;

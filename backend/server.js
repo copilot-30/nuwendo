@@ -1,6 +1,6 @@
+import './src/config/env.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './src/routes/auth.js';
 import patientRoutes from './src/routes/patient.js';
 import bookingRoutes from './src/routes/booking.js';
@@ -13,8 +13,6 @@ import shopRoutes from './src/routes/shop.js';
 import patientShopRoutes from './src/routes/patientShop.js';
 import rescheduleRoutes from './src/routes/reschedule.js';
 import pool from './src/config/database.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
