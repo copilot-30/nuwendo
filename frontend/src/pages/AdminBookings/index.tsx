@@ -84,12 +84,13 @@ const timeStatusColors: Record<string, string> = {
   past: 'bg-gray-200 text-gray-600',
 };
 
-const statusIcons: Record<string, React.ReactNode> = {
-  pending: <AlertCircle className="h-3 w-3" />,
-  confirmed: <CheckCircle className="h-3 w-3" />,
-  cancelled: <XCircle className="h-3 w-3" />,
-  completed: <CheckCircle className="h-3 w-3" />,
-};
+// Status icons for future use
+// const statusIcons: Record<string, React.ReactNode> = {
+//   pending: <AlertCircle className="h-3 w-3" />,
+//   confirmed: <CheckCircle className="h-3 w-3" />,
+//   cancelled: <XCircle className="h-3 w-3" />,
+//   completed: <CheckCircle className="h-3 w-3" />,
+// };
 
 // Calendar View Component
 interface CalendarViewProps {
@@ -216,7 +217,7 @@ export default function AdminBookings() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [_selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Reschedule states
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);

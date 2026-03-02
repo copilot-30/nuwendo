@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Heart, Shield, Clock, MessageCircle, RefreshCw } from 'lucide-react'
-import { API_URL, BASE_URL } from '@/config/api'
+import { BASE_URL } from '@/config/api'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -13,7 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState(sessionStorage.getItem('loginEmail') || '')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState(['', '', '', '', '', ''])
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [_isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [error, setError] = useState('')

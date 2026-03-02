@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { API_URL, BASE_URL } from '@/config/api'
+import { BASE_URL } from '@/config/api'
 import { 
   Calendar, 
   LogOut, 
@@ -404,13 +404,14 @@ export default function PatientDashboard() {
     }
   }
 
-  const canRescheduleAppointment = (bookingDate: string, bookingTime: string) => {
-    const dateStr = bookingDate.split('T')[0]
-    const appointmentDateTime = new Date(`${dateStr}T${bookingTime}`)
-    const now = new Date()
-    const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
-    return hoursUntilAppointment >= 24 // Same as cancel - 24 hour restriction
-  }
+  // Function reserved for future use
+  // const canRescheduleAppointment = (bookingDate: string, bookingTime: string) => {
+  //   const dateStr = bookingDate.split('T')[0]
+  //   const appointmentDateTime = new Date(`${dateStr}T${bookingTime}`)
+  //   const now = new Date()
+  //   const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+  //   return hoursUntilAppointment >= 24 // Same as cancel - 24 hour restriction
+  // }
 
   const fetchAvailableSlots = async (date: string) => {
     if (!date || !selectedAppointment) return
