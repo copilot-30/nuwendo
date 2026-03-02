@@ -21,6 +21,8 @@ database/*.backup
 !package.json
 !tsconfig.json
 !components.json
+!vercel.json
+!railway.json
 cloudflared-config*.yml
 
 # Scripts
