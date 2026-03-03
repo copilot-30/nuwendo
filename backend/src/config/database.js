@@ -5,11 +5,23 @@ dotenv.config();
 
 const { Pool } = pg;
 
+console.log('Database Configuration:');
+console.log('- DATABASE_URL present:', !!process.env.DATABASE_URL);
+if (process.env.DATABASE_URL) {
+  // Log only the protocol and host, not the full URL with credentials
+  const url = new URL(process.env.DATABASE_URL);
+  console.log('- Database Host:', url.hostname);
+  console.log('- Database Port:', url.port);
+  console.log('- Database Name:', url.pathname.substring(1));
+}
+
 // Support both DATABASE_URL (Railway, Heroku) and individual connection params
 const pool = process.env.DATABASE_URL 
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: false  // Railway internal network doesn't need SSL
+      ssl: false,  // Railway internal network doesn't need SSL
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000
     })
   : new Pool({
       user: process.env.DB_USER || 'postgres',
@@ -17,16 +29,34 @@ const pool = process.env.DATABASE_URL
       database: process.env.DB_NAME || 'nuwendo_db',
       password: process.env.DB_PASSWORD || 'postgres',
       port: parseInt(process.env.DB_PORT || '5432'),
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000
     });
 
-// Test database connection
-pool.on('connect', () => {
-  console.log('✓ Connected to PostgreSQL database');
-});
+// Test database connection immediately
+pool.connect()
+  .then(client => {
+    console.log('✓ Connected to PostgreSQL database');
+    client.release();
+  })
+  .catch(err => {
+    console.error('✗ Failed to connect to PostgreSQL database:');
+    console.error('  Error:', err.message);
+    console.error('  Code:', err.code);
+    if (err.code === 'ENOTFOUND') {
+      console.error('  → Database host not found. Check DATABASE_URL.');
+    } else if (err.code === 'ECONNREFUSED') {
+      console.error('  → Connection refused. Database might not be running.');
+    } else if (err.code === '28P01') {
+      console.error('  → Authentication failed. Check database credentials.');
+    } else if (err.code === '3D000') {
+      console.error('  → Database does not exist.');
+    }
+  });
 
+// Handle connection pool errors
 pool.on('error', (err) => {
-  console.error('✗ Unexpected database error:', err);
-  process.exit(-1);
+  console.error('✗ Unexpected database pool error:', err);
 });
 
 export default pool;

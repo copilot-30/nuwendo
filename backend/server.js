@@ -34,16 +34,33 @@ app.get('/', (req, res) => {
   });
 });
 
+// Basic health check without database
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK',
+    service: 'nuwendo-backend',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/health', async (req, res) => {
   try {
-    // Check database connection
-    await pool.query('SELECT NOW()');
+    // Check database connection with timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database query timeout')), 4000)
+    );
+    
+    const queryPromise = pool.query('SELECT NOW()');
+    
+    await Promise.race([queryPromise, timeoutPromise]);
+    
     res.json({ 
       status: 'OK', 
       timestamp: new Date().toISOString(),
       database: 'Connected'
     });
   } catch (error) {
+    console.error('Health check database error:', error.message);
     res.status(500).json({ 
       status: 'ERROR', 
       timestamp: new Date().toISOString(),
