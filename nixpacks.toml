@@ -1,10 +1,11 @@
-providers = []
-
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["cd backend && npm ci --omit=dev || npm install --omit=dev"]
+cmds = ["npm install --prefix backend --omit=dev"]
+
+[phases.build]
+cmds = ["echo 'No build step required'"]
 
 [start]
-cmd = "cd backend && node server.js"
+cmd = "npm start --prefix backend"
