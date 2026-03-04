@@ -72,9 +72,10 @@ export const sendVerificationCode = async (req, res) => {
     try {
       await sendVerificationEmail(email, code);
       emailSent = true;
+      console.log('✅ Verification email sent successfully');
     } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-      console.log('⚠️ Email service unavailable - code will be returned in response');
+      console.error('❌ Email sending failed:', emailError);
+      console.log('⚠️ Code will be returned in response as fallback');
       console.log(`📧 VERIFICATION CODE for ${email}: ${code}`);
     }
 
@@ -86,7 +87,7 @@ export const sendVerificationCode = async (req, res) => {
       data: {
         email,
         expiresIn: 600, // seconds
-        code: !emailSent ? code : undefined // Return code if email fails
+        code: !emailSent ? code : undefined // Only return code if email fails
       }
     });
   } catch (error) {
@@ -469,9 +470,10 @@ export const patientLoginSendCode = async (req, res) => {
     try {
       await sendVerificationEmail(email, code);
       emailSent = true;
+      console.log('✅ Verification email sent successfully');
     } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-      console.log('⚠️ Email service unavailable - code will be returned in response');
+      console.error('❌ Email sending failed:', emailError);
+      console.log('⚠️ Code will be returned in response as fallback');
       console.log(`📧 VERIFICATION CODE for ${email}: ${code}`);
     }
 
@@ -484,7 +486,7 @@ export const patientLoginSendCode = async (req, res) => {
       data: {
         email,
         expiresIn: 600, // seconds
-        code: !emailSent ? code : undefined // Return code if email fails
+        code: !emailSent ? code : undefined // Only return code if email fails
       }
     });
   } catch (error) {

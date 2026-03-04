@@ -1,37 +1,9 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// Create transporter
-// For development, using Gmail (you'll need to configure app password)
-// For production, use a proper email service like SendGrid, Mailgun, etc.
-const createTransporter = () => {
-  // For development, we'll log to console instead of actually sending
-  // To actually send emails, configure with real SMTP settings
-  
-  if (process.env.EMAIL_SERVICE === 'gmail') {
-    console.log('📧 Configuring Gmail transporter');
-    console.log('EMAIL_USER exists:', !!process.env.EMAIL_USER);
-    console.log('EMAIL_PASSWORD exists:', !!process.env.EMAIL_PASSWORD);
-    
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-      },
-      pool: true,
-      maxConnections: 1,
-      rateDelta: 20000,
-      rateLimit: 5
-    });
-  }
-  
-  // For development - just log emails to console
-  return nodemailer.createTransport({
-    streamTransport: true,
-    newline: 'unix',
-    buffer: true
-  });
-};
+// Initialize Resend
+const resend = process.env.RESEND_API_KEY 
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 // Generate 6-digit verification code
 export const generateVerificationCode = () => {
@@ -40,78 +12,67 @@ export const generateVerificationCode = () => {
 
 // Send verification email
 export const sendVerificationEmail = async (email, code) => {
-  const transporter = createTransporter();
-  
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || 'noreply@nuwendo.com',
-    to: email,
-    subject: 'Verify Your Nuwendo Account',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #2563eb 0%, #9333ea 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .code-box { background: white; border: 2px dashed #2563eb; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
-          .code { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2563eb; }
-          .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0;">Nuwendo</h1>
-            <p style="margin: 10px 0 0 0;">Verify Your Email Address</p>
-          </div>
-          <div class="content">
-            <p>Hello!</p>
-            <p>Thank you for signing up with Nuwendo. To complete your registration, please use the verification code below:</p>
-            
-            <div class="code-box">
-              <p style="margin: 0 0 10px 0; color: #6b7280;">Your Verification Code</p>
-              <div class="code">${code}</div>
-            </div>
-            
-            <p>This code will expire in <strong>10 minutes</strong>.</p>
-            <p>If you didn't request this code, please ignore this email.</p>
-            
-            <div class="footer">
-              <p>© 2026 Nuwendo. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  };
+  if (!resend) {
+    console.error('❌ Resend API key not configured');
+    throw new Error('Email service not configured');
+  }
 
   try {
-    console.log('📧 Attempting to send verification email to:', email);
+    console.log('📧 Sending verification email via Resend to:', email);
     
-    // Add timeout to prevent hanging (reduced to 5 seconds for faster response)
-    const sendWithTimeout = Promise.race([
-      transporter.sendMail(mailOptions),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout')), 5000)
-      )
-    ]);
-    
-    const info = await sendWithTimeout;
-    
-    console.log('✅ Email sent successfully');
-    
-    // For development, log the email
-    if (process.env.NODE_ENV === 'development') {
-      console.log('\n📧 ===== VERIFICATION EMAIL =====');
-      console.log('To:', email);
-      console.log('Verification Code:', code);
-      console.log('================================\n');
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+      to: email,
+      subject: 'Verify Your Nuwendo Account',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #2563eb 0%, #9333ea 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+            .code-box { background: white; border: 2px dashed #2563eb; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+            .code { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2563eb; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">Nuwendo</h1>
+              <p style="margin: 10px 0 0 0;">Verify Your Email Address</p>
+            </div>
+            <div class="content">
+              <p>Hello!</p>
+              <p>Thank you for signing up with Nuwendo. To complete your registration, please use the verification code below:</p>
+              
+              <div class="code-box">
+                <p style="margin: 0 0 10px 0; color: #6b7280;">Your Verification Code</p>
+                <div class="code">${code}</div>
+              </div>
+              
+              <p>This code will expire in <strong>10 minutes</strong>.</p>
+              <p>If you didn't request this code, please ignore this email.</p>
+              
+              <div class="footer">
+                <p>© 2026 Nuwendo. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error('❌ Resend error:', error);
+      throw new Error(`Failed to send email: ${error.message}`);
     }
-    
-    return { success: true, messageId: info.messageId };
+
+    console.log('✅ Email sent successfully via Resend, ID:', data.id);
+    return { success: true, messageId: data.id };
   } catch (error) {
     console.error('❌ Email sending error:', error.message);
     throw new Error('Failed to send verification email: ' + error.message);
@@ -120,33 +81,40 @@ export const sendVerificationEmail = async (email, code) => {
 
 // Send password reset email (for future use)
 export const sendPasswordResetEmail = async (email, resetLink) => {
-  const transporter = createTransporter();
-  
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || 'noreply@nuwendo.com',
-    to: email,
-    subject: 'Reset Your Nuwendo Password',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #2563eb;">Password Reset Request</h2>
-          <p>You requested to reset your password. Click the link below to set a new password:</p>
-          <p><a href="${resetLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a></p>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        </div>
-      </body>
-      </html>
-    `
-  };
+  if (!resend) {
+    console.error('❌ Resend API key not configured');
+    throw new Error('Email service not configured');
+  }
 
   try {
-    await transporter.sendMail(mailOptions);
-    return { success: true };
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+      to: email,
+      subject: 'Reset Your Nuwendo Password',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563eb;">Password Reset Request</h2>
+            <p>You requested to reset your password. Click the link below to set a new password:</p>
+            <p><a href="${resetLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a></p>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request this, please ignore this email.</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error('❌ Resend error:', error);
+      throw new Error(`Failed to send email: ${error.message}`);
+    }
+
+    return { success: true, messageId: data.id };
   } catch (error) {
-    console.error('Email sending error:', error);
-    throw new Error('Failed to send password reset email');
+    console.error('❌ Email sending error:', error.message);
+    throw new Error('Failed to send password reset email: ' + error.message);
   }
 };

@@ -21,7 +21,8 @@
     "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^7.0.13",
-    "pg": "^8.17.2"
+    "pg": "^8.17.2",
+    "resend": "^6.9.3"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
