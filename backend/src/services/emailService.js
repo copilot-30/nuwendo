@@ -91,11 +91,11 @@ export const sendVerificationEmail = async (email, code) => {
   try {
     console.log('📧 Attempting to send verification email to:', email);
     
-    // Add timeout to prevent hanging
+    // Add timeout to prevent hanging (reduced to 5 seconds for faster response)
     const sendWithTimeout = Promise.race([
       transporter.sendMail(mailOptions),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout')), 10000)
+        setTimeout(() => reject(new Error('Email sending timeout')), 5000)
       )
     ]);
     

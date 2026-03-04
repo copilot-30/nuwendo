@@ -74,8 +74,7 @@ export const sendVerificationCode = async (req, res) => {
       emailSent = true;
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
-      // Continue anyway - code is saved in database
-      console.log('⚠️ Email service unavailable - showing code in logs for development');
+      console.log('⚠️ Email service unavailable - code will be returned in response');
       console.log(`📧 VERIFICATION CODE for ${email}: ${code}`);
     }
 
@@ -83,11 +82,11 @@ export const sendVerificationCode = async (req, res) => {
       success: true,
       message: emailSent 
         ? 'Verification code sent to your email'
-        : 'Email service temporarily unavailable. Please check console for code.',
+        : 'Email service temporarily unavailable. Code provided in response.',
       data: {
         email,
         expiresIn: 600, // seconds
-        code: process.env.NODE_ENV === 'production' && !emailSent ? code : undefined // Send code in response if email fails in production
+        code: !emailSent ? code : undefined // Return code if email fails
       }
     });
   } catch (error) {
@@ -472,8 +471,7 @@ export const patientLoginSendCode = async (req, res) => {
       emailSent = true;
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
-      // Continue anyway - code is saved in database
-      console.log('⚠️ Email service unavailable - showing code in logs for development');
+      console.log('⚠️ Email service unavailable - code will be returned in response');
       console.log(`📧 VERIFICATION CODE for ${email}: ${code}`);
     }
 
@@ -482,11 +480,11 @@ export const patientLoginSendCode = async (req, res) => {
       isAdmin: false,
       message: emailSent 
         ? 'Verification code sent to your email'
-        : 'Email service temporarily unavailable. Please check console for code.',
+        : 'Email service temporarily unavailable. Code provided in response.',
       data: {
         email,
         expiresIn: 600, // seconds
-        code: process.env.NODE_ENV === 'production' && !emailSent ? code : undefined // Send code in response if email fails in production
+        code: !emailSent ? code : undefined // Return code if email fails
       }
     });
   } catch (error) {
