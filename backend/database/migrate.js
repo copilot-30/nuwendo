@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '../backend/.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Database configuration
 // Use DATABASE_URL if available (Railway), otherwise use individual vars (local)
@@ -57,6 +57,8 @@ const runMigration = async (client, filename) => {
   const filePath = path.join(__dirname, 'migrations', filename);
   const sql = fs.readFileSync(filePath, 'utf8');
   
+  console.log(`  Running: ${filename}`);
+  
   try {
     await client.query('BEGIN');
     await client.query(sql);
@@ -65,6 +67,8 @@ const runMigration = async (client, filename) => {
     console.log(`✓ Applied migration: ${filename}`);
   } catch (error) {
     await client.query('ROLLBACK');
+    console.error(`✗ Failed migration: ${filename}`);
+    console.error(`  Error: ${error.message}`);
     throw error;
   }
 };

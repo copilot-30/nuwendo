@@ -1,4 +1,4 @@
--- Migration: Fix receipt index
+﻿-- Migration: Fix receipt index
 -- Created: 2026-02-01
 
 -- Drop the index on payment_receipt_url if it exists

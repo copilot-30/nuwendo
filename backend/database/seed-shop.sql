@@ -14,17 +14,17 @@ VALUES
 -- Note: price on the parent is 0 — the real prices live in the variants below.
 
 -- Tirzepatide variants
-INSERT INTO shop_item_variants (shop_item_id, name, price, stock_quantity, is_active, sort_order)
-SELECT id, '50mg',     15000.00, 0, true, 1 FROM shop_items WHERE name = 'Tirzepatide'
+INSERT INTO shop_item_variants (shop_item_id, name, price, is_active, sort_order)
+SELECT id, '50mg',     15000.00, true, 1 FROM shop_items WHERE name = 'Tirzepatide'
 UNION ALL
-SELECT id, '30mg',      9000.00, 0, true, 2 FROM shop_items WHERE name = 'Tirzepatide'
+SELECT id, '30mg',      9000.00, true, 2 FROM shop_items WHERE name = 'Tirzepatide'
 UNION ALL
-SELECT id, 'Per Shot',  2500.00, 0, true, 3 FROM shop_items WHERE name = 'Tirzepatide';
+SELECT id, 'Per Shot',  2500.00, true, 3 FROM shop_items WHERE name = 'Tirzepatide';
 
 -- Semaglutide variants
-INSERT INTO shop_item_variants (shop_item_id, name, price, stock_quantity, is_active, sort_order)
-SELECT id, '8mg',       9000.00, 0, true, 1 FROM shop_items WHERE name = 'Semaglutide'
+INSERT INTO shop_item_variants (shop_item_id, name, price, is_active, sort_order)
+SELECT id, '8mg',       9000.00, true, 1 FROM shop_items WHERE name = 'Semaglutide'
 UNION ALL
-SELECT id, '16mg',     16000.00, 0, true, 2 FROM shop_items WHERE name = 'Semaglutide'
+SELECT id, '16mg',     16000.00, true, 2 FROM shop_items WHERE name = 'Semaglutide'
 UNION ALL
-SELECT id, 'Per Shot',  2000.00, 0, true, 3 FROM shop_items WHERE name = 'Semaglutide';
+SELECT id, 'Per Shot',  2000.00, true, 3 FROM shop_items WHERE name = 'Semaglutide';

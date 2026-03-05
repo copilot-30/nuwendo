@@ -1,3 +1,5 @@
 -- Migration: Add Google Meet link to bookings
 -- SUPERSEDED: meeting_link was replaced by video_call_link (014_add_video_call_link.sql).
 -- This file is intentionally a no-op.
+
+SELECT 1; -- No-op migration
