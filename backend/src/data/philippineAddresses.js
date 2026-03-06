@@ -89,9 +89,7 @@ export const philippineAddresses = {
     { code: 'ZAMBOANGA_DEL_SUR', name: 'Zamboanga del Sur' },
     { code: 'ZAMBOANGA_SIBUGAY', name: 'Zamboanga Sibugay' },
   ],
-  
-  cities: {
-  
+
   cities: {
     // Metro Manila (NCR)
     NCR: [
