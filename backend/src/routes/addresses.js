@@ -1,5 +1,5 @@
 import express from 'express';
-import { philippineAddresses } from '../data/philippineAddresses.js';
+import { philippineAddresses, getBarangays } from '../data/philippineAddresses.js';
 
 const router = express.Router();
 
@@ -24,10 +24,13 @@ router.get('/cities/:provinceCode', (req, res) => {
 // Get barangays by city
 router.get('/barangays/:cityCode', (req, res) => {
   const { cityCode } = req.params;
-  const barangays = philippineAddresses.barangays[cityCode] || [];
+  const barangays = getBarangays(cityCode);
   res.json({
     success: true,
-    barangays: barangays.map(name => ({ name }))
+    barangays: barangays.map((name, index) => ({
+      code: `${cityCode}_BRG_${index + 1}`,
+      name
+    }))
   });
 });
 

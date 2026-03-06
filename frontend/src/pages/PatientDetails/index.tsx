@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Loader2, User } from 'lucide-react'
 import { BASE_URL } from '@/config/api'
+import { addressService } from '@/services/addressService'
 
 export default function PatientDetails() {
   const navigate = useNavigate()
@@ -21,12 +23,66 @@ export default function PatientDetails() {
     lastName: '',
     age: '',
     contactNumber: '',
-    cityAddress: '',
+    province: '',
+    city: '',
+    barangay: '',
+    streetAddress: '',
     height: '',
     weight: '',
     reasonForConsult: '',
     healthGoals: [] as string[]
   })
+
+  const [provinces, setProvinces] = useState<Array<{code: string, name: string}>>([])
+  const [cities, setCities] = useState<Array<{code: string, name: string}>>([])
+  const [barangays, setBarangays] = useState<Array<{code: string, name: string}>>([])
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState('')
+  const [selectedCityCode, setSelectedCityCode] = useState('')
+
+  useEffect(() => {
+    loadProvinces()
+  }, [])
+
+  const loadProvinces = async () => {
+    try {
+      const data = await addressService.getProvinces()
+      setProvinces(data)
+    } catch (err) {
+      console.error('Failed to load provinces:', err)
+    }
+  }
+
+  const handleProvinceChange = async (provinceCode: string) => {
+    setSelectedProvinceCode(provinceCode)
+    const province = provinces.find(p => p.code === provinceCode)
+    setFormData({ ...formData, province: province?.name || '', city: '', barangay: '' })
+    setSelectedCityCode('')
+    setCities([])
+    setBarangays([])
+    try {
+      const citiesData = await addressService.getCities(provinceCode)
+      setCities(citiesData)
+    } catch (err) {
+      console.error('Failed to load cities:', err)
+    }
+  }
+
+  const handleCityChange = async (cityCode: string) => {
+    setSelectedCityCode(cityCode)
+    const city = cities.find(c => c.code === cityCode)
+    setFormData({ ...formData, city: city?.name || '', barangay: '' })
+    setBarangays([])
+    try {
+      const barangaysData = await addressService.getBarangays(cityCode)
+      setBarangays(barangaysData)
+    } catch (err) {
+      console.error('Failed to load barangays:', err)
+    }
+  }
+
+  const handleBarangayChange = (barangayName: string) => {
+    setFormData({ ...formData, barangay: barangayName })
+  }
 
   const healthGoalOptions = [
     'Weight loss / fat loss',
@@ -57,6 +113,11 @@ export default function PatientDetails() {
       setError('Please select at least one health goal')
       return
     }
+
+    if (!formData.province || !formData.city || !formData.barangay || !formData.streetAddress) {
+      setError('Please complete all address fields')
+      return
+    }
     
     setError('')
     setIsLoading(true)
@@ -75,7 +136,11 @@ export default function PatientDetails() {
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: formData.contactNumber,
-          address: formData.cityAddress,
+          address: `${formData.streetAddress}, ${formData.barangay}, ${formData.city}, ${formData.province}`,
+          province: formData.province,
+          city: formData.city,
+          barangay: formData.barangay,
+          street_address: formData.streetAddress,
           age: formData.age,
           height: formData.height,
           weight: formData.weight,
@@ -185,16 +250,70 @@ export default function PatientDetails() {
               </div>
             </div>
 
-            {/* City Address */}
-            <div className="space-y-2">
-              <Label htmlFor="cityAddress">City Address *</Label>
-              <Input
-                id="cityAddress"
-                placeholder="Manila, Philippines"
-                value={formData.cityAddress}
-                onChange={(e) => setFormData({ ...formData, cityAddress: e.target.value })}
-                required
-              />
+            {/* Address Fields */}
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Complete Address *</Label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="province">Province</Label>
+                  <Select value={selectedProvinceCode} onValueChange={handleProvinceChange}>
+                    <SelectTrigger id="province">
+                      <SelectValue placeholder="Select province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinces.map((province) => (
+                        <SelectItem key={province.code} value={province.code}>
+                          {province.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">City/Municipality</Label>
+                  <Select value={selectedCityCode} onValueChange={handleCityChange} disabled={!selectedProvinceCode}>
+                    <SelectTrigger id="city">
+                      <SelectValue placeholder="Select city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map((city) => (
+                        <SelectItem key={city.code} value={city.code}>
+                          {city.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="barangay">Barangay</Label>
+                  <Select value={formData.barangay} onValueChange={handleBarangayChange} disabled={!selectedCityCode}>
+                    <SelectTrigger id="barangay">
+                      <SelectValue placeholder="Select barangay" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {barangays.map((barangay) => (
+                        <SelectItem key={barangay.code} value={barangay.name}>
+                          {barangay.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="streetAddress">House/Building No., Street Name *</Label>
+                <Input
+                  id="streetAddress"
+                  placeholder="e.g., 123 Main Street, Building A"
+                  value={formData.streetAddress}
+                  onChange={(e) => setFormData({ ...formData, streetAddress: e.target.value })}
+                  required
+                />
+              </div>
             </div>
 
             {/* Height and Weight */}
