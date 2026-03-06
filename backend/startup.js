@@ -94,7 +94,8 @@ async function startup() {
       await runMigrations();
       await runSeeds();
     } else {
-      console.log('✅ Database tables exist. Skipping migrations.\n');
+      console.log('✅ Database tables exist. Running migrations to apply any new changes...\n');
+      await runMigrations();
     }
     
     await pool.end();

@@ -112,28 +112,62 @@ export const updatePatientProfile = async (req, res) => {
     });
 
     if (profileExists.rows.length === 0) {
-      // Create new profile with all address fields
-      await pool.query(
-        `INSERT INTO patient_profiles (user_id, phone_number, address, region, province, city, barangay, street_address, medical_conditions)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [userId, phone || '', address || '', region || '', province || '', city || '', barangay || '', street_address || '', medicalConditionsData]
-      );
+      // Create new profile - try with region first, fallback without it
+      try {
+        await pool.query(
+          `INSERT INTO patient_profiles (user_id, phone_number, address, region, province, city, barangay, street_address, medical_conditions)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [userId, phone || '', address || '', region || '', province || '', city || '', barangay || '', street_address || '', medicalConditionsData]
+        );
+      } catch (insertErr) {
+        if (insertErr.message && insertErr.message.includes('column') && insertErr.message.includes('region')) {
+          // region column doesn't exist yet -- fall back to INSERT without it
+          await pool.query(
+            `INSERT INTO patient_profiles (user_id, phone_number, address, province, city, barangay, street_address, medical_conditions)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [userId, phone || '', address || '', province || '', city || '', barangay || '', street_address || '', medicalConditionsData]
+          );
+        } else {
+          throw insertErr;
+        }
+      }
     } else {
-      // Update existing profile with all address fields
-      await pool.query(
-        `UPDATE patient_profiles 
-         SET phone_number = COALESCE($1, phone_number),
-             address = COALESCE($2, address),
-             region = COALESCE($3, region),
-             province = COALESCE($4, province),
-             city = COALESCE($5, city),
-             barangay = COALESCE($6, barangay),
-             street_address = COALESCE($7, street_address),
-             medical_conditions = COALESCE($8, medical_conditions),
-             updated_at = NOW()
-         WHERE user_id = $9`,
-        [phone, address, region, province, city, barangay, street_address, medicalConditionsData, userId]
-      );
+      // Update existing profile - try with region first, fallback without it
+      try {
+        await pool.query(
+          `UPDATE patient_profiles 
+           SET phone_number = COALESCE($1, phone_number),
+               address = COALESCE($2, address),
+               region = COALESCE($3, region),
+               province = COALESCE($4, province),
+               city = COALESCE($5, city),
+               barangay = COALESCE($6, barangay),
+               street_address = COALESCE($7, street_address),
+               medical_conditions = COALESCE($8, medical_conditions),
+               updated_at = NOW()
+           WHERE user_id = $9`,
+          [phone, address, region, province, city, barangay, street_address, medicalConditionsData, userId]
+        );
+      } catch (updateErr) {
+        if (updateErr.message && updateErr.message.includes('column') && updateErr.message.includes('region')) {
+          // region column doesn't exist yet -- fall back to UPDATE without it
+          await pool.query(
+            `UPDATE patient_profiles 
+             SET phone_number = COALESCE($1, phone_number),
+                 address = COALESCE($2, address),
+                 province = COALESCE($3, province),
+                 city = COALESCE($4, city),
+                 barangay = COALESCE($5, barangay),
+                 street_address = COALESCE($6, street_address),
+                 medical_conditions = COALESCE($7, medical_conditions),
+                 updated_at = NOW()
+             WHERE user_id = $8`,
+            [phone, address, province, city, barangay, street_address, medicalConditionsData, userId]
+          );
+        } else {
+          throw updateErr;
+        }
+      }
     }
 
     res.json({
@@ -159,7 +193,10 @@ export const getFullPatientProfile = async (req, res) => {
     const userResult = await pool.query(
       `SELECT u.id, u.email, u.first_name, u.last_name,
               pp.phone_number, pp.address, pp.medical_conditions,
-              pp.province, pp.city, pp.barangay, pp.street_address,
+              COALESCE(pp.province, '') as province,
+              COALESCE(pp.city, '') as city,
+              COALESCE(pp.barangay, '') as barangay,
+              COALESCE(pp.street_address, '') as street_address,
               COALESCE(pp.region, '') as region
        FROM users u
        LEFT JOIN patient_profiles pp ON u.id = pp.user_id
