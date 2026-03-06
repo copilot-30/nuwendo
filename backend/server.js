@@ -1,3 +1,5 @@
+// Nuwendo Healthcare Backend API
+// Updated with regional address system
 import './src/config/env.js';
 import express from 'express';
 import cors from 'cors';
