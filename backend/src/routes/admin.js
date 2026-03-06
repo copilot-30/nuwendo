@@ -130,7 +130,7 @@ router.get('/orders', [
 ], getOrders);
 
 router.patch('/orders/:id/status', [
-  body('status').isIn(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']).withMessage('Invalid status')
+  body('status').isIn(['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled']).withMessage('Invalid status')
 ], updateOrderStatus);
 
 router.patch('/orders/:id/verify-payment', [

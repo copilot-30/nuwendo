@@ -4,6 +4,27 @@ import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Get payment QR code settings (public, for checkout)
+router.get('/payment-settings', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT setting_key, setting_value 
+       FROM system_settings 
+       WHERE setting_key IN ('payment_qr_code', 'payment_instructions', 'payment_account_name', 'payment_account_number')`
+    );
+
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.setting_value;
+    });
+
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error fetching payment settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch payment settings' });
+  }
+});
+
 // Check shop access by email (public endpoint for legacy sessions)
 router.get('/access/by-email', async (req, res) => {
   try {
@@ -326,12 +347,14 @@ router.get('/orders', authMiddleware, async (req, res) => {
             'shop_item_id', oi.shop_item_id,
             'quantity', oi.quantity,
             'price_at_purchase', oi.price_at_purchase,
-            'item_name', si.name
+            'item_name', si.name,
+            'variant_name', siv.name
           )
         ) as items
       FROM shop_orders o
       LEFT JOIN shop_order_items oi ON o.id = oi.order_id
       LEFT JOIN shop_items si ON oi.shop_item_id = si.id
+      LEFT JOIN shop_item_variants siv ON oi.variant_id = siv.id
       WHERE o.user_id = $1
       GROUP BY o.id
       ORDER BY o.created_at DESC
@@ -347,6 +370,33 @@ router.get('/orders', authMiddleware, async (req, res) => {
       success: false, 
       message: 'Failed to fetch orders' 
     });
+  }
+});
+
+// Mark order as received by customer
+router.patch('/orders/:id/received', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const orderResult = await pool.query(
+      'SELECT id, status FROM shop_orders WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    await pool.query(
+      `UPDATE shop_orders SET status = 'received', updated_at = NOW() WHERE id = $1`,
+      [id]
+    );
+
+    res.json({ success: true, message: 'Order marked as received' });
+  } catch (error) {
+    console.error('Error marking order as received:', error);
+    res.status(500).json({ success: false, message: 'Failed to update order' });
   }
 });
 

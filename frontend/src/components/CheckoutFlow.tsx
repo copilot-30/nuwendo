@@ -62,10 +62,14 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   const [notes, setNotes] = useState('')
 
   // Payment state
-  const [paymentQRFile, setPaymentQRFile] = useState<File | null>(null)
-  const [paymentQRPreview, setPaymentQRPreview] = useState<string | null>(null)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [paymentSettings, setPaymentSettings] = useState<{
+    payment_qr_code?: string
+    payment_instructions?: string
+    payment_account_name?: string
+    payment_account_number?: string
+  }>({})
 
   // Load default address and provinces on mount
   useEffect(() => {
@@ -75,16 +79,29 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   const loadInitialData = async () => {
     try {
       setLoading(true)
-      const [regionsData, profile] = await Promise.all([
+      const [regionsData, profile, pmtSettings] = await Promise.all([
         addressService.getRegions(),
-        loadDefaultProfile()
+        loadDefaultProfile(),
+        loadPaymentSettings()
       ])
       setRegions(regionsData)
       setDefaultProfile(profile)
+      setPaymentSettings(pmtSettings)
     } catch (err: any) {
       setError(err.message || 'Failed to load data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPaymentSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/shop/payment-settings`)
+      const data = await response.json()
+      if (data.success) return data.settings || {}
+      return {}
+    } catch {
+      return {}
     }
   }
 
@@ -151,7 +168,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'qr' | 'receipt') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -162,13 +179,8 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      if (type === 'qr') {
-        setPaymentQRFile(file)
-        setPaymentQRPreview(reader.result as string)
-      } else {
-        setReceiptFile(file)
-        setReceiptPreview(reader.result as string)
-      }
+      setReceiptFile(file)
+      setReceiptPreview(reader.result as string)
     }
     reader.readAsDataURL(file)
   }
@@ -203,7 +215,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
           return
         }
       } else {
-        if (!defaultProfile?.region || !defaultProfile?.province || !defaultProfile?.city || !defaultProfile?.barangay) {
+        if (!defaultProfile?.province || !defaultProfile?.city || !defaultProfile?.barangay) {
           setError('Your default address is incomplete. Please use custom address.')
           return
         }
@@ -214,20 +226,14 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
         return
       }
 
-      // Upload images
-      let paymentQRUrl = ''
+      // Upload receipt image
       let receiptUrl = ''
-
-      if (paymentQRFile) {
-        paymentQRUrl = await uploadImage(paymentQRFile)
-      }
       receiptUrl = await uploadImage(receiptFile)
 
       // Submit order
       const checkoutData = {
         notes,
         payment_receipt_url: receiptUrl,
-        payment_qr_reference: paymentQRUrl,
         use_default_address: useDefaultAddress,
         delivery_region: useDefaultAddress 
           ? defaultProfile?.region 
@@ -255,7 +261,8 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
 
   const canProceedFromStep1 = () => {
     if (useDefaultAddress) {
-      return defaultProfile?.region && defaultProfile?.province && defaultProfile?.city && defaultProfile?.barangay
+      // Allow proceeding if at least province and city are set (region may be missing from old data)
+      return defaultProfile?.province && defaultProfile?.city && defaultProfile?.barangay
     }
     // For custom address, check that we have region, province, city, barangay, and street
     return selectedRegion && selectedProvince && selectedCity && selectedBarangay && streetAddress.trim() && 
@@ -483,50 +490,43 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h4 className="font-medium text-sm mb-2">Payment Instructions</h4>
-              <ol className="text-sm text-blue-900 space-y-1 list-decimal list-inside">
-                <li>Scan the QR code below to pay</li>
-                <li>Take a screenshot of your payment QR code (optional)</li>
-                <li>Upload your payment receipt for verification</li>
-              </ol>
+              {paymentSettings.payment_instructions ? (
+                <p className="text-sm text-blue-900 whitespace-pre-line">{paymentSettings.payment_instructions}</p>
+              ) : (
+                <ol className="text-sm text-blue-900 space-y-1 list-decimal list-inside">
+                  <li>Scan the QR code below to pay</li>
+                  <li>Take a screenshot of your payment confirmation</li>
+                  <li>Upload your payment receipt for verification</li>
+                </ol>
+              )}
             </div>
 
             <div className="border rounded-lg p-4 bg-gray-50">
               <h4 className="font-medium text-sm mb-2">Scan to Pay</h4>
-              <div className="bg-white p-4 rounded-lg border-2 border-dashed">
-                <p className="text-center text-gray-500 text-sm">
-                  QR Code will be displayed here
-                </p>
-                <p className="text-center text-xs text-gray-400 mt-2">
-                  (Admin will provide QR code)
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="qr-upload">Upload Payment QR Code (Optional)</Label>
-              <div className="mt-2">
-                <input
-                  id="qr-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'qr')}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="qr-upload"
-                  className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50"
-                >
-                  <Upload className="w-5 h-5" />
-                  <span className="text-sm">
-                    {paymentQRFile ? paymentQRFile.name : 'Click to upload screenshot'}
-                  </span>
-                </label>
-                {paymentQRPreview && (
-                  <div className="mt-2">
-                    <img src={paymentQRPreview} alt="QR Preview" className="w-32 h-32 object-cover rounded border" />
-                  </div>
-                )}
-              </div>
+              {paymentSettings.payment_qr_code ? (
+                <div className="flex flex-col items-center gap-2">
+                  <img 
+                    src={paymentSettings.payment_qr_code} 
+                    alt="Payment QR Code" 
+                    className="w-48 h-48 object-contain rounded-lg border bg-white"
+                  />
+                  {paymentSettings.payment_account_name && (
+                    <p className="text-sm font-medium text-gray-700">{paymentSettings.payment_account_name}</p>
+                  )}
+                  {paymentSettings.payment_account_number && (
+                    <p className="text-sm text-gray-600">{paymentSettings.payment_account_number}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white p-4 rounded-lg border-2 border-dashed">
+                  <p className="text-center text-gray-500 text-sm">
+                    QR Code not yet configured
+                  </p>
+                  <p className="text-center text-xs text-gray-400 mt-2">
+                    Please contact the clinic for payment details
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -536,7 +536,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                   id="receipt-upload"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'receipt')}
+                  onChange={(e) => handleFileChange(e)}
                   className="hidden"
                 />
                 <label

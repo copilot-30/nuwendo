@@ -102,5 +102,23 @@ export const cartService = {
     const data = await response.json()
     if (!data.success) throw new Error(data.message)
     return data.order
+  },
+
+  async getOrders(): Promise<any[]> {
+    const response = await fetch(`${BASE_URL}/api/shop/orders`, {
+      headers: getAuthHeaders()
+    })
+    const data = await response.json()
+    if (!data.success) throw new Error(data.message)
+    return data.orders
+  },
+
+  async markOrderReceived(orderId: number): Promise<void> {
+    const response = await fetch(`${BASE_URL}/api/shop/orders/${orderId}/received`, {
+      method: 'PATCH',
+      headers: getAuthHeaders()
+    })
+    const data = await response.json()
+    if (!data.success) throw new Error(data.message)
   }
 }

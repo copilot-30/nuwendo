@@ -24,7 +24,11 @@ import {
   Calendar,
   Clock,
   Settings,
-  Search
+  Search,
+  Package,
+  User,
+  Mail,
+  CheckCircle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -56,6 +60,26 @@ interface PendingBooking {
   created_at: string
 }
 
+interface ShopOrder {
+  id: number
+  email: string
+  first_name: string
+  last_name: string
+  total_amount: number
+  status: string
+  payment_verified: boolean
+  payment_receipt_url: string | null
+  created_at: string
+  item_count: number
+  items: {
+    id: number
+    item_name: string
+    variant_name: string | null
+    quantity: number
+    price_at_purchase: number
+  }[]
+}
+
 export function AdminPayments() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -78,6 +102,12 @@ export function AdminPayments() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'last7days' | 'last30days'>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  
+  // Shop order payment states
+  const [shopOrders, setShopOrders] = useState<ShopOrder[]>([])
+  const [shopVerifyingId, setShopVerifyingId] = useState<number | null>(null)
+  const [shopReceiptUrl, setShopReceiptUrl] = useState<string | null>(null)
+  const [activePaymentTab, setActivePaymentTab] = useState<'bookings' | 'orders'>('bookings')
 
   useEffect(() => {
     const adminToken = localStorage.getItem('adminToken')
@@ -91,7 +121,7 @@ export function AdminPayments() {
   const fetchData = async () => {
     setIsLoading(true)
     try {
-      await Promise.all([fetchPaymentSettings(), fetchPendingPayments()])
+      await Promise.all([fetchPaymentSettings(), fetchPendingPayments(), fetchShopOrders()])
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -129,6 +159,46 @@ export function AdminPayments() {
       }
     } catch (error) {
       console.error('Failed to fetch pending payments:', error)
+    }
+  }
+
+  const fetchShopOrders = async () => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch(`${API_URL}/admin/orders?payment_verified=false&limit=50`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setShopOrders(data.orders || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch shop orders:', error)
+    }
+  }
+
+  const handleVerifyShopPayment = async (orderId: number, verified: boolean) => {
+    setShopVerifyingId(orderId)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch(`${API_URL}/admin/orders/${orderId}/verify-payment`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ payment_verified: verified })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to verify payment')
+      
+      setShopOrders(prev => prev.filter(o => o.id !== orderId))
+      setSuccess(verified ? 'Shop order payment verified!' : 'Payment verification removed')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify payment')
+    } finally {
+      setShopVerifyingId(null)
     }
   }
 
@@ -362,7 +432,33 @@ export function AdminPayments() {
           </div>
         )}
 
-        {/* Pending Payments - Full Width */}
+        {/* Payment Type Tabs */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={activePaymentTab === 'bookings' ? 'default' : 'outline'}
+            onClick={() => setActivePaymentTab('bookings')}
+            className={activePaymentTab === 'bookings' ? 'bg-brand hover:bg-brand/90' : ''}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Booking Payments
+            {pendingBookings.length > 0 && (
+              <Badge className="ml-2 bg-yellow-100 text-yellow-800">{pendingBookings.length}</Badge>
+            )}
+          </Button>
+          <Button
+            variant={activePaymentTab === 'orders' ? 'default' : 'outline'}
+            onClick={() => setActivePaymentTab('orders')}
+            className={activePaymentTab === 'orders' ? 'bg-brand hover:bg-brand/90' : ''}
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Shop Order Payments
+            {shopOrders.length > 0 && (
+              <Badge className="ml-2 bg-yellow-100 text-yellow-800">{shopOrders.length}</Badge>
+            )}
+          </Button>
+        </div>
+
+        {activePaymentTab === 'bookings' && (
         <Card>
           <CardHeader className="space-y-4">
             <div className="flex items-center gap-2">
@@ -538,7 +634,143 @@ export function AdminPayments() {
             )}
           </CardContent>
         </Card>
+        )}
+
+        {activePaymentTab === 'orders' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              <CardTitle>Unverified Shop Order Payments</CardTitle>
+              {shopOrders.length > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800">{shopOrders.length}</Badge>
+              )}
+            </div>
+            <CardDescription>
+              Review and verify payment receipts for shop orders
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {shopOrders.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <CheckCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>All shop order payments are verified</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {shopOrders.map((order) => (
+                  <div key={order.id} className="border border-gray-200 rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">Order #{order.id}</h4>
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <User className="w-3 h-3" />
+                          <span>{order.first_name} {order.last_name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <Mail className="w-3 h-3" />
+                          <span>{order.email}</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Ordered: {formatDateTime(order.created_at)}
+                        </p>
+                      </div>
+                      <span className="font-bold text-brand">
+                        {formatPrice(order.total_amount)}
+                      </span>
+                    </div>
+
+                    {/* Order Items */}
+                    <div className="space-y-1 mb-3 text-sm">
+                      {order.items?.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-gray-600">
+                          <span>{item.item_name} {item.variant_name ? `(${item.variant_name})` : ''} x{item.quantity}</span>
+                          <span className="font-medium">
+                            {formatPrice(item.price_at_purchase * item.quantity)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Receipt */}
+                    {order.payment_receipt_url && (
+                      <div className="mb-3">
+                        <button
+                          onClick={() => setShopReceiptUrl(order.payment_receipt_url)}
+                          className="flex items-center gap-2 text-sm text-brand hover:underline"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View Payment Receipt
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        onClick={() => handleVerifyShopPayment(order.id, true)}
+                        disabled={shopVerifyingId === order.id}
+                      >
+                        {shopVerifyingId === order.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            Verify Payment
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        )}
       </div>
+
+      {/* Shop Receipt Modal */}
+      {shopReceiptUrl && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setShopReceiptUrl(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b flex items-center justify-between bg-gray-50 sticky top-0">
+              <h3 className="font-semibold text-lg">Shop Order Receipt</h3>
+              <div className="flex items-center gap-2">
+                <a 
+                  href={shopReceiptUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors"
+                >
+                  Open in New Tab
+                </a>
+                <Button variant="ghost" size="sm" onClick={() => setShopReceiptUrl(null)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-6 overflow-auto flex-1 bg-gray-100">
+              <div className="flex justify-center">
+                <img 
+                  src={shopReceiptUrl} 
+                  alt="Payment Receipt" 
+                  className="max-w-full h-auto rounded-lg shadow-lg bg-white"
+                  style={{ maxHeight: 'calc(95vh - 120px)' }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* QR Code Settings Modal */}
       <Dialog open={showSettingsModal} onOpenChange={setShowSettingsModal}>

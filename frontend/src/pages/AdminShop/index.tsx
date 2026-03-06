@@ -23,7 +23,8 @@ import {
   Package,
   Users,
   ArrowLeft,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -347,6 +348,13 @@ export function AdminShop() {
             </div>
           </div>
           <div className="flex gap-3">
+            <Button 
+              onClick={() => navigate('/admin/orders')} 
+              variant="outline"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              View Orders
+            </Button>
             <Button 
               onClick={() => setShowAccessModal(true)} 
               variant="outline"

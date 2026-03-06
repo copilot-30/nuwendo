@@ -14,8 +14,7 @@ import {
   Home,
   ShoppingBag,
   Cog,
-  Video,
-  Package
+  Video
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { API_URL, BASE_URL } from '@/config/api'
@@ -35,7 +34,6 @@ const navItems = [
   { path: '/admin/payments', label: 'Payments', icon: CreditCard },
   { path: '/admin/services', label: 'Services', icon: Settings },
   { path: '/admin/shop', label: 'Shop', icon: ShoppingBag },
-  { path: '/admin/orders', label: 'Orders', icon: Package },
   { path: '/admin/schedule', label: 'Schedule', icon: Clock },
   { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/audit-logs', label: 'Logs', icon: FileText },

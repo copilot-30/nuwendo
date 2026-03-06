@@ -157,38 +157,6 @@ export function AdminOrders() {
     }
   }
 
-  const verifyPayment = async (orderId: number, verified: boolean) => {
-    setIsUpdating(true)
-    try {
-      const token = localStorage.getItem('adminToken')
-      const response = await fetch(`${API_URL}/admin/orders/${orderId}/verify-payment`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ payment_verified: verified })
-      })
-
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.message || 'Failed to verify payment')
-
-      // Refresh orders
-      fetchOrders(pagination?.current_page)
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder({
-          ...selectedOrder,
-          payment_verified: verified,
-          payment_verified_at: verified ? new Date().toISOString() : null
-        })
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to verify payment')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
   const viewReceipt = (url: string) => {
     setReceiptUrl(url)
     setShowReceiptModal(true)
@@ -213,7 +181,7 @@ export function AdminOrders() {
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
-          <p className="text-gray-600 mt-1">View and manage shop orders and verify payments</p>
+          <p className="text-gray-600 mt-1">View and manage shop orders</p>
         </div>
 
         {/* Filters */}
@@ -377,7 +345,7 @@ export function AdminOrders() {
                 <DialogHeader>
                   <DialogTitle>Order #{selectedOrder.id}</DialogTitle>
                   <DialogDescription>
-                    View order details and manage payment verification
+                    View order details and manage order status
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 mt-4">
@@ -434,48 +402,25 @@ export function AdminOrders() {
                     </div>
                   </div>
 
-                  {/* Payment Status */}
+                  {/* Payment Status (read-only, verify in Payments tab) */}
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment Status</h3>
                     <div className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          {selectedOrder.payment_verified ? (
-                            <>
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              <span className="font-medium text-green-800">Payment Verified</span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-5 h-5 text-yellow-600" />
-                              <span className="font-medium text-yellow-800">Awaiting Verification</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          {!selectedOrder.payment_verified ? (
-                            <Button
-                              onClick={() => verifyPayment(selectedOrder.id, true)}
-                              disabled={isUpdating}
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Verify Payment</>}
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={() => verifyPayment(selectedOrder.id, false)}
-                              disabled={isUpdating}
-                              size="sm"
-                              variant="outline"
-                            >
-                              Unverify
-                            </Button>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        {selectedOrder.payment_verified ? (
+                          <>
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <span className="font-medium text-green-800">Payment Verified</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-5 h-5 text-yellow-600" />
+                            <span className="font-medium text-yellow-800">Awaiting Verification</span>
+                          </>
+                        )}
                       </div>
                       {selectedOrder.payment_verified_at && (
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-600 mt-2">
                           Verified on {formatDate(selectedOrder.payment_verified_at)}
                           {selectedOrder.verified_by_name && ` by ${selectedOrder.verified_by_name}`}
                         </p>

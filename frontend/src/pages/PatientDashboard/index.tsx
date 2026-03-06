@@ -24,7 +24,9 @@ import {
   CalendarClock,
   ShoppingCart,
   Plus,
-  Minus
+  Minus,
+  ClipboardList,
+  ArrowLeft
 } from 'lucide-react'
 import CartModal from '@/components/CartModal'
 import { cartService } from '@/services/cartService'
@@ -127,6 +129,12 @@ export default function PatientDashboard() {
   const [itemQuantity, setItemQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [cartMessage, setCartMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
+
+  // Order monitoring states
+  const [showOrders, setShowOrders] = useState(false)
+  const [orders, setOrders] = useState<any[]>([])
+  const [loadingOrders, setLoadingOrders] = useState(false)
+  const [markingReceived, setMarkingReceived] = useState<number | null>(null)
 
   useEffect(() => {
     const patientEmail = sessionStorage.getItem('patientEmail')
@@ -720,6 +728,42 @@ export default function PatientDashboard() {
     }
   }
 
+  const fetchOrders = async () => {
+    try {
+      setLoadingOrders(true)
+      const data = await cartService.getOrders()
+      setOrders(data)
+    } catch (err) {
+      console.error('Failed to fetch orders:', err)
+    } finally {
+      setLoadingOrders(false)
+    }
+  }
+
+  const handleMarkReceived = async (orderId: number) => {
+    try {
+      setMarkingReceived(orderId)
+      await cartService.markOrderReceived(orderId)
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'received' } : o))
+    } catch (err) {
+      console.error('Failed to mark order as received:', err)
+    } finally {
+      setMarkingReceived(null)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'confirmed': return 'bg-blue-100 text-blue-800'
+      case 'shipped': return 'bg-purple-100 text-purple-800'
+      case 'delivered': return 'bg-green-100 text-green-800'
+      case 'received': return 'bg-green-100 text-green-800'
+      case 'cancelled': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -976,7 +1020,7 @@ export default function PatientDashboard() {
                               <Video className="w-5 h-5 text-green-600" />
                             </div>
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900 mb-1">🎥 Video Consultation Link</p>
+                              <p className="font-medium text-gray-900 mb-1">Video Consultation Link</p>
                               <a
                                 href={apt.video_call_link}
                                 target="_blank"
@@ -1048,21 +1092,128 @@ export default function PatientDashboard() {
                 <h1 className="text-2xl font-semibold text-gray-900">Shop</h1>
                 <p className="text-gray-600">Browse and purchase available products</p>
               </div>
-              <Button
-                onClick={() => setShowCartModal(true)}
-                variant="outline"
-                className="relative"
-              >
-                <ShoppingCart className="w-5 h-5 mr-2" />
-                Cart
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-brand text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartItemCount}
-                  </span>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    setShowOrders(!showOrders)
+                    if (!showOrders && orders.length === 0) fetchOrders()
+                  }}
+                  variant={showOrders ? "default" : "outline"}
+                  className={showOrders ? "bg-brand hover:bg-brand/90" : ""}
+                >
+                  <ClipboardList className="w-5 h-5 mr-2" />
+                  My Orders
+                </Button>
+                <Button
+                  onClick={() => setShowCartModal(true)}
+                  variant="outline"
+                  className="relative"
+                >
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  Cart
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-brand text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </Button>
+              </div>
             </div>
 
+            {/* Orders View */}
+            {showOrders ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setShowOrders(false)}
+                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Shop
+                  </button>
+                  <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loadingOrders}>
+                    {loadingOrders ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
+                  </Button>
+                </div>
+
+                {loadingOrders && orders.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+                    <p className="text-gray-500 mt-2">Loading orders...</p>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-16">
+                    <ClipboardList className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-gray-500">No orders yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {orders.map((order: any) => (
+                      <Card key={order.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="font-semibold text-gray-900">Order #{order.id}</p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(order.created_at).toLocaleDateString('en-US', {
+                                  month: 'short', day: 'numeric', year: 'numeric'
+                                })}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(order.status)}`}>
+                                {order.status}
+                              </span>
+                              {order.payment_verified ? (
+                                <span className="text-xs text-green-600 font-medium">Payment Verified</span>
+                              ) : (
+                                <span className="text-xs text-yellow-600 font-medium">Payment Pending</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Order Items */}
+                          <div className="space-y-2 mb-3">
+                            {order.items?.map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span className="text-gray-600">
+                                  {item.item_name} {item.variant_name ? `(${item.variant_name})` : ''} x{item.quantity}
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  ₱{(parseFloat(item.price_at_purchase) * item.quantity).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t">
+                            <span className="font-semibold text-gray-900">
+                              Total: ₱{parseFloat(order.total_amount).toLocaleString()}
+                            </span>
+                            {(order.status === 'shipped' || order.status === 'delivered') && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleMarkReceived(order.id)}
+                                disabled={markingReceived === order.id}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                {markingReceived === order.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                ) : (
+                                  <Check className="w-4 h-4 mr-1" />
+                                )}
+                                Order Received
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
             {shopItems.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-gray-500">No items available at the moment.</p>
@@ -1070,8 +1221,8 @@ export default function PatientDashboard() {
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {shopItems.map((item) => (
-                  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardContent className="p-0">
+                  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                    <CardContent className="p-0 flex flex-col flex-1">
                       {item.image_url && (
                         <div className="h-48 bg-gray-100 overflow-hidden">
                           <img
@@ -1081,7 +1232,7 @@ export default function PatientDashboard() {
                           />
                         </div>
                       )}
-                      <div className="p-4">
+                      <div className="p-4 flex flex-col flex-1">
                         <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
                         {item.category && (
                           <p className="text-xs text-brand mb-2">{item.category}</p>
@@ -1106,13 +1257,15 @@ export default function PatientDashboard() {
                           </div>
                         ) : null}
 
-                        <Button 
-                          onClick={() => handleItemClick(item)}
-                          className="w-full bg-brand hover:bg-brand/90"
-                        >
-                          <ShoppingCart className="w-4 h-4 mr-2" />
-                          Add to Cart
-                        </Button>
+                        <div className="mt-auto">
+                          <Button 
+                            onClick={() => handleItemClick(item)}
+                            className="w-full bg-brand hover:bg-brand/90"
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-2" />
+                            Add to Cart
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1254,6 +1407,8 @@ export default function PatientDashboard() {
                   </div>
                 </motion.div>
               </div>
+            )}
+              </>
             )}
 
             {/* Cart Modal */}
