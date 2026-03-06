@@ -18,6 +18,7 @@ import { AdminUsers } from '@/pages/AdminUsers'
 import { AdminAuditLog } from '@/pages/AdminAuditLog'
 import AdminBookings from '@/pages/AdminBookings'
 import AdminSettings from '@/pages/AdminSettings'
+import { AdminOrders } from '@/pages/AdminOrders'
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
         <Route path="/admin/payments" element={<AdminPayments />} />
         <Route path="/admin/bookings" element={<AdminBookings />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/orders" element={<AdminOrders />} />
         <Route path="/admin/audit-logs" element={<AdminAuditLog />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
       </Routes>

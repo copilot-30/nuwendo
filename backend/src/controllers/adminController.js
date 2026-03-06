@@ -839,7 +839,11 @@ export {
   getPatientProfile,
   getAllUsers,
   getAuditLogs,
-  createAuditLog
+  createAuditLog,
+  getOrders,
+  updateOrderStatus,
+  verifyPayment,
+  deleteUser
 };
 
 // Get all users (patients) with pagination and search
@@ -991,5 +995,195 @@ const createAuditLog = async (adminId, action, resourceType, resourceId, oldValu
     );
   } catch (error) {
     console.error('Create audit log error:', error);
+  }
+};
+
+// Get all shop orders for admin
+const getOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status, payment_verified } = req.query;
+    const offset = (page - 1) * limit;
+
+    let whereConditions = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (status) {
+      whereConditions.push(`so.status = $${paramIndex++}`);
+      queryParams.push(status);
+    }
+
+    if (payment_verified !== undefined) {
+      whereConditions.push(`so.payment_verified = $${paramIndex++}`);
+      queryParams.push(payment_verified === 'true');
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM shop_orders so ${whereClause}`,
+      queryParams
+    );
+
+    const mainQueryParams = [...queryParams];
+    const limitParamIndex = paramIndex;
+    const offsetParamIndex = paramIndex + 1;
+    mainQueryParams.push(parseInt(limit), parseInt(offset));
+
+    const result = await pool.query(
+      `SELECT so.*, 
+              u.email, u.first_name, u.last_name,
+              au.full_name as verified_by_name,
+              (SELECT COUNT(*) FROM shop_order_items soi WHERE soi.order_id = so.id) as item_count,
+              (SELECT json_agg(json_build_object(
+                'id', soi.id,
+                'shop_item_id', soi.shop_item_id,
+                'variant_id', soi.variant_id,
+                'quantity', soi.quantity,
+                'price_at_purchase', soi.price_at_purchase,
+                'item_name', si.name,
+                'variant_name', siv.name
+              )) FROM shop_order_items soi
+              LEFT JOIN shop_items si ON soi.shop_item_id = si.id
+              LEFT JOIN shop_item_variants siv ON soi.variant_id = siv.id
+              WHERE soi.order_id = so.id
+              ) as items
+       FROM shop_orders so
+       JOIN users u ON so.user_id = u.id
+       LEFT JOIN admin_users au ON so.payment_verified_by = au.id
+       ${whereClause}
+       ORDER BY so.created_at DESC
+       LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`,
+      mainQueryParams
+    );
+
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      orders: result.rows,
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: totalPages,
+        total_records: total,
+        per_page: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get orders error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update order status
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const adminId = req.admin.adminId;
+
+    // Get old status for audit log
+    const oldResult = await pool.query('SELECT status FROM shop_orders WHERE id = $1', [id]);
+    if (oldResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    const oldStatus = oldResult.rows[0].status;
+
+    // Update status
+    const result = await pool.query(
+      `UPDATE shop_orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [status, id]
+    );
+
+    // Log the action
+    await createAuditLog(adminId, `Updated order status from ${oldStatus} to ${status}`, 'shop_orders', id, { status: oldStatus }, { status });
+
+    res.json({
+      success: true,
+      message: 'Order status updated successfully',
+      order: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Verify payment for an order
+const verifyPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payment_verified } = req.body;
+    const adminId = req.admin.adminId;
+
+    // Get old verification status for audit log
+    const oldResult = await pool.query('SELECT payment_verified FROM shop_orders WHERE id = $1', [id]);
+    if (oldResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    const oldVerified = oldResult.rows[0].payment_verified;
+
+    // Update payment verification
+    const result = await pool.query(
+      `UPDATE shop_orders 
+       SET payment_verified = $1, 
+           payment_verified_by = $2, 
+           payment_verified_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $3 
+       RETURNING *`,
+      [payment_verified, adminId, id]
+    );
+
+    // Log the action
+    await createAuditLog(adminId, payment_verified ? 'Verified order payment' : 'Unverified order payment', 'shop_orders', id, { payment_verified: oldVerified }, { payment_verified });
+
+    res.json({
+      success: true,
+      message: payment_verified ? 'Payment verified successfully' : 'Payment verification removed',
+      order: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Verify payment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Delete user (hard delete)
+const deleteUser = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const adminId = req.admin.adminId;
+
+    await client.query('BEGIN');
+
+    // Get user info before deletion for audit log
+    const userResult = await client.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const user = userResult.rows[0];
+
+    // Delete user (CASCADE will handle related records)
+    await client.query('DELETE FROM users WHERE id = $1', [id]);
+
+    // Log the action
+    await createAuditLog(adminId, 'Deleted user', 'users', id, { email: user.email, first_name: user.first_name, last_name: user.last_name }, null);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully. User can create a new account with the same email.'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    client.release();
   }
 };

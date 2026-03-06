@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BASE_URL } from '@/config/api'
 import { 
   Calendar, 
@@ -26,6 +28,7 @@ import {
 } from 'lucide-react'
 import CartModal from '@/components/CartModal'
 import { cartService } from '@/services/cartService'
+import { addressService } from '@/services/addressService'
 
 interface Appointment {
   id: number
@@ -53,6 +56,11 @@ interface PatientProfile {
   phone: string
   age?: string
   cityAddress?: string
+  region?: string
+  province?: string
+  city?: string
+  barangay?: string
+  street_address?: string
   height?: string
   weight?: string
   reasonForConsult?: string
@@ -99,6 +107,17 @@ export default function PatientDashboard() {
     weight: '',
     reasonForConsult: ''
   })
+
+  // Address editing states
+  const [regions, setRegions] = useState<Array<{code: string, name: string}>>([])
+  const [provinces, setProvinces] = useState<Array<{code: string, name: string}>>([])
+  const [cities, setCities] = useState<Array<{code: string, name: string}>>([])
+  const [barangays, setBarangays] = useState<Array<{code: string, name: string}>>([])
+  const [selectedRegionCode, setSelectedRegionCode] = useState('')
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState('')
+  const [selectedCityCode, setSelectedCityCode] = useState('')
+  const [selectedBarangayName, setSelectedBarangayName] = useState('')
+  const [streetAddress, setStreetAddress] = useState('')
 
   // Shopping cart states
   const [showCartModal, setShowCartModal] = useState(false)
@@ -236,6 +255,11 @@ export default function PatientDashboard() {
           phone: p.phone || '',
           age: p.age || '',
           cityAddress: p.address || '',
+          region: p.region || '',
+          province: p.province || '',
+          city: p.city || '',
+          barangay: p.barangay || '',
+          street_address: p.street_address || '',
           height: p.height || '',
           weight: p.weight || '',
           reasonForConsult: p.reasonForConsult || '',
@@ -313,6 +337,12 @@ export default function PatientDashboard() {
           lastName: editForm.lastName,
           phone: editForm.phone,
           address: editForm.cityAddress,
+          // Structured address fields
+          region: selectedRegionCode,
+          province: selectedProvinceCode,
+          city: selectedCityCode,
+          barangay: selectedBarangayName,
+          street_address: streetAddress,
           age: editForm.age,
           height: editForm.height,
           weight: editForm.weight,
@@ -329,6 +359,11 @@ export default function PatientDashboard() {
           last_name: editForm.lastName,
           phone: editForm.phone,
           cityAddress: editForm.cityAddress,
+          region: selectedRegionCode,
+          province: selectedProvinceCode,
+          city: selectedCityCode,
+          barangay: selectedBarangayName,
+          street_address: streetAddress,
           age: editForm.age,
           height: editForm.height,
           weight: editForm.weight,
@@ -358,12 +393,94 @@ export default function PatientDashboard() {
     setIsEditingProfile(true)
   }
 
-  const startEditingAddress = () => {
+  const startEditingAddress = async () => {
+    // Pre-populate address fields from profile
+    if (profile?.region) setSelectedRegionCode(profile.region)
+    if (profile?.province) setSelectedProvinceCode(profile.province)
+    if (profile?.city) setSelectedCityCode(profile.city)
+    if (profile?.barangay) setSelectedBarangayName(profile.barangay)
+    if (profile?.street_address) setStreetAddress(profile.street_address)
+    
     setEditForm(prev => ({
       ...prev,
       cityAddress: profile?.cityAddress || ''
     }))
     setIsEditingAddress(true)
+    
+    // Load regions and any existing address data
+    await loadRegions()
+    if (profile?.region) {
+      const provincesData = await addressService.getProvinces(profile.region)
+      setProvinces(provincesData)
+      
+      if (profile?.province) {
+        const citiesData = await addressService.getCities(profile.province)
+        setCities(citiesData)
+        
+        if (profile?.city) {
+          const barangaysData = await addressService.getBarangays(profile.city)
+          setBarangays(barangaysData)
+        }
+      }
+    }
+  }
+
+  const loadRegions = async () => {
+    try {
+      const regionsData = await addressService.getRegions()
+      setRegions(regionsData)
+    } catch (error) {
+      console.error('Failed to load regions:', error)
+    }
+  }
+
+  const handleRegionChange = async (regionCode: string) => {
+    setSelectedRegionCode(regionCode)
+    setSelectedProvinceCode('')
+    setSelectedCityCode('')
+    setSelectedBarangayName('')
+    setProvinces([])
+    setCities([])
+    setBarangays([])
+
+    try {
+      const provincesData = await addressService.getProvinces(regionCode)
+      setProvinces(provincesData)
+    } catch (error) {
+      console.error('Failed to load provinces:', error)
+    }
+  }
+
+  const handleProvinceChange = async (provinceCode: string) => {
+    setSelectedProvinceCode(provinceCode)
+    setSelectedCityCode('')
+    setSelectedBarangayName('')
+    setCities([])
+    setBarangays([])
+
+    try {
+      const citiesData = await addressService.getCities(provinceCode)
+      setCities(citiesData)
+    } catch (error) {
+      console.error('Failed to load cities:', error)
+    }
+  }
+
+  const handleCityChange = async (cityCode: string) => {
+    setSelectedCityCode(cityCode)
+    setSelectedBarangayName('')
+    setBarangays([])
+
+    try {
+      const barangaysData = await addressService.getBarangays(cityCode)
+      setBarangays(barangaysData)
+    } catch (error) {
+      console.error('Failed to load barangays:', error)
+    }
+  }
+
+  const handleBarangayChange = (barangayName: string) => {
+    setSelectedBarangayName(barangayName)
   }
 
   const handleLogout = () => {
@@ -1326,20 +1443,112 @@ export default function PatientDashboard() {
               </CardHeader>
               <CardContent>
                 {isEditingAddress ? (
-                  <div>
-                    <label className="text-sm font-medium text-gray-900">Address</label>
-                    <Textarea
-                      value={editForm.cityAddress}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, cityAddress: e.target.value }))}
-                      className="mt-1"
-                      rows={3}
-                      placeholder="Enter your full address"
-                    />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Region */}
+                      <div>
+                        <Label htmlFor="region">Region</Label>
+                        <Select value={selectedRegionCode} onValueChange={handleRegionChange}>
+                          <SelectTrigger id="region">
+                            <SelectValue placeholder="Select region" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {regions.map((region) => (
+                              <SelectItem key={region.code} value={region.code}>
+                                {region.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Province */}
+                      <div>
+                        <Label htmlFor="province">Province</Label>
+                        <Select 
+                          value={selectedProvinceCode} 
+                          onValueChange={handleProvinceChange}
+                          disabled={!selectedRegionCode}
+                        >
+                          <SelectTrigger id="province">
+                            <SelectValue placeholder="Select province" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {provinces.map((province) => (
+                              <SelectItem key={province.code} value={province.code}>
+                                {province.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* City */}
+                      <div>
+                        <Label htmlFor="city">City/Municipality</Label>
+                        <Select 
+                          value={selectedCityCode} 
+                          onValueChange={handleCityChange}
+                          disabled={!selectedProvinceCode}
+                        >
+                          <SelectTrigger id="city">
+                            <SelectValue placeholder="Select city" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cities.map((city) => (
+                              <SelectItem key={city.code} value={city.code}>
+                                {city.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Barangay */}
+                      <div>
+                        <Label htmlFor="barangay">Barangay</Label>
+                        <Select 
+                          value={selectedBarangayName} 
+                          onValueChange={handleBarangayChange}
+                          disabled={!selectedCityCode}
+                        >
+                          <SelectTrigger id="barangay">
+                            <SelectValue placeholder="Select barangay" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {barangays.map((barangay) => (
+                              <SelectItem key={barangay.name} value={barangay.name}>
+                                {barangay.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Street Address */}
+                    <div>
+                      <Label htmlFor="streetAddress">Street Address (House/Bldg No., Street Name)</Label>
+                      <Input
+                        id="streetAddress"
+                        value={streetAddress}
+                        onChange={(e) => setStreetAddress(e.target.value)}
+                        placeholder="e.g., 123 Main Street, Unit 4B"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div>
                     <label className="text-sm font-medium text-gray-900">Address</label>
-                    <p className="text-gray-600 mt-1">{profile?.cityAddress || 'No address saved yet.'}</p>
+                    {profile?.region ? (
+                      <div className="text-gray-600 mt-1 space-y-1">
+                        <p>{profile.street_address}</p>
+                        <p>{profile.barangay}, {profile.city}</p>
+                        <p>{profile.province}, {profile.region}</p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 mt-1">{profile?.cityAddress || 'No address saved yet.'}</p>
+                    )}
                   </div>
                 )}
               </CardContent>

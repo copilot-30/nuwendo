@@ -18,7 +18,11 @@ import {
   getPendingPayments,
   getPatientProfile,
   getAllUsers,
-  getAuditLogs
+  getAuditLogs,
+  getOrders,
+  updateOrderStatus,
+  verifyPayment,
+  deleteUser
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -116,5 +120,24 @@ router.get('/pending-payments', getPendingPayments);
 
 // Patient profile
 router.get('/patients/:email', getPatientProfile);
+
+// Shop orders management
+router.get('/orders', [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+  query('status').optional().isIn(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']).withMessage('Invalid status'),
+  query('payment_verified').optional().isBoolean().withMessage('payment_verified must be boolean')
+], getOrders);
+
+router.patch('/orders/:id/status', [
+  body('status').isIn(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']).withMessage('Invalid status')
+], updateOrderStatus);
+
+router.patch('/orders/:id/verify-payment', [
+  body('payment_verified').isBoolean().withMessage('payment_verified must be boolean')
+], verifyPayment);
+
+// User deletion
+router.delete('/users/:id', requireRole(['super_admin']), deleteUser);
 
 export default router;

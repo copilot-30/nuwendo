@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { 
   Users, Search, Mail, Phone, Calendar, 
-  ChevronLeft, ChevronRight, User, X, FileText, Target, Activity, Loader2
+  ChevronLeft, ChevronRight, User, X, FileText, Target, Activity, Loader2, Trash2, AlertTriangle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -66,6 +66,9 @@ export function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<PatientProfile | null>(null)
   const [isLoadingPatient, setIsLoadingPatient] = useState(false)
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null)
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserData | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
@@ -125,6 +128,26 @@ export function AdminUsers() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     fetchUsers(1, searchQuery)
+  }
+
+  const handleDeleteUser = async () => {
+    if (!confirmDeleteUser) return
+    setIsDeleting(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch(`${API_URL}/admin/users/${confirmDeleteUser.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to delete user')
+      setConfirmDeleteUser(null)
+      fetchUsers(pagination?.current_page) // Refresh the list
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete user')
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -233,16 +256,26 @@ export function AdminUsers() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">{user.booking_count} bookings</p>
-                      <p className="text-xs text-gray-500">
-                        Joined {formatDate(user.created_at)}
-                      </p>
-                      {user.last_booking && (
-                        <p className="text-xs text-brand">
-                          Last: {formatDate(user.last_booking)}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{user.booking_count} bookings</p>
+                        <p className="text-xs text-gray-500">
+                          Joined {formatDate(user.created_at)}
                         </p>
-                      )}
+                        {user.last_booking && (
+                          <p className="text-xs text-brand">
+                            Last: {formatDate(user.last_booking)}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteUser(user) }}
+                        className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </motion.div>
                 ))}
@@ -285,6 +318,67 @@ export function AdminUsers() {
       </div>
 
       {/* Patient Profile Modal */}
+      <AnimatePresence>
+        {confirmDeleteUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Delete User</h2>
+                  <p className="text-sm text-gray-500">This action cannot be undone</p>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-2">
+                Are you sure you want to delete <strong>{confirmDeleteUser.first_name} {confirmDeleteUser.last_name}</strong>?
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                <strong>Email:</strong> {confirmDeleteUser.email}
+                <br />
+                All their data, bookings, and orders will be removed. They can re-register with the same email but will need admin approval again.
+              </p>
+              {error && (
+                <p className="text-sm text-red-600 mb-4">{error}</p>
+              )}
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => { setConfirmDeleteUser(null); setError('') }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteUser}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
+                  Delete User
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {(selectedPatient || isLoadingPatient) && (
           <motion.div
