@@ -159,7 +159,8 @@ export const getFullPatientProfile = async (req, res) => {
     const userResult = await pool.query(
       `SELECT u.id, u.email, u.first_name, u.last_name,
               pp.phone_number, pp.address, pp.medical_conditions,
-              pp.region, pp.province, pp.city, pp.barangay, pp.street_address
+              pp.province, pp.city, pp.barangay, pp.street_address,
+              COALESCE(pp.region, '') as region
        FROM users u
        LEFT JOIN patient_profiles pp ON u.id = pp.user_id
        WHERE u.email = $1`,

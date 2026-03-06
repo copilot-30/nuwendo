@@ -136,6 +136,25 @@ export default function PatientDashboard() {
       return
     }
 
+    // Set email immediately so it never shows "-"
+    setProfile(prev => (prev ? prev : { 
+      first_name: '',
+      last_name: '',
+      email: patientEmail,
+      phone: '',
+      age: '',
+      cityAddress: '',
+      region: '',
+      province: '',
+      city: '',
+      barangay: '',
+      street_address: '',
+      height: '',
+      weight: '',
+      reasonForConsult: '',
+      healthGoals: []
+    }))
+
     fetchPatientProfile(patientEmail)
     fetchDashboardData(patientEmail)
     checkShopAccess()
@@ -276,10 +295,15 @@ export default function PatientDashboard() {
           weight: p.weight || '',
           reasonForConsult: p.reasonForConsult || ''
         })
+      } else {
+        // API returned error - populate what we can from sessionStorage
+        setProfile(prev => ({ ...prev!, email }))
+        loadPatientDetailsFromSession()
       }
     } catch (error) {
       console.error('Failed to fetch patient profile:', error)
       // Fall back to session storage
+      setProfile(prev => ({ ...prev!, email }))
       loadPatientDetailsFromSession()
     }
   }
@@ -292,8 +316,16 @@ export default function PatientDashboard() {
         const details = JSON.parse(storedDetails)
         setProfile(prev => ({
           ...prev!,
+          first_name: details.firstName || prev?.first_name || '',
+          last_name: details.lastName || prev?.last_name || '',
+          phone: details.contactNumber || prev?.phone || '',
           age: details.age || '',
-          cityAddress: details.cityAddress || '',
+          cityAddress: details.cityAddress || details.streetAddress || '',
+          region: details.region || '',
+          province: details.province || '',
+          city: details.city || '',
+          barangay: details.barangay || '',
+          street_address: details.streetAddress || '',
           height: details.height || '',
           weight: details.weight || '',
           reasonForConsult: details.reasonForConsult || '',
