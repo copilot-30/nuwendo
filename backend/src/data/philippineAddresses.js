@@ -253,8 +253,7 @@ export const philippineAddresses = {
     ZAMBOANGA_DEL_SUR: [{ code: 'PAGADIAN', name: 'Pagadian' }, { code: 'ZAMBOANGA_CITY', name: 'Zamboanga City' }],
     ZAMBOANGA_SIBUGAY: [{ code: 'IPIL', name: 'Ipil' }],
   },
-  
-  barangays: {
+
   barangays: {
     // Metro Manila Barangays (keeping existing detailed data)
     MANILA: ['Ermita', 'Intramuros', 'Malate', 'Paco', 'Pandacan', 'Port Area', 'Sampaloc', 'San Miguel', 'San Nicolas', 'Santa Ana', 'Santa Cruz', 'Tondo'],
