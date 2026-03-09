@@ -368,7 +368,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
             {/* Recipient Details */}
             <h3 className="font-semibold text-lg">Recipient Details</h3>
             <div className="space-y-3">
-              <div className="p-3 border rounded-lg space-y-1">
+              <div>
                 <Label htmlFor="recipient-name">Full Name</Label>
                 <Input
                   id="recipient-name"
@@ -378,7 +378,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                   className="mt-1"
                 />
               </div>
-              <div className="p-3 border rounded-lg space-y-1">
+              <div>
                 <Label htmlFor="recipient-phone">Phone Number</Label>
                 <Input
                   id="recipient-phone"
