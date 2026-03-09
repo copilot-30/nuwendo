@@ -138,8 +138,11 @@ export default function PatientDashboard() {
 
   useEffect(() => {
     const patientEmail = sessionStorage.getItem('patientEmail')
+    const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
     
-    if (!patientEmail) {
+    if (!patientEmail || !authToken) {
+      sessionStorage.clear()
+      localStorage.removeItem('authToken')
       navigate('/login')
       return
     }
