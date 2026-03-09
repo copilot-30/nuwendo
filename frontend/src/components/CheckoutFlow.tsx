@@ -109,13 +109,13 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   }
 
   const loadDefaultProfile = async (): Promise<PatientProfile> => {
-    const email = sessionStorage.getItem('patientEmail')
+    const email = sessionStorage.getItem('patientEmail') || localStorage.getItem('patientEmail')
     if (!email) {
       console.warn('No patient email found in session')
       return {}
     }
     
-    const authToken = sessionStorage.getItem('authToken')
+    const authToken = sessionStorage.getItem('authToken') || localStorage.getItem('authToken')
     const response = await fetch(`${API_URL}/patient/profile?email=${encodeURIComponent(email)}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
@@ -123,6 +123,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
       }
     })
     const data = await response.json()
+    console.log('Profile data:', data)
     if (data.success) {
       const p = data.profile || {}
       return {
@@ -292,24 +293,52 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   return (
     <div className="space-y-6">
       {/* Step Indicator */}
-      <div className="flex items-center">
-        {[1, 2, 3].map((s, i) => (
-          <div key={s} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                s < step ? 'bg-green-500 text-white' : s === step ? 'bg-brand text-white' : 'bg-gray-200 text-gray-500'
-              }`}>
-                {s < step ? <CheckCircle className="w-5 h-5" /> : s}
-              </div>
-              <span className={`mt-1 text-xs ${s === step ? 'font-semibold text-brand' : 'text-gray-500'}`}>
-                {s === 1 ? 'Delivery' : s === 2 ? 'Review' : 'Payment'}
-              </span>
-            </div>
-            {i < 2 && (
-              <div className={`flex-1 h-1 mx-2 mb-4 ${s < step ? 'bg-green-500' : 'bg-gray-200'}`} />
-            )}
+      <div className="relative flex items-start justify-between">
+        {/* Connector lines drawn behind the circles */}
+        <div className="absolute top-4 left-0 right-0 flex px-4" style={{ zIndex: 0 }}>
+          <div className="flex-1 flex">
+            <div className={`flex-1 h-1 ${step > 1 ? 'bg-green-500' : 'bg-gray-200'}`} />
           </div>
-        ))}
+          <div className="flex-1 flex">
+            <div className={`flex-1 h-1 ${step > 2 ? 'bg-green-500' : 'bg-gray-200'}`} />
+          </div>
+        </div>
+
+        {/* Step 1 */}
+        <div className="flex flex-col items-center relative" style={{ zIndex: 1 }}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+            step > 1 ? 'bg-green-500 text-white' : step === 1 ? 'bg-brand text-white' : 'bg-gray-200 text-gray-500'
+          }`}>
+            {step > 1 ? <CheckCircle className="w-5 h-5" /> : 1}
+          </div>
+          <span className={`mt-1 text-xs whitespace-nowrap ${step === 1 ? 'font-semibold text-brand' : 'text-gray-500'}`}>
+            Delivery
+          </span>
+        </div>
+
+        {/* Step 2 */}
+        <div className="flex flex-col items-center relative" style={{ zIndex: 1 }}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+            step > 2 ? 'bg-green-500 text-white' : step === 2 ? 'bg-brand text-white' : 'bg-gray-200 text-gray-500'
+          }`}>
+            {step > 2 ? <CheckCircle className="w-5 h-5" /> : 2}
+          </div>
+          <span className={`mt-1 text-xs whitespace-nowrap ${step === 2 ? 'font-semibold text-brand' : 'text-gray-500'}`}>
+            Review
+          </span>
+        </div>
+
+        {/* Step 3 */}
+        <div className="flex flex-col items-center relative" style={{ zIndex: 1 }}>
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+            step === 3 ? 'bg-brand text-white' : 'bg-gray-200 text-gray-500'
+          }`}>
+            3
+          </div>
+          <span className={`mt-1 text-xs whitespace-nowrap ${step === 3 ? 'font-semibold text-brand' : 'text-gray-500'}`}>
+            Payment
+          </span>
+        </div>
       </div>
 
       {error && (
