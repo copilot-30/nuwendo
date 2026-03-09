@@ -1124,7 +1124,7 @@ const verifyPayment = async (req, res) => {
     }
     const oldVerified = oldResult.rows[0].payment_verified;
 
-    // Update payment verification
+    // Update payment verification — payment_verified_by stores admin_users.id (no FK constraint after migration 023)
     const result = await pool.query(
       `UPDATE shop_orders 
        SET payment_verified = $1, 
@@ -1146,6 +1146,29 @@ const verifyPayment = async (req, res) => {
     });
   } catch (error) {
     console.error('Verify payment error:', error);
+    // If FK constraint still exists (migration not yet run), retry without payment_verified_by
+    if (error.code === '23503') {
+      try {
+        const { id } = req.params;
+        const { payment_verified } = req.body;
+        const result = await pool.query(
+          `UPDATE shop_orders 
+           SET payment_verified = $1, 
+               payment_verified_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $2 
+           RETURNING *`,
+          [payment_verified, id]
+        );
+        return res.json({
+          success: true,
+          message: payment_verified ? 'Payment verified successfully' : 'Payment verification removed',
+          order: result.rows[0]
+        });
+      } catch (retryErr) {
+        console.error('Retry verify payment error:', retryErr);
+      }
+    }
     res.status(500).json({ message: 'Server error' });
   }
 };
