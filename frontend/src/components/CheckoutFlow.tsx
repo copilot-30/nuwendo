@@ -53,6 +53,8 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   const [defaultProfile, setDefaultProfile] = useState<PatientProfile | null>(null)
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
+  const [nameTouched, setNameTouched] = useState(false)
+  const [phoneTouched, setPhoneTouched] = useState(false)
   const [regions, setRegions] = useState<Province[]>([])
   const [provinces, setProvinces] = useState<Province[]>([])
   const [cities, setCities] = useState<City[]>([])
@@ -280,8 +282,14 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     }
   }
 
+  const isValidPhilippinePhone = (phone: string) => {
+    // Accepts 09XXXXXXXXX (11 digits) or +639XXXXXXXXX (13 chars)
+    return /^(09\d{9}|\+639\d{9})$/.test(phone.trim())
+  }
+
   const canProceedFromStep1 = () => {
-    if (!recipientName.trim() || !recipientPhone.trim()) return false
+    if (!recipientName.trim()) return false
+    if (!recipientPhone.trim() || !isValidPhilippinePhone(recipientPhone)) return false
     if (useDefaultAddress) {
       return defaultProfile?.province && defaultProfile?.city && defaultProfile?.barangay
     }
@@ -374,9 +382,13 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                   id="recipient-name"
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
                   placeholder="e.g. Juan dela Cruz"
                   className="mt-1"
                 />
+                {nameTouched && recipientName.trim() === '' && (
+                  <p className="text-xs text-red-500 mt-1">Full name is required</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="recipient-phone">Phone Number</Label>
@@ -384,9 +396,20 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                   id="recipient-phone"
                   value={recipientPhone}
                   onChange={(e) => setRecipientPhone(e.target.value)}
+                  onBlur={() => setPhoneTouched(true)}
                   placeholder="e.g. 09123456789"
                   className="mt-1"
+                  maxLength={13}
                 />
+                {phoneTouched && (
+                  recipientPhone.trim() === '' ? (
+                    <p className="text-xs text-red-500 mt-1">Phone number is required</p>
+                  ) : !isValidPhilippinePhone(recipientPhone) ? (
+                    <p className="text-xs text-red-500 mt-1">Enter a valid PH number (e.g. 09XXXXXXXXX)</p>
+                  ) : (
+                    <p className="text-xs text-green-600 mt-1">✓ Valid phone number</p>
+                  )
+                )}
               </div>
             </div>
 
