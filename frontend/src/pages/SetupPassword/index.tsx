@@ -48,6 +48,12 @@ export function SetupPassword() {
     
     try {
       await completeRegistration(email, code, password, firstName, lastName)
+      // Store session data so PatientDashboard can access them
+      sessionStorage.setItem('patientEmail', email)
+      sessionStorage.setItem('isAuthenticated', 'true')
+      // also mirror token to sessionStorage (localStorage is set by completeRegistration in api.ts)
+      const token = localStorage.getItem('authToken')
+      if (token) sessionStorage.setItem('authToken', token)
       // Registration complete, redirect to dashboard
       navigate('/dashboard')
     } catch (err: any) {

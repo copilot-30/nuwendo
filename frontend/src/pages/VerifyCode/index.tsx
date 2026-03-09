@@ -89,6 +89,7 @@ export default function VerifyCode() {
       sessionStorage.setItem('verificationCode', fullCode)
       if (data.data?.token) {
         sessionStorage.setItem('authToken', data.data.token)
+        localStorage.setItem('authToken', data.data.token)
       }
       navigate('/patient-details')
     } catch (err) {
