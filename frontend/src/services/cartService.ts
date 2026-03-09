@@ -25,7 +25,7 @@ export interface Cart {
 }
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken')
+  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
   return {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` })

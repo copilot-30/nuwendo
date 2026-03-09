@@ -178,6 +178,7 @@ export default function Login() {
 
       sessionStorage.setItem('patientEmail', email)
       localStorage.setItem('authToken', data.data.token)
+      sessionStorage.setItem('authToken', data.data.token)
       sessionStorage.setItem('isAuthenticated', 'true')
       
       console.log('Token stored in sessionStorage:', sessionStorage.getItem('authToken'))
