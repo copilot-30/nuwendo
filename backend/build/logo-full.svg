@@ -1,0 +1,45 @@
+<svg viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .logo-text { font-family: 'Arial Black', Arial, sans-serif; font-weight: 900; }
+      .tagline { font-family: 'Times New Roman', Times, serif; font-style: italic; }
+    </style>
+  </defs>
+  
+  <!-- NUWENDO text -->
+  <g fill="#1e2a5e">
+    <!-- Stylized N with bar -->
+    <path d="M5 45 L5 10 L10 10 L10 35 L25 10 L30 10 L30 45 L25 45 L25 20 L10 45 Z"/>
+    <rect x="3" y="5" width="22" height="3"/>
+    
+    <!-- U -->
+    <path d="M38 10 L38 35 Q38 45 48 45 Q58 45 58 35 L58 10 L53 10 L53 34 Q53 40 48 40 Q43 40 43 34 L43 10 Z"/>
+    
+    <!-- W -->
+    <path d="M65 10 L70 45 L75 45 L80 25 L85 45 L90 45 L95 10 L90 10 L87 35 L82 15 L78 15 L73 35 L70 10 Z"/>
+    
+    <!-- E -->
+    <path d="M102 10 L102 45 L125 45 L125 40 L107 40 L107 30 L122 30 L122 25 L107 25 L107 15 L125 15 L125 10 Z"/>
+    
+    <!-- N -->
+    <path d="M132 10 L132 45 L137 45 L137 20 L152 45 L157 45 L157 10 L152 10 L152 35 L137 10 Z"/>
+    
+    <!-- D -->
+    <path d="M165 10 L165 45 L182 45 Q195 45 195 27.5 Q195 10 182 10 Z M170 15 L180 15 Q190 15 190 27.5 Q190 40 180 40 L170 40 Z"/>
+    
+    <!-- O -->
+    <path d="M202 27.5 Q202 10 217 10 Q232 10 232 27.5 Q232 45 217 45 Q202 45 202 27.5 Z M207 27.5 Q207 40 217 40 Q227 40 227 27.5 Q227 15 217 15 Q207 15 207 27.5 Z"/>
+  </g>
+  
+  <!-- DNA helix decoration -->
+  <g stroke="#1e2a5e" stroke-width="1.5" fill="none">
+    <ellipse cx="20" cy="58" rx="8" ry="2.5"/>
+    <ellipse cx="38" cy="58" rx="8" ry="2.5"/>
+    <ellipse cx="56" cy="58" rx="8" ry="2.5"/>
+    <ellipse cx="74" cy="58" rx="8" ry="2.5"/>
+    <ellipse cx="92" cy="58" rx="8" ry="2.5"/>
+  </g>
+  
+  <!-- Metabolic Clinic text -->
+  <text x="105" y="62" class="tagline" font-size="12" fill="#1e2a5e">Metabolic Clinic</text>
+</svg>
