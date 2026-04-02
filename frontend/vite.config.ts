@@ -25,9 +25,9 @@ export default defineConfig({
     cors: true,
     allowedHosts: [
       'localhost',
-      'nuwendo.dev',
-      'www.nuwendo.dev',
-      '.nuwendo.dev' // Allow all subdomains
+      'app.nuwendo.com',
+      'www.app.nuwendo.com',
+      '.nuwendo.com' // Allow all nuwendo.com subdomains
     ],
   },
 })

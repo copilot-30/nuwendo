@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Database configuration
-// Use DATABASE_URL if available (Railway), otherwise use individual vars (local)
+// Use DATABASE_URL if available, otherwise use individual vars (local)
 const config = process.env.DATABASE_URL 
   ? { connectionString: process.env.DATABASE_URL, ssl: false }
   : {

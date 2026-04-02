@@ -15,11 +15,11 @@ if (process.env.DATABASE_URL) {
   console.log('- Database Name:', url.pathname.substring(1));
 }
 
-// Support both DATABASE_URL (Railway, Heroku) and individual connection params
+// Support both DATABASE_URL and individual connection params
 const pool = process.env.DATABASE_URL 
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: false,  // Railway internal network doesn't need SSL
+      ssl: false,
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000
     })

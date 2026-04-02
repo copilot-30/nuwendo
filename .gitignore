@@ -20,8 +20,6 @@ database/*.backup
 !package.json
 !tsconfig.json
 !components.json
-!vercel.json
-!railway.json
 
 # Scripts
 fix-*.ps1
@@ -39,4 +37,3 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
-.vercel

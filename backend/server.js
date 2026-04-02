@@ -72,8 +72,8 @@ const PORT = process.env.PORT || 5000;
 
 // CORS Configuration
 const defaultAllowedOrigins = [
-  'https://frontend-liart-six-87.vercel.app',
-  'https://www.nuwendo.dev',
+  'https://app.nuwendo.com',
+  'https://www.app.nuwendo.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173'
 ];
@@ -127,7 +127,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Simple ping endpoint for Railway health check
+// Simple ping endpoint for external health checks
 app.get('/ping', (req, res) => {
   res.status(200).send('OK');
 });
@@ -210,6 +210,6 @@ const HOST = process.env.HOST || '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`✓ Server is running on ${HOST}:${PORT}`);
   console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✓ CORS Origin: ${process.env.CORS_ORIGIN || 'https://frontend-liart-six-87.vercel.app'}`);
+  console.log(`✓ CORS Origin: ${process.env.CORS_ORIGIN || 'https://app.nuwendo.com'}`);
   console.log(`✓ Server ready to accept connections`);
 });
