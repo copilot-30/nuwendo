@@ -2,7 +2,7 @@ import pg from 'pg';
 const { Client } = pg;
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -102,7 +102,7 @@ const rollbackMigration = async (client, filename) => {
 };
 
 // Main migration function
-const migrate = async () => {
+export const migrate = async () => {
   const client = new Client(config);
   
   try {
@@ -136,14 +136,14 @@ const migrate = async () => {
     if (error.stack) {
       console.error(error.stack);
     }
-    process.exit(1);
+    throw error;
   } finally {
     await client.end();
   }
 };
 
 // Rollback last migration
-const rollback = async () => {
+export const rollback = async () => {
   const client = new Client(config);
   
   try {
@@ -166,21 +166,32 @@ const rollback = async () => {
     
   } catch (error) {
     console.error('✗ Rollback failed:', error.message);
-    process.exit(1);
+    throw error;
   } finally {
     await client.end();
   }
 };
 
-// CLI interface
-const command = process.argv[2];
+// CLI interface (only when run directly, not when imported)
+const isDirectRun = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
 
-if (command === 'up' || !command) {
-  migrate();
-} else if (command === 'down') {
-  rollback();
-} else {
-  console.log('Usage: node migrate.js [up|down]');
-  console.log('  up (default) - Run pending migrations');
-  console.log('  down         - Rollback last migration');
+if (isDirectRun) {
+  const command = process.argv[2];
+
+  if (command === 'up' || !command) {
+    migrate().catch(() => {
+      process.exit(1);
+    });
+  } else if (command === 'down') {
+    rollback().catch(() => {
+      process.exit(1);
+    });
+  } else {
+    console.log('Usage: node migrate.js [up|down]');
+    console.log('  up (default) - Run pending migrations');
+    console.log('  down         - Rollback last migration');
+    process.exitCode = 1;
+  }
 }

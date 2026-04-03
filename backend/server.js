@@ -18,9 +18,8 @@ import cartRoutes from './src/routes/cart.js';
 import addressesRoutes from './src/routes/addresses.js';
 import uploadRoutes from './src/routes/upload.js';
 import pool from './src/config/database.js';
-import { spawn } from 'child_process';
+import { migrate as runMigrations } from './database/migrate.js';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,33 +47,13 @@ const checkAndMigrate = async () => {
         return;
       }
 
-      const migrationCwd = './database';
-      if (!fs.existsSync(migrationCwd)) {
-        console.warn(`⚠️  Migration directory not found (${migrationCwd}). Skipping startup migrations.`);
-        return;
+      try {
+        await runMigrations();
+        console.log('\n✅ Migrations completed successfully\n');
+      } catch (migrationError) {
+        console.error('\n❌ Migrations failed. Continuing anyway...\n');
+        console.error('Migration error:', migrationError?.message || migrationError);
       }
-      
-      return new Promise((resolve) => {
-        const proc = spawn('npm', ['run', 'migrate'], {
-          cwd: migrationCwd,
-          stdio: 'inherit',
-          shell: true
-        });
-
-        proc.on('error', (err) => {
-          console.error('❌ Failed to start migration process:', err.message);
-          resolve();
-        });
-        
-        proc.on('close', (code) => {
-          if (code !== 0) {
-            console.error('\n❌ Migrations failed. Continuing anyway...\n');
-          } else {
-            console.log('\n✅ Migrations completed successfully\n');
-          }
-          resolve();
-        });
-      });
     } else {
       console.log('✓ Database tables exist');
     }
@@ -221,16 +200,22 @@ app.use((req, res) => {
   });
 });
 
-// Start server
+// Start server after migration check to avoid race conditions on first requests
 const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () => {
-  console.log(`✓ Server is running on ${HOST}:${PORT}`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✓ CORS Origin: ${process.env.CORS_ORIGIN || 'https://app.nuwendo.com'}`);
-  console.log(`✓ Server ready to accept connections`);
 
-  // Run migration check in background so startup is never blocked
-  checkAndMigrate().catch((error) => {
-    console.error('Background migration check failed:', error?.message || error);
+const startServer = async () => {
+  try {
+    await checkAndMigrate();
+  } catch (error) {
+    console.error('Startup migration check failed:', error?.message || error);
+  }
+
+  app.listen(PORT, HOST, () => {
+    console.log(`✓ Server is running on ${HOST}:${PORT}`);
+    console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✓ CORS Origin: ${process.env.CORS_ORIGIN || 'https://app.nuwendo.com'}`);
+    console.log(`✓ Server ready to accept connections`);
   });
-});
+};
+
+startServer();

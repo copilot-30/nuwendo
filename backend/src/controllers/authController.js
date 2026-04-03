@@ -422,10 +422,20 @@ export const patientLoginSendCode = async (req, res) => {
     const { email } = req.body;
 
     // Check if this email belongs to an admin
-    const adminCheck = await pool.query(
-      'SELECT id FROM admin_users WHERE email = $1 AND is_active = true',
-      [email]
-    );
+    // Fail-safe: if admin tables are not yet migrated, continue patient login flow.
+    let adminCheck = { rows: [] };
+    try {
+      adminCheck = await pool.query(
+        'SELECT id FROM admin_users WHERE email = $1 AND is_active = true',
+        [email]
+      );
+    } catch (adminCheckError) {
+      if (adminCheckError?.code === '42P01') {
+        console.warn('⚠️ admin_users table not found during patient login; proceeding as non-admin');
+      } else {
+        throw adminCheckError;
+      }
+    }
 
     if (adminCheck.rows.length > 0) {
       return res.status(200).json({ 

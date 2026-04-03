@@ -52,12 +52,14 @@ CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 CREATE INDEX IF NOT EXISTS idx_time_slots_day ON time_slots(day_of_week);
 
 -- Create trigger for updated_at
-CREATE OR REPLACE TRIGGER update_services_updated_at 
+DROP TRIGGER IF EXISTS update_services_updated_at ON services;
+CREATE TRIGGER update_services_updated_at 
     BEFORE UPDATE ON services
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE OR REPLACE TRIGGER update_bookings_updated_at 
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+CREATE TRIGGER update_bookings_updated_at 
     BEFORE UPDATE ON bookings
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

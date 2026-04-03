@@ -20,8 +20,9 @@ CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
 CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 CREATE INDEX IF NOT EXISTS idx_admin_users_active ON admin_users(is_active);
 
--- CREATE OR REPLACE TRIGGER for updated_at
-CREATE OR REPLACE TRIGGER update_admin_users_updated_at 
+-- Create trigger for updated_at (compatible across PostgreSQL versions)
+DROP TRIGGER IF EXISTS update_admin_users_updated_at ON admin_users;
+CREATE TRIGGER update_admin_users_updated_at
     BEFORE UPDATE ON admin_users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
