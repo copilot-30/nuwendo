@@ -7,7 +7,8 @@ import {
   getPatientBookings, 
   cancelBooking, 
   getPublicPaymentSettings, 
-  uploadPaymentReceipt
+  uploadPaymentReceipt,
+  discardUnpaidBooking
 } from '../controllers/bookingController.js';
 
 const router = express.Router();
@@ -36,6 +37,12 @@ router.post('/:id/receipt', [
   body('receiptData').notEmpty().withMessage('Receipt data is required'),
   body('email').isEmail().withMessage('Valid email is required')
 ], uploadPaymentReceipt);
+
+// Discard newly created pending booking when receipt upload fails
+router.delete('/:id/unpaid', [
+  param('id').isInt().withMessage('Booking ID is required'),
+  body('email').isEmail().withMessage('Valid email is required')
+], discardUnpaidBooking);
 
 // Get patient bookings by email
 router.get('/patient', [

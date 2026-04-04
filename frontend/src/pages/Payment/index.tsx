@@ -84,6 +84,7 @@ export default function Payment() {
     }
     setIsLoading(true)
     setError('')
+    let createdBookingId: number | null = null
     try {
       const bookingRes = await fetch(`${BASE_URL}/api/booking/create`, {
         method: 'POST',
@@ -98,6 +99,7 @@ export default function Payment() {
       })
       const bookingData = await bookingRes.json()
       if (!bookingRes.ok) throw new Error(bookingData.message || 'Failed to create booking')
+      createdBookingId = bookingData.bookingId
       
       const receiptRes = await fetch(`${BASE_URL}/api/booking/${bookingData.bookingId}/receipt`, {
         method: 'POST',
@@ -111,7 +113,21 @@ export default function Payment() {
       sessionStorage.setItem('bookingConfirmation', JSON.stringify({ bookingId: bookingData.bookingId, status: 'pending' }))
       setTimeout(() => navigate('/confirmation'), 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      if (createdBookingId) {
+        try {
+          await fetch(`${BASE_URL}/api/booking/${createdBookingId}/unpaid`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          })
+        } catch (cleanupErr) {
+          console.error('Failed to discard unpaid booking after receipt error:', cleanupErr)
+        }
+
+        setError('Receipt upload failed. Your booking was not saved. Please try again after fixing payment receipt upload.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      }
     } finally {
       setIsLoading(false)
     }

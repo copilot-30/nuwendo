@@ -180,7 +180,9 @@ const getDashboardStats = async (req, res) => {
        FROM bookings b
        JOIN users u ON b.user_id = u.id
        JOIN services s ON b.service_id = s.id
-       WHERE b.payment_status = 'pending' AND b.status != 'cancelled'
+       WHERE b.payment_status = 'pending'
+         AND b.status != 'cancelled'
+         AND b.payment_receipt_url IS NOT NULL
        ORDER BY b.booking_date ASC, b.booking_time ASC
        LIMIT 10`
     );
@@ -188,7 +190,9 @@ const getDashboardStats = async (req, res) => {
     // Calculate total pending amount
     const pendingAmountResult = await pool.query(
       `SELECT COALESCE(SUM(amount_paid), 0) as total FROM bookings 
-       WHERE payment_status = 'pending' AND status != 'cancelled'`
+       WHERE payment_status = 'pending'
+         AND status != 'cancelled'
+         AND payment_receipt_url IS NOT NULL`
     );
 
     // Recent bookings

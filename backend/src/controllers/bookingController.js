@@ -376,6 +376,50 @@ const uploadPaymentReceipt = async (req, res) => {
   }
 };
 
+// Discard a newly-created pending booking when receipt upload fails
+const discardUnpaidBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const bookingResult = await pool.query(
+      `SELECT b.id, b.status, b.payment_receipt_url
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       WHERE b.id = $1 AND u.email = $2`,
+      [id, email]
+    );
+
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const booking = bookingResult.rows[0];
+
+    if (booking.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending bookings can be discarded' });
+    }
+
+    if (booking.payment_receipt_url) {
+      return res.status(400).json({ message: 'Cannot discard booking with uploaded receipt' });
+    }
+
+    await pool.query('DELETE FROM bookings WHERE id = $1', [id]);
+
+    return res.json({
+      success: true,
+      message: 'Unpaid booking discarded successfully'
+    });
+  } catch (error) {
+    console.error('Discard unpaid booking error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Helper function: Get time-based status
 const getTimeStatus = (bookingDate, bookingTime) => {
   try {
@@ -422,5 +466,6 @@ export {
   cancelBooking,
   getPublicPaymentSettings,
   uploadPaymentReceipt,
+  discardUnpaidBooking,
   getTimeStatus
 };
