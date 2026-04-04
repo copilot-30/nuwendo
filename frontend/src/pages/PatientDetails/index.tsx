@@ -46,6 +46,12 @@ export default function PatientDetails() {
     loadRegions()
   }, [])
 
+  useEffect(() => {
+    if (!email || !code) {
+      navigate('/signup', { replace: true })
+    }
+  }, [email, code, navigate])
+
   const loadRegions = async () => {
     try {
       const data = await addressService.getRegions()
@@ -187,10 +193,7 @@ export default function PatientDetails() {
     }
   }
 
-  if (!email || !code) {
-    navigate('/signup')
-    return null
-  }
+  if (!email || !code) return null
 
   return (
     <motion.div

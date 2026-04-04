@@ -71,7 +71,13 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
     navigate('/login')
   }
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => {
+    if (path === '/admin/shop') {
+      return location.pathname === '/admin/shop' || location.pathname.startsWith('/admin/orders')
+    }
+
+    return location.pathname === path || location.pathname.startsWith(`${path}/`)
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">

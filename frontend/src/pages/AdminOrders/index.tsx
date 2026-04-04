@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { useNavigate } from 'react-router-dom'
 import {
+  ArrowLeft,
   Package, ChevronLeft, ChevronRight,
   CheckCircle, Clock, ExternalLink,
   User, Mail, MapPin, Loader2, AlertCircle,
@@ -179,9 +180,15 @@ export function AdminOrders() {
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
-          <p className="text-gray-600 mt-1">View and manage shop orders</p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
+            <p className="text-gray-600 mt-1">View and manage shop orders</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/admin/shop')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Shop
+          </Button>
         </div>
 
         {/* Filters */}

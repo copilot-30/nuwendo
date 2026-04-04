@@ -28,6 +28,7 @@ export default function Payment() {
   const email = patientEmail || signupEmail
   
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
+  const serviceId = service?.id
   const bookingDate = sessionStorage.getItem('bookingDate') || ''
   const bookingTime = sessionStorage.getItem('bookingTime') || ''
   const appointmentType = sessionStorage.getItem('appointmentType') || 'on-site'
@@ -41,12 +42,12 @@ export default function Payment() {
   const [uploadSuccess, setUploadSuccess] = useState(false)
 
   useEffect(() => {
-    if (!isValidUser || !service.id || !bookingDate || !bookingTime) {
+    if (!isValidUser || !serviceId || !bookingDate || !bookingTime) {
       navigate('/signup')
       return
     }
     fetchPaymentSettings()
-  }, [isValidUser, service, bookingDate, bookingTime, navigate])
+  }, [isValidUser, serviceId, bookingDate, bookingTime, navigate])
 
   const fetchPaymentSettings = async () => {
     try {

@@ -9,8 +9,9 @@ const adminAuth = async (req, res, next) => {
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  // Verify JWT token (must match signing logic in authController)
+  const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+  const decoded = jwt.verify(token, jwtSecret);
     
     // Check if session exists in database
     const sessionResult = await pool.query(
@@ -41,7 +42,18 @@ const adminAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Admin auth middleware error:', error);
-    res.status(401).json({ message: 'Invalid token.' });
+
+    // JWT/authorization errors -> 401
+    if (
+      error?.name === 'JsonWebTokenError' ||
+      error?.name === 'TokenExpiredError' ||
+      error?.name === 'NotBeforeError'
+    ) {
+      return res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+
+    // DB or unexpected errors -> 500 (do not force client logout)
+    return res.status(500).json({ message: 'Admin authentication service unavailable.' });
   }
 };
 

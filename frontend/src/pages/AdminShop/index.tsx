@@ -22,7 +22,6 @@ import {
   Loader2,
   Package,
   Users,
-  ArrowLeft,
   X,
   ClipboardList
 } from 'lucide-react'
@@ -335,13 +334,6 @@ export function AdminShop() {
         {/* Page Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate('/admin/services')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Shop Management</h1>
               <p className="text-gray-500">Manage shop items and patient access</p>

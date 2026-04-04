@@ -27,6 +27,7 @@ export default function ChooseSchedule() {
   const isValidUser = (signupEmail && verificationCode) || (patientEmail && isAuthenticated)
   
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
+  const serviceId = service?.id
   
   const [appointmentType, setAppointmentType] = useState<AppointmentType>('on-site')
   const [availableTypes, setAvailableTypes] = useState<AppointmentType[]>([])
@@ -39,10 +40,10 @@ export default function ChooseSchedule() {
   const [timeFilter, setTimeFilter] = useState<'AM' | 'PM'>('AM')
 
   useEffect(() => {
-    if (!isValidUser || !service.id) {
+    if (!isValidUser || !serviceId) {
       navigate('/signup')
     }
-  }, [isValidUser, service, navigate])
+  }, [isValidUser, serviceId, navigate])
 
   // When date changes: fetch which types have working hours for that day, then auto-select best type
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function ChooseSchedule() {
         const dateStr = `${year}-${month}-${day}`
 
         const response = await fetch(
-          `${BASE_URL}/api/availability/types?date=${dateStr}&serviceId=${service.id}`
+          `${BASE_URL}/api/availability/types?date=${dateStr}&serviceId=${serviceId}`
         )
         const data = await response.json()
         const types: AppointmentType[] = data.availableTypes || []
@@ -82,7 +83,7 @@ export default function ChooseSchedule() {
     }
 
     fetchTypes()
-  }, [selectedDate, service.id])
+  }, [selectedDate, serviceId])
 
   // Fetch time slots when date or appointmentType changes (only when type is available for that day)
   useEffect(() => {
@@ -97,7 +98,7 @@ export default function ChooseSchedule() {
         const day = String(selectedDate.getDate()).padStart(2, '0')
         const dateStr = `${year}-${month}-${day}`
 
-        const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${service.id}`)
+  const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${serviceId}`)
         const data = await response.json()
         setAvailableSlots(data.availableSlots || [])
         setSelectedSlot(null)
@@ -125,7 +126,7 @@ export default function ChooseSchedule() {
       }
     }
     fetchSlots()
-  }, [selectedDate, appointmentType, availableTypes, service.id])
+  }, [selectedDate, appointmentType, availableTypes, serviceId])
 
   const handleContinue = () => {
     if (selectedDate && selectedSlot) {

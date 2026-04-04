@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const authRetryAttemptedRef = useRef(false);
 
   useEffect(() => {
     // Check if admin is logged in
@@ -66,13 +67,22 @@ export default function AdminDashboard() {
           },
         });
         
-        // If unauthorized, redirect to login
+        // If unauthorized, retry once to avoid false logout on transient startup races
         if (response.status === 401) {
+          if (!authRetryAttemptedRef.current) {
+            authRetryAttemptedRef.current = true;
+            setTimeout(fetchStats, 250);
+            return;
+          }
+
           localStorage.removeItem('adminToken');
           localStorage.removeItem('adminUser');
           navigate('/login');
           return;
         }
+
+        // Reset retry flag on successful auth
+        authRetryAttemptedRef.current = false;
         
         if (response.ok) {
           const data = await response.json();

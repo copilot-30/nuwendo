@@ -116,8 +116,21 @@ export default function Login() {
       // Store admin token and redirect to admin dashboard
       localStorage.setItem('adminToken', data.data.token)
       localStorage.setItem('adminUser', JSON.stringify(data.data.admin))
+
+      // Validate session immediately before navigating to avoid bounce-back loops
+      const profileResponse = await fetch(`${BASE_URL}/api/admin/auth/profile`, {
+        headers: {
+          Authorization: `Bearer ${data.data.token}`
+        }
+      })
+
+      if (!profileResponse.ok) {
+        localStorage.removeItem('adminToken')
+        localStorage.removeItem('adminUser')
+        throw new Error('Admin session could not be verified. Please try again.')
+      }
       
-      navigate('/admin/dashboard')
+      navigate('/admin/dashboard', { replace: true })
     } catch (err: any) {
       setError(err.message || 'Invalid email or password')
     } finally {

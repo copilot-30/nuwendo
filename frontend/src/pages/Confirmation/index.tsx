@@ -58,9 +58,10 @@ export default function Confirmation() {
     sessionStorage.removeItem('verificationCode')
     sessionStorage.removeItem('patientDetails')
     
-    // For new signups, they have completed the booking flow successfully
-    // Set them as authenticated so they can access their dashboard
-    if (signupEmail && !isLoggedIn) {
+    // For new signups, persist patient identity before routing to dashboard.
+    // This must run even if token already exists, otherwise dashboard can
+    // redirect to /login due to missing patientEmail.
+    if (signupEmail) {
       sessionStorage.setItem('isAuthenticated', 'true')
       localStorage.setItem('isAuthenticated', 'true')
       sessionStorage.setItem('patientEmail', signupEmail)

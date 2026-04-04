@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 import SignUp from '@/pages/SignUp'
 import VerifyCode from '@/pages/VerifyCode'
@@ -20,17 +20,24 @@ import AdminBookings from '@/pages/AdminBookings'
 import AdminSettings from '@/pages/AdminSettings'
 import { AdminOrders } from '@/pages/AdminOrders'
 
-function App() {
+function AppRoutes() {
+  // Force re-evaluation of auth/session guards on every route change.
+  // This prevents stale localStorage-derived guards after login/logout
+  // (e.g. needing manual refresh before admin dashboard appears).
+  useLocation()
+
   const hasAdminSession = !!localStorage.getItem('adminToken')
 
   // Avoid redirect loops: only treat patient session as valid when both token and identity exist.
   const patientToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
   const patientEmail = localStorage.getItem('patientEmail') || sessionStorage.getItem('patientEmail')
-  const hasPatientSession = !!patientToken && !!patientEmail
+  const patientAuthFlag =
+    localStorage.getItem('isAuthenticated') === 'true' ||
+    sessionStorage.getItem('isAuthenticated') === 'true'
+  const hasPatientSession = !!patientToken && !!patientEmail && patientAuthFlag
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <Routes>
         {/* Patient Booking Routes */}
         <Route
           path="/"
@@ -61,21 +68,35 @@ function App() {
                 : <Login />
           }
         />
-        <Route path="/dashboard" element={<PatientDashboard />} />
+        <Route
+          path="/dashboard"
+          element={
+            hasPatientSession
+              ? <PatientDashboard />
+              : <Navigate to="/login" replace />
+          }
+        />
         
         {/* Admin Routes - login redirects to /login */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/services" element={<AdminServices />} />
-        <Route path="/admin/shop" element={<AdminShop />} />
-        <Route path="/admin/schedule" element={<AdminSchedule />} />
-        <Route path="/admin/payments" element={<AdminPayments />} />
-        <Route path="/admin/bookings" element={<AdminBookings />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/orders" element={<AdminOrders />} />
-        <Route path="/admin/audit-logs" element={<AdminAuditLog />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
-      </Routes>
+        <Route path="/admin" element={hasAdminSession ? <AdminDashboard /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/dashboard" element={hasAdminSession ? <AdminDashboard /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/services" element={hasAdminSession ? <AdminServices /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/shop" element={hasAdminSession ? <AdminShop /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/schedule" element={hasAdminSession ? <AdminSchedule /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/payments" element={hasAdminSession ? <AdminPayments /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/bookings" element={hasAdminSession ? <AdminBookings /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/users" element={hasAdminSession ? <AdminUsers /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/orders" element={hasAdminSession ? <AdminOrders /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/audit-logs" element={hasAdminSession ? <AdminAuditLog /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/settings" element={hasAdminSession ? <AdminSettings /> : <Navigate to="/login" replace />} />
+    </Routes>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   )
 }

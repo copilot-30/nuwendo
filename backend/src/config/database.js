@@ -29,6 +29,18 @@ if (normalizedDatabaseUrl) {
 }
 
 // Support both DATABASE_URL and individual connection params
+// Optional: allow operators to disable TLS verification when the hosting
+// environment intercepts or replaces certificates (e.g. some shared hosts).
+// Use with caution: this weakens TLS verification. Prefer fixing the host
+// network or adding CA bundles. To opt-in set DISABLE_TLS_VERIFY=true in
+// your hosting environment variables.
+if (process.env.DISABLE_TLS_VERIFY === 'true') {
+  console.warn('⚠️ DISABLE_TLS_VERIFY is set - TLS certificate verification is disabled (NODE_TLS_REJECT_UNAUTHORIZED=0). This is insecure; only use temporarily.');
+  // Instruct Node's TLS stack to skip cert verification.
+  // Note: this affects the whole process.
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const shouldUseSsl = process.env.DB_SSL === 'false'
   ? false
   : (
