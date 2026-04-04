@@ -5,6 +5,24 @@ import { uploadBase64Image } from '../services/storageService.js';
 
 const router = express.Router();
 
+const sanitizeForPath = (value, fallback = 'unknown') => {
+  return String(value || fallback)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback;
+};
+
+const getPathTimestamp = (date = new Date()) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+};
+
 // Get user's cart
 router.get('/', flexibleAuthMiddleware, async (req, res) => {
   try {
@@ -260,7 +278,18 @@ router.post('/upload-receipt', flexibleAuthMiddleware, async (req, res) => {
     if (!receiptData) {
       return res.status(400).json({ success: false, message: 'Receipt data is required' });
     }
-    const { url } = await uploadBase64Image(receiptData, `receipts/shop-order`);
+    const userResult = await pool.query(
+      'SELECT first_name, last_name, email FROM users WHERE id = $1',
+      [req.user.userId]
+    );
+
+    const user = userResult.rows[0] || {};
+    const senderName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'shop-user';
+    const senderSlug = sanitizeForPath(senderName, 'shop-user');
+    const sentAtSlug = getPathTimestamp(new Date());
+    const receiptFolder = `receipts/${senderSlug}-shop-order-${sentAtSlug}`;
+
+    const { url } = await uploadBase64Image(receiptData, receiptFolder);
     res.json({ success: true, url });
   } catch (error) {
     console.error('Error uploading shop receipt:', error);

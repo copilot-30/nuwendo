@@ -1,6 +1,24 @@
 import pool from '../config/database.js';
 import { uploadBase64Image } from '../services/storageService.js';
 
+const sanitizeForPath = (value, fallback = 'unknown') => {
+  return String(value || fallback)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback;
+};
+
+const getPathTimestamp = (date = new Date()) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+};
+
 // Get all active services
 const getServices = async (req, res) => {
   try {
@@ -332,9 +350,12 @@ const uploadPaymentReceipt = async (req, res) => {
 
     // Verify the booking belongs to this user
     const bookingResult = await pool.query(
-      `SELECT b.id, b.status 
+      `SELECT b.id, b.status,
+              u.first_name, u.last_name, u.email,
+              s.name AS service_name
        FROM bookings b
        JOIN users u ON b.user_id = u.id
+       JOIN services s ON b.service_id = s.id
        WHERE b.id = $1 AND u.email = $2`,
       [id, email]
     );
@@ -347,9 +368,18 @@ const uploadPaymentReceipt = async (req, res) => {
       return res.status(400).json({ message: 'Receipt can only be uploaded for pending bookings' });
     }
 
-    // Upload image to Supabase Storage
+  // Build descriptive receipt folder:
+  // receipts/{sender-name}-{service-name}-{sent-timestamp}
+  const booking = bookingResult.rows[0];
+  const senderName = `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || booking.email || `booking-${id}`;
+  const senderSlug = sanitizeForPath(senderName, `booking-${id}`);
+  const serviceSlug = sanitizeForPath(booking.service_name, 'service');
+  const sentAtSlug = getPathTimestamp(new Date());
+  const receiptFolder = `receipts/${senderSlug}-${serviceSlug}-${sentAtSlug}`;
+
+  // Upload image to Supabase Storage
     console.log('Uploading receipt to Supabase Storage...');
-    const { url } = await uploadBase64Image(receiptData, `receipts/booking-${id}`);
+  const { url } = await uploadBase64Image(receiptData, receiptFolder);
     console.log('Receipt uploaded successfully:', url);
 
     // Update booking with receipt URL (not the base64 data)
