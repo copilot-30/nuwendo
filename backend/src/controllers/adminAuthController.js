@@ -187,6 +187,24 @@ const getDashboardStats = async (req, res) => {
        LIMIT 10`
     );
 
+    // Total pending booking approvals (for counters/badges)
+    const pendingBookingCountResult = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM bookings
+       WHERE payment_status = 'pending'
+         AND status != 'cancelled'
+         AND payment_receipt_url IS NOT NULL`
+    );
+
+    // Total pending shop-order approvals (payment uploaded but not yet verified)
+    const pendingShopCountResult = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM shop_orders
+       WHERE payment_verified = false
+         AND status != 'cancelled'
+         AND payment_receipt_url IS NOT NULL`
+    );
+
     // Calculate total pending amount
     const pendingAmountResult = await pool.query(
       `SELECT COALESCE(SUM(amount_paid), 0) as total FROM bookings 
@@ -215,6 +233,10 @@ const getDashboardStats = async (req, res) => {
         thisWeekAppointments: parseInt(thisWeekResult.rows[0].week),
         monthlyRevenue: parseFloat(revenueResult.rows[0].revenue),
         pendingPayments: pendingPaymentsResult.rows,
+        pendingBookingApprovalsCount: pendingBookingCountResult.rows[0].total,
+        pendingShopApprovalsCount: pendingShopCountResult.rows[0].total,
+        pendingApprovalsCount:
+          pendingBookingCountResult.rows[0].total + pendingShopCountResult.rows[0].total,
         pendingPaymentsTotal: parseFloat(pendingAmountResult.rows[0].total),
         recentBookings: recentBookingsResult.rows
       }

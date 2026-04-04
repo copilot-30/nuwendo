@@ -19,6 +19,7 @@ import { AdminAuditLog } from '@/pages/AdminAuditTrail'
 import AdminBookings from '@/pages/AdminBookings'
 import AdminSettings from '@/pages/AdminSettings'
 import { AdminOrders } from '@/pages/AdminOrders'
+import AdminReports from '@/pages/AdminReports'
 
 function AppRoutes() {
   // Force re-evaluation of auth/session guards on every route change.
@@ -88,6 +89,7 @@ function AppRoutes() {
         <Route path="/admin/users" element={hasAdminSession ? <AdminUsers /> : <Navigate to="/login" replace />} />
         <Route path="/admin/orders" element={hasAdminSession ? <AdminOrders /> : <Navigate to="/login" replace />} />
         <Route path="/admin/audit-logs" element={hasAdminSession ? <AdminAuditLog /> : <Navigate to="/login" replace />} />
+  <Route path="/admin/reports" element={hasAdminSession ? <AdminReports /> : <Navigate to="/login" replace />} />
         <Route path="/admin/settings" element={hasAdminSession ? <AdminSettings /> : <Navigate to="/login" replace />} />
     </Routes>
   )

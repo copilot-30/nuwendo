@@ -41,6 +41,9 @@ interface DashboardStats {
   todayAppointments: number;
   thisWeekAppointments: number;
   monthlyRevenue: number;
+  pendingBookingApprovalsCount?: number;
+  pendingShopApprovalsCount?: number;
+  pendingApprovalsCount?: number;
   recentBookings: Booking[];
 }
 
@@ -132,7 +135,9 @@ export default function AdminDashboard() {
     (b) => b.booking_date === new Date().toISOString().split('T')[0]
   ) || [];
 
-  const pendingBookings = stats?.recentBookings.filter((b) => b.status === 'pending') || [];
+  const pendingApprovalsCount = stats?.pendingApprovalsCount ?? 0;
+  const pendingBookingApprovalsCount = stats?.pendingBookingApprovalsCount ?? 0;
+  const pendingShopApprovalsCount = stats?.pendingShopApprovalsCount ?? 0;
   const confirmedToday = todaysBookings.filter((b) => b.status === 'confirmed').length;
 
   const getStatusColor = (status: string) => {
@@ -191,18 +196,18 @@ export default function AdminDashboard() {
 
         {/* Urgent Alerts Section */}
         <div className="space-y-3">
-          {/* Pending Bookings Alert */}
-          {pendingBookings.length > 0 && (
+          {/* Pending approvals (bookings + shop orders) */}
+          {pendingApprovalsCount > 0 && (
             <Card className="border-l-4 border-l-yellow-500 bg-yellow-50">
               <CardContent className="py-4">
                 <div className="flex items-center gap-3">
                   <Bell className="h-5 w-5 text-yellow-600" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-yellow-900">
-                      {pendingBookings.length} Pending {pendingBookings.length === 1 ? 'Booking' : 'Bookings'}
+                      {pendingApprovalsCount} Pending {pendingApprovalsCount === 1 ? 'Approval' : 'Approvals'}
                     </h3>
                     <p className="text-sm text-yellow-700">
-                      Action required: Review and approve payment receipts
+                      Action required: Review bookings ({pendingBookingApprovalsCount}) and shop orders ({pendingShopApprovalsCount})
                     </p>
                   </div>
                   <Button 

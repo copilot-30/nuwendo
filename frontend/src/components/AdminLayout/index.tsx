@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { 
   Calendar, 
   Clock, 
@@ -8,13 +14,16 @@ import {
   Users, 
   FileText, 
   LogOut, 
-  Bell, 
   Menu,
   X,
   Home,
   ShoppingBag,
   Cog,
-  Video
+  Video,
+  BarChart3,
+  ChevronDown,
+  Wrench,
+  Building2
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { API_URL, BASE_URL } from '@/config/api'
@@ -25,27 +34,40 @@ interface AdminLayoutProps {
     full_name: string
     role: string
   } | null
-  notificationCount?: number
 }
 
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: Home },
   { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { path: '/admin/payments', label: 'Payments', icon: CreditCard },
+]
+
+const operationsItems = [
+  { path: '/admin/schedule', label: 'Schedule', icon: Clock },
   { path: '/admin/services', label: 'Services', icon: Settings },
   { path: '/admin/shop', label: 'Shop', icon: ShoppingBag },
-  { path: '/admin/schedule', label: 'Schedule', icon: Clock },
+]
+
+const managementItems = [
   { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/audit-logs', label: 'Logs', icon: FileText },
+  { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { path: '/admin/settings', label: 'Settings', icon: Cog },
 ]
 
-export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProps) {
+export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileOperationsOpen, setMobileOperationsOpen] = useState(false)
+  const [mobileManagementOpen, setMobileManagementOpen] = useState(false)
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(() => {
+    const cached = localStorage.getItem('adminPendingApprovalsCount')
+    const parsed = Number(cached)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+  })
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/oauth/google/status`)
@@ -53,6 +75,50 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
       .then(d => setGoogleConnected(d.connected))
       .catch(() => setGoogleConnected(false))
   }, [location.pathname]) // recheck on every page change
+
+  useEffect(() => {
+    const fetchPendingApprovals = async () => {
+      try {
+        const token = localStorage.getItem('adminToken')
+        if (!token) {
+          setPendingApprovalsCount(0)
+          return
+        }
+
+        const [pendingBookingsRes, pendingOrdersRes] = await Promise.all([
+          fetch(`${API_URL}/admin/pending-payments`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/admin/orders?payment_verified=false&limit=1`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ])
+
+        let pendingBookingCount = 0
+        let pendingOrderCount = 0
+
+        if (pendingBookingsRes.ok) {
+          const bookingData = await pendingBookingsRes.json()
+          pendingBookingCount = Array.isArray(bookingData.bookings) ? bookingData.bookings.length : 0
+        }
+
+        if (pendingOrdersRes.ok) {
+          const orderData = await pendingOrdersRes.json()
+          pendingOrderCount = Number(orderData?.pagination?.total_records || 0)
+        }
+
+        const totalPending = pendingBookingCount + pendingOrderCount
+        setPendingApprovalsCount(totalPending)
+        localStorage.setItem('adminPendingApprovalsCount', String(totalPending))
+      } catch {
+        // Keep prior count on transient failures
+      }
+    }
+
+    fetchPendingApprovals()
+    const intervalId = setInterval(fetchPendingApprovals, 30000)
+    return () => clearInterval(intervalId)
+  }, [location.pathname])
 
   const handleLogout = async () => {
     try {
@@ -77,6 +143,10 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
     }
 
     return location.pathname === path || location.pathname.startsWith(`${path}/`)
+  }
+
+  const isGroupActive = (items: { path: string }[]) => {
+    return items.some((item) => isActive(item.path))
   }
 
   return (
@@ -111,21 +181,75 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
                 >
                   <item.icon className="h-4 w-4 mr-2" />
                   {item.label}
+                  {item.path === '/admin/payments' && (
+                    <span
+                      className={`ml-2 inline-flex min-w-5 h-5 px-1 rounded-full text-[10px] leading-5 font-semibold text-center justify-center transition-opacity ${
+                        pendingApprovalsCount > 0
+                          ? 'bg-red-500 text-white opacity-100'
+                          : 'opacity-0'
+                      }`}
+                    >
+                      {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
+                    </span>
+                  )}
                 </Button>
               ))}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`${
+                      isGroupActive(operationsItems)
+                        ? 'bg-brand-50 text-brand border-b-2 border-brand rounded-b-none'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Wrench className="h-4 w-4 mr-2" />
+                    Operations
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {operationsItems.map((item) => (
+                    <DropdownMenuItem key={item.path} onClick={() => navigate(item.path)}>
+                      <item.icon className="h-4 w-4 mr-2" />
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`${
+                      isGroupActive(managementItems)
+                        ? 'bg-brand-50 text-brand border-b-2 border-brand rounded-b-none'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Management
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {managementItems.map((item) => (
+                    <DropdownMenuItem key={item.path} onClick={() => navigate(item.path)}>
+                      <item.icon className="h-4 w-4 mr-2" />
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-5 w-5" />
-                {notificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {notificationCount}
-                  </span>
-                )}
-              </Button>
-              
               <Button
                 variant="ghost"
                 size="sm"
@@ -170,8 +294,83 @@ export function AdminLayout({ children, notificationCount = 0 }: AdminLayoutProp
                 >
                   <item.icon className="h-4 w-4 mr-3" />
                   {item.label}
+                  {item.path === '/admin/payments' && (
+                    <span
+                      className={`ml-2 inline-flex min-w-5 h-5 px-1 rounded-full text-[10px] leading-5 font-semibold text-center justify-center transition-opacity ${
+                        pendingApprovalsCount > 0
+                          ? 'bg-red-500 text-white opacity-100'
+                          : 'opacity-0'
+                      }`}
+                    >
+                      {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
+                    </span>
+                  )}
                 </Button>
               ))}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileOperationsOpen((v) => !v)}
+                className={`justify-between ${isGroupActive(operationsItems) ? 'bg-brand-50 text-brand' : 'text-gray-600'}`}
+              >
+                <span className="flex items-center">
+                  <Wrench className="h-4 w-4 mr-3" />
+                  Operations
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${mobileOperationsOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              {mobileOperationsOpen && (
+                <div className="ml-6 flex flex-col gap-1">
+                  {operationsItems.map((item) => (
+                    <Button
+                      key={item.path}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        navigate(item.path)
+                        setMobileMenuOpen(false)
+                      }}
+                      className={`justify-start ${isActive(item.path) ? 'bg-brand-50 text-brand' : 'text-gray-600'}`}
+                    >
+                      <item.icon className="h-4 w-4 mr-3" />
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileManagementOpen((v) => !v)}
+                className={`justify-between ${isGroupActive(managementItems) ? 'bg-brand-50 text-brand' : 'text-gray-600'}`}
+              >
+                <span className="flex items-center">
+                  <Building2 className="h-4 w-4 mr-3" />
+                  Management
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${mobileManagementOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              {mobileManagementOpen && (
+                <div className="ml-6 flex flex-col gap-1">
+                  {managementItems.map((item) => (
+                    <Button
+                      key={item.path}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        navigate(item.path)
+                        setMobileMenuOpen(false)
+                      }}
+                      className={`justify-start ${isActive(item.path) ? 'bg-brand-50 text-brand' : 'text-gray-600'}`}
+                    >
+                      <item.icon className="h-4 w-4 mr-3" />
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </nav>
           </div>
         )}
