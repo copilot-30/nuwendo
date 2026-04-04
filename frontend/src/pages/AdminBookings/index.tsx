@@ -257,7 +257,10 @@ export default function AdminBookings() {
       });
       if (response.ok) {
         const data = await response.json();
-        setBookings(data.bookings || []);
+        // Safety filter: pending-payment items belong to Admin Payments,
+        // not Bookings list view.
+        const visibleBookings = (data.bookings || []).filter((b: Booking) => b.status !== 'pending');
+        setBookings(visibleBookings);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);

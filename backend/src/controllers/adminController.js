@@ -383,6 +383,11 @@ const getBookings = async (req, res) => {
     if (status) {
       whereConditions.push(`b.status = $${paramIndex++}`);
       queryParams.push(status);
+    } else {
+      // Default behavior: bookings page should show operational bookings only.
+      // Keep payment-pending items in Admin Payments until approved/rejected.
+      whereConditions.push(`b.status != $${paramIndex++}`);
+      queryParams.push('pending');
     }
 
     if (date_from) {
