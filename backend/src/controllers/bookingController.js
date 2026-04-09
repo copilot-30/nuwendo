@@ -249,7 +249,7 @@ const getPatientBookings = async (req, res) => {
   }
 };
 
-// Cancel a booking (patient can cancel if 24+ hours before appointment)
+// Cancel a booking (patient cancellation policy controlled by reschedule_settings)
 const cancelBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -284,14 +284,29 @@ const cancelBooking = async (req, res) => {
       return res.status(400).json({ message: 'This booking is already cancelled' });
     }
 
-    // Check if 24+ hours before appointment
+    // Get cancellation settings (shared table with reschedule policy)
+    const settingsResult = await pool.query(
+      'SELECT * FROM reschedule_settings ORDER BY id DESC LIMIT 1'
+    );
+
+    const settings = settingsResult.rows[0] || {};
+    const allowPatientCancellation = settings.allow_patient_cancellation ?? true;
+    const patientCancelMinHours = Number(settings.patient_cancel_min_hours_before ?? 24);
+
+    if (!allowPatientCancellation) {
+      return res.status(403).json({
+        message: 'Patient cancellations are currently disabled. Please contact the clinic.'
+      });
+    }
+
+    // Check if cancellation is allowed based on minimum hours
     const appointmentDateTime = new Date(`${booking.booking_date.toISOString().split('T')[0]}T${booking.booking_time}`);
     const now = new Date();
     const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    if (hoursUntilAppointment < 24) {
+    if (hoursUntilAppointment < patientCancelMinHours) {
       return res.status(400).json({ 
-        message: 'Cancellations must be made at least 24 hours before the appointment time',
+        message: `Cancellations must be made at least ${patientCancelMinHours} hour(s) before the appointment time`,
         hoursRemaining: Math.round(hoursUntilAppointment)
       });
     }
@@ -299,7 +314,13 @@ const cancelBooking = async (req, res) => {
     // Cancel the booking
     await pool.query(
       `UPDATE bookings 
-       SET status = 'cancelled', updated_at = NOW() 
+       SET status = 'cancelled',
+           business_status = 'cancelled',
+           cancelled_by_type = 'patient',
+           cancelled_by_admin_id = NULL,
+           cancelled_at = CURRENT_TIMESTAMP,
+           cancellation_count = COALESCE(cancellation_count, 0) + 1,
+           updated_at = NOW() 
        WHERE id = $1`,
       [id]
     );

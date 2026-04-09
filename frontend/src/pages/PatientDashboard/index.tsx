@@ -49,6 +49,8 @@ interface Appointment {
   original_booking_time?: string
   rescheduled_at?: string
   rescheduled_by?: string
+  business_status?: string
+  cancelled_by_type?: 'admin' | 'patient' | null
 }
 
 interface PatientProfile {
@@ -94,6 +96,12 @@ export default function PatientDashboard() {
   const [rescheduleError, setRescheduleError] = useState<string | null>(null)
   const [availableSlots, setAvailableSlots] = useState<any[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [actionPolicy, setActionPolicy] = useState({
+    patient_min_hours_before: 24,
+    allow_patient_reschedule: true,
+    patient_cancel_min_hours_before: 24,
+    allow_patient_cancellation: true
+  })
   
   // Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -169,6 +177,7 @@ export default function PatientDashboard() {
 
     fetchPatientProfile(patientEmail)
     fetchDashboardData(patientEmail)
+  fetchActionPolicySettings()
     checkShopAccess()
 
     // Check shop access every 5 seconds
@@ -552,15 +561,44 @@ export default function PatientDashboard() {
     navigate('/')
   }
 
-  // Check if appointment can be cancelled (24 hours before)
+  const fetchActionPolicySettings = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/reschedule/settings`)
+      const data = await response.json()
+
+      if (response.ok && data.success && data.settings) {
+        setActionPolicy({
+          patient_min_hours_before: Number(data.settings.patient_min_hours_before ?? 24),
+          allow_patient_reschedule: Boolean(data.settings.allow_patient_reschedule ?? true),
+          patient_cancel_min_hours_before: Number(data.settings.patient_cancel_min_hours_before ?? 24),
+          allow_patient_cancellation: Boolean(data.settings.allow_patient_cancellation ?? true)
+        })
+      }
+    } catch (policyError) {
+      console.error('Failed to load action policy settings:', policyError)
+    }
+  }
+
+  // Check if appointment can be cancelled based on policy settings
   const canCancelAppointment = (bookingDate: string, bookingTime: string) => {
+    if (!actionPolicy.allow_patient_cancellation) return false
+
     // Parse the date properly - booking_date comes as ISO string from DB
     const dateStr = bookingDate.split('T')[0] // Get just the date part (YYYY-MM-DD)
     const appointmentDateTime = new Date(`${dateStr}T${bookingTime}`)
     const now = new Date()
     const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
-    console.log('Cancellation check:', { dateStr, bookingTime, appointmentDateTime, now, hoursUntilAppointment })
-    return hoursUntilAppointment >= 24
+    return hoursUntilAppointment >= actionPolicy.patient_cancel_min_hours_before
+  }
+
+  const canRescheduleAppointment = (bookingDate: string, bookingTime: string) => {
+    if (!actionPolicy.allow_patient_reschedule) return false
+
+    const dateStr = bookingDate.split('T')[0]
+    const appointmentDateTime = new Date(`${dateStr}T${bookingTime}`)
+    const now = new Date()
+    const hoursUntilAppointment = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+    return hoursUntilAppointment >= actionPolicy.patient_min_hours_before
   }
 
   // Calculate end time based on start time and duration
@@ -809,6 +847,18 @@ export default function PatientDashboard() {
     return `${displayHour}:${minutes} ${ampm}`
   }
 
+  const getAppointmentStatusLabel = (appointment: Appointment) => {
+    if (appointment.business_status === 'completed') return 'completed'
+
+    if (appointment.status === 'cancelled' || appointment.business_status === 'cancelled') {
+      if (appointment.cancelled_by_type === 'admin') return 'cancelled by admin'
+      if (appointment.cancelled_by_type === 'patient') return 'cancelled by patient'
+      return 'cancelled'
+    }
+
+    return appointment.status
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -960,7 +1010,7 @@ export default function PatientDashboard() {
                             ? 'bg-yellow-100 text-yellow-700'
                             : 'bg-gray-100 text-gray-700'
                         }`}>
-                          {apt.status}
+                          {getAppointmentStatusLabel(apt)}
                         </span>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
@@ -990,7 +1040,8 @@ export default function PatientDashboard() {
             ) : (
               <div className="space-y-3">
                 {appointments.map((apt) => {
-                  const isCancellable = apt.status !== 'cancelled' && canCancelAppointment(apt.booking_date, apt.booking_time)
+                  const canCancel = apt.status !== 'cancelled' && canCancelAppointment(apt.booking_date, apt.booking_time)
+                  const canReschedule = apt.status !== 'cancelled' && canRescheduleAppointment(apt.booking_date, apt.booking_time)
                   const isCancelling = cancellingId === apt.id
                   
                   return (
@@ -1032,7 +1083,7 @@ export default function PatientDashboard() {
                               ? 'bg-red-100 text-red-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}>
-                            {apt.status}
+                            {getAppointmentStatusLabel(apt)}
                           </span>
                           <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                             apt.appointment_type === 'online'
@@ -1067,44 +1118,48 @@ export default function PatientDashboard() {
                         </div>
                       )}
                       
-                      {/* Reschedule and Cancel buttons - only show if 24+ hours before */}
+                      {/* Reschedule and Cancel buttons - policy-based */}
                       {apt.status !== 'cancelled' && (
                         <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-2">
-                          {isCancellable ? (
+                          {canReschedule || canCancel ? (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRescheduleClick(apt)}
-                                disabled={isCancelling}
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                              >
-                                <CalendarClock className="w-4 h-4 mr-2" />
-                                Reschedule
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCancelAppointment(apt.id)}
-                                disabled={isCancelling}
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                              >
-                                {isCancelling ? (
-                                  <>
-                                    <span className="animate-spin mr-2">⏳</span>
-                                    Cancelling...
-                                  </>
-                                ) : (
-                                  <>
-                                    <X className="w-4 h-4 mr-2" />
-                                    Cancel Appointment
-                                  </>
-                                )}
-                              </Button>
+                              {canReschedule && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRescheduleClick(apt)}
+                                  disabled={isCancelling}
+                                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                >
+                                  <CalendarClock className="w-4 h-4 mr-2" />
+                                  Reschedule
+                                </Button>
+                              )}
+                              {canCancel && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCancelAppointment(apt.id)}
+                                  disabled={isCancelling}
+                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                >
+                                  {isCancelling ? (
+                                    <>
+                                      <span className="animate-spin mr-2">⏳</span>
+                                      Cancelling...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <X className="w-4 h-4 mr-2" />
+                                      Cancel Appointment
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </>
                           ) : (
                             <p className="text-sm text-gray-400">
-                              Cancellation/Reschedule not available (less than 24 hours before appointment)
+                              Cancellation/Reschedule not available due to current policy and time restrictions
                             </p>
                           )}
                         </div>

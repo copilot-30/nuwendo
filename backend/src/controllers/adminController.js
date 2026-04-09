@@ -423,6 +423,7 @@ const getBookings = async (req, res) => {
               b.appointment_type, b.payment_status, b.payment_method, 
               b.payment_reference, b.amount_paid, b.created_at, b.updated_at,
               b.video_call_link, b.admin_notes, b.completed_at, b.completed_by,
+              b.cancelled_by_type, b.cancelled_by_admin_id, b.cancelled_at,
               b.booking_date as slot_date,
               b.booking_time as slot_time,
               b.phone_number as booking_phone,
@@ -434,11 +435,13 @@ const getBookings = async (req, res) => {
               CONCAT(u.first_name, ' ', u.last_name) as patient_name,
               b.user_id as patient_id,
               s.name as service_name, s.duration_minutes, s.price,
-              admin_user.full_name as completed_by_name
+              admin_user.full_name as completed_by_name,
+              cancelled_admin.full_name as cancelled_by_name
        FROM bookings b
        JOIN users u ON b.user_id = u.id
        JOIN services s ON b.service_id = s.id
        LEFT JOIN admin_users admin_user ON b.completed_by = admin_user.id
+       LEFT JOIN admin_users cancelled_admin ON b.cancelled_by_admin_id = cancelled_admin.id
        ${whereClause}
        ORDER BY b.created_at DESC
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
@@ -452,10 +455,18 @@ const getBookings = async (req, res) => {
     const { getTimeStatus } = await import('./bookingController.js');
     
     // Add time_status to each booking
-    const bookingsWithTimeStatus = result.rows.map(booking => ({
-      ...booking,
-      time_status: getTimeStatus(booking.slot_date, booking.slot_time)
-    }));
+    const bookingsWithTimeStatus = result.rows.map(booking => {
+      const isTerminalStatus =
+        booking.status === 'cancelled' ||
+        booking.business_status === 'cancelled' ||
+        booking.business_status === 'completed' ||
+        booking.business_status === 'no_show';
+
+      return {
+        ...booking,
+        time_status: isTerminalStatus ? null : getTimeStatus(booking.slot_date, booking.slot_time)
+      };
+    });
 
     res.json({
       success: true,
@@ -560,20 +571,43 @@ const updateBookingStatus = async (req, res) => {
         // Confirming online appointment - include meeting link
         updateQuery = `UPDATE bookings 
           SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
-              video_call_link = $3, updated_at = CURRENT_TIMESTAMP 
+              video_call_link = $3,
+              cancelled_by_type = NULL,
+              cancelled_by_admin_id = NULL,
+              cancelled_at = NULL,
+              updated_at = CURRENT_TIMESTAMP 
           WHERE id = $4 RETURNING *`;
         queryParams = [status, adminId, meetingLink, id];
       } else {
         // Confirming on-site appointment - no meeting link
         updateQuery = `UPDATE bookings 
           SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
+              cancelled_by_type = NULL,
+              cancelled_by_admin_id = NULL,
+              cancelled_at = NULL,
               updated_at = CURRENT_TIMESTAMP 
           WHERE id = $3 RETURNING *`;
         queryParams = [status, adminId, id];
       }
+    } else if (status === 'cancelled') {
+      updateQuery = `UPDATE bookings 
+        SET status = $1,
+            business_status = 'cancelled',
+            cancelled_by_type = 'admin',
+            cancelled_by_admin_id = $2,
+            cancelled_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3 RETURNING *`;
+      queryParams = [status, adminId, id];
     } else {
       // Other status changes (cancelled, completed, etc.)
-      updateQuery = `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
+      updateQuery = `UPDATE bookings 
+        SET status = $1,
+            cancelled_by_type = CASE WHEN $1 = 'cancelled' THEN cancelled_by_type ELSE NULL END,
+            cancelled_by_admin_id = CASE WHEN $1 = 'cancelled' THEN cancelled_by_admin_id ELSE NULL END,
+            cancelled_at = CASE WHEN $1 = 'cancelled' THEN cancelled_at ELSE NULL END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2 RETURNING *`;
       queryParams = [status, id];
     }
 
@@ -639,11 +673,28 @@ const updateBookingBusinessStatus = async (req, res) => {
       updateQuery = `
         UPDATE bookings 
         SET business_status = $1, 
+            status = 'confirmed',
             admin_notes = $2, 
             completed_at = CURRENT_TIMESTAMP,
             completed_by = $3,
+            cancelled_by_type = NULL,
+            cancelled_by_admin_id = NULL,
+            cancelled_at = NULL,
             updated_at = CURRENT_TIMESTAMP 
         WHERE id = $4 
+        RETURNING *`;
+      queryParams = [business_status, admin_notes || null, adminId, id];
+    } else if (business_status === 'cancelled') {
+      updateQuery = `
+        UPDATE bookings 
+        SET business_status = $1,
+            status = 'cancelled',
+            admin_notes = $2,
+            cancelled_by_type = 'admin',
+            cancelled_by_admin_id = $3,
+            cancelled_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
         RETURNING *`;
       queryParams = [business_status, admin_notes || null, adminId, id];
     } else {
@@ -651,6 +702,7 @@ const updateBookingBusinessStatus = async (req, res) => {
       updateQuery = `
         UPDATE bookings 
         SET business_status = $1, 
+            status = CASE WHEN $1 = 'scheduled' THEN 'confirmed' ELSE status END,
             admin_notes = $2,
             updated_at = CURRENT_TIMESTAMP 
         WHERE id = $3 
@@ -803,10 +855,16 @@ const getPatientProfile = async (req, res) => {
 
     // Get booking history
     const bookingsResult = await pool.query(
-      `SELECT b.id, b.booking_date, b.booking_time, b.status, b.amount_paid, b.appointment_type,
-              s.name as service_name
+      `SELECT b.id, b.booking_date, b.booking_time, b.status, b.business_status, b.amount_paid, b.appointment_type,
+              b.cancelled_by_type, b.cancelled_at,
+              b.completed_at,
+              s.name as service_name,
+              completed_admin.full_name as completed_by_name,
+              cancelled_admin.full_name as cancelled_by_name
        FROM bookings b
        JOIN services s ON b.service_id = s.id
+       LEFT JOIN admin_users completed_admin ON b.completed_by = completed_admin.id
+       LEFT JOIN admin_users cancelled_admin ON b.cancelled_by_admin_id = cancelled_admin.id
        WHERE b.user_id = $1
        ORDER BY b.booking_date DESC, b.booking_time DESC
        LIMIT 20`,

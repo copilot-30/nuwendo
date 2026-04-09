@@ -32,13 +32,43 @@ export const getRescheduleSettings = async (req, res) => {
  */
 export const updateRescheduleSettings = async (req, res) => {
   try {
+    // Backward-compatible: ensure cancellation policy columns exist
+    await pool.query(`
+      ALTER TABLE reschedule_settings
+      ADD COLUMN IF NOT EXISTS patient_cancel_min_hours_before INTEGER DEFAULT 24,
+      ADD COLUMN IF NOT EXISTS admin_cancel_min_hours_before INTEGER DEFAULT 1,
+      ADD COLUMN IF NOT EXISTS allow_patient_cancellation BOOLEAN DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS allow_admin_cancellation BOOLEAN DEFAULT TRUE
+    `);
+
+    const toSafeInt = (value, fallback) => {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
     const {
       patient_min_hours_before,
       admin_min_hours_before,
       max_reschedules_per_booking,
       allow_patient_reschedule,
-      allow_admin_reschedule
+      allow_admin_reschedule,
+      patient_cancel_min_hours_before,
+      admin_cancel_min_hours_before,
+      allow_patient_cancellation,
+      allow_admin_cancellation
     } = req.body;
+
+    const payload = {
+      patient_min_hours_before: toSafeInt(patient_min_hours_before, 24),
+      admin_min_hours_before: toSafeInt(admin_min_hours_before, 1),
+      max_reschedules_per_booking: toSafeInt(max_reschedules_per_booking, 3),
+      allow_patient_reschedule: Boolean(allow_patient_reschedule),
+      allow_admin_reschedule: Boolean(allow_admin_reschedule),
+      patient_cancel_min_hours_before: toSafeInt(patient_cancel_min_hours_before, 24),
+      admin_cancel_min_hours_before: toSafeInt(admin_cancel_min_hours_before, 1),
+      allow_patient_cancellation: Boolean(allow_patient_cancellation),
+      allow_admin_cancellation: Boolean(allow_admin_cancellation)
+    };
 
     const result = await pool.query(
       `UPDATE reschedule_settings 
@@ -47,15 +77,23 @@ export const updateRescheduleSettings = async (req, res) => {
            max_reschedules_per_booking = $3,
            allow_patient_reschedule = $4,
            allow_admin_reschedule = $5,
+           patient_cancel_min_hours_before = $6,
+           admin_cancel_min_hours_before = $7,
+           allow_patient_cancellation = $8,
+           allow_admin_cancellation = $9,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = (SELECT id FROM reschedule_settings ORDER BY id DESC LIMIT 1)
        RETURNING *`,
       [
-        patient_min_hours_before,
-        admin_min_hours_before,
-        max_reschedules_per_booking,
-        allow_patient_reschedule,
-        allow_admin_reschedule
+        payload.patient_min_hours_before,
+        payload.admin_min_hours_before,
+        payload.max_reschedules_per_booking,
+        payload.allow_patient_reschedule,
+        payload.allow_admin_reschedule,
+        payload.patient_cancel_min_hours_before,
+        payload.admin_cancel_min_hours_before,
+        payload.allow_patient_cancellation,
+        payload.allow_admin_cancellation
       ]
     );
 

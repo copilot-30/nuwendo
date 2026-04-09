@@ -65,7 +65,11 @@ export function AdminSchedule() {
     admin_min_hours_before: 1,
     max_reschedules_per_booking: 3,
     allow_patient_reschedule: true,
-    allow_admin_reschedule: true
+    allow_admin_reschedule: true,
+    patient_cancel_min_hours_before: 24,
+    admin_cancel_min_hours_before: 1,
+    allow_patient_cancellation: true,
+    allow_admin_cancellation: true
   })
   const [savingSettings, setSavingSettings] = useState(false)
 
@@ -121,7 +125,11 @@ export function AdminSchedule() {
           admin_min_hours_before: data.settings.admin_min_hours_before,
           max_reschedules_per_booking: data.settings.max_reschedules_per_booking,
           allow_patient_reschedule: data.settings.allow_patient_reschedule,
-          allow_admin_reschedule: data.settings.allow_admin_reschedule
+          allow_admin_reschedule: data.settings.allow_admin_reschedule,
+          patient_cancel_min_hours_before: data.settings.patient_cancel_min_hours_before ?? 24,
+          admin_cancel_min_hours_before: data.settings.admin_cancel_min_hours_before ?? 1,
+          allow_patient_cancellation: data.settings.allow_patient_cancellation ?? true,
+          allow_admin_cancellation: data.settings.allow_admin_cancellation ?? true
         })
       }
     } catch (err: any) {
@@ -569,15 +577,15 @@ export function AdminSchedule() {
 
         {/* Reschedule Settings Dialog */}
         <Dialog open={showRescheduleSettings} onOpenChange={setShowRescheduleSettings}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Reschedule Settings</DialogTitle>
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90dvh] p-0 overflow-hidden flex flex-col">
+            <DialogHeader className="px-6 pt-6 pb-3 border-b bg-white shrink-0">
+              <DialogTitle>Reschedule & Cancellation Settings</DialogTitle>
               <DialogDescription>
-                Configure time restrictions and limits for rescheduling appointments
+                Configure time restrictions and limits for rescheduling and cancelling appointments
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 min-h-0">
               {/* Patient Restrictions */}
               <div className="space-y-4">
                 <h3 className="font-medium text-gray-900">Patient Restrictions</h3>
@@ -591,7 +599,7 @@ export function AdminSchedule() {
                     value={rescheduleSettings.patient_min_hours_before}
                     onChange={(e) => setRescheduleSettings({
                       ...rescheduleSettings,
-                      patient_min_hours_before: parseInt(e.target.value)
+                      patient_min_hours_before: parseInt(e.target.value || '24')
                     })}
                   />
                   <p className="text-xs text-gray-500">
@@ -635,7 +643,7 @@ export function AdminSchedule() {
                     value={rescheduleSettings.admin_min_hours_before}
                     onChange={(e) => setRescheduleSettings({
                       ...rescheduleSettings,
-                      admin_min_hours_before: parseInt(e.target.value)
+                      admin_min_hours_before: parseInt(e.target.value || '1')
                     })}
                   />
                   <p className="text-xs text-gray-500">
@@ -680,7 +688,7 @@ export function AdminSchedule() {
                     value={rescheduleSettings.max_reschedules_per_booking}
                     onChange={(e) => setRescheduleSettings({
                       ...rescheduleSettings,
-                      max_reschedules_per_booking: parseInt(e.target.value)
+                      max_reschedules_per_booking: parseInt(e.target.value || '1')
                     })}
                   />
                   <p className="text-xs text-gray-500">
@@ -689,33 +697,121 @@ export function AdminSchedule() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRescheduleSettings(false)}
-                  disabled={savingSettings}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveRescheduleSettings}
-                  disabled={savingSettings}
-                  className="bg-brand hover:bg-brand/90"
-                >
-                  {savingSettings ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Settings
-                    </>
-                  )}
-                </Button>
+              {/* Cancellation Restrictions */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-medium text-gray-900">Cancellation Restrictions (Patient)</h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="patient_cancel_hours">Minimum Hours Before Appointment</Label>
+                  <Input
+                    id="patient_cancel_hours"
+                    type="number"
+                    min="0"
+                    value={rescheduleSettings.patient_cancel_min_hours_before}
+                    onChange={(e) => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      patient_cancel_min_hours_before: parseInt(e.target.value || '0')
+                    })}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Patients cannot cancel within this many hours before the appointment
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Allow Patient Cancellation</Label>
+                    <p className="text-xs text-gray-500">Enable patients to cancel their appointments</p>
+                  </div>
+                  <button
+                    onClick={() => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      allow_patient_cancellation: !rescheduleSettings.allow_patient_cancellation
+                    })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      rescheduleSettings.allow_patient_cancellation ? 'bg-brand' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        rescheduleSettings.allow_patient_cancellation ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-medium text-gray-900">Cancellation Restrictions (Admin)</h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="admin_cancel_hours">Minimum Hours Before Appointment</Label>
+                  <Input
+                    id="admin_cancel_hours"
+                    type="number"
+                    min="0"
+                    value={rescheduleSettings.admin_cancel_min_hours_before}
+                    onChange={(e) => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      admin_cancel_min_hours_before: parseInt(e.target.value || '0')
+                    })}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Admins cannot cancel within this many hours before the appointment
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Allow Admin Cancellation</Label>
+                    <p className="text-xs text-gray-500">Enable admins to cancel appointments</p>
+                  </div>
+                  <button
+                    onClick={() => setRescheduleSettings({
+                      ...rescheduleSettings,
+                      allow_admin_cancellation: !rescheduleSettings.allow_admin_cancellation
+                    })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      rescheduleSettings.allow_admin_cancellation ? 'bg-brand' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        rescheduleSettings.allow_admin_cancellation ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 px-6 py-4 border-t bg-white shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowRescheduleSettings(false)}
+                disabled={savingSettings}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveRescheduleSettings}
+                disabled={savingSettings}
+                className="bg-brand hover:bg-brand/90"
+              >
+                {savingSettings ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Settings
+                  </>
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

@@ -45,6 +45,12 @@ interface PatientProfile {
     booking_date: string
     booking_time: string
     status: string
+    business_status?: string
+    cancelled_by_type?: 'admin' | 'patient' | null
+    cancelled_at?: string | null
+    cancelled_by_name?: string | null
+    completed_at?: string | null
+    completed_by_name?: string | null
     service_name: string
     amount_paid: number
   }>
@@ -152,7 +158,36 @@ export function AdminUsers() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const formatTime = (time: string) => { const [h, m] = time.split(':'); const hr = parseInt(h); return (hr % 12 || 12) + ':' + m + ' ' + (hr >= 12 ? 'PM' : 'AM') }
   const formatPrice = (price: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(price)
-  const getStatusColor = (s: string) => s === 'confirmed' ? 'bg-green-100 text-green-700' : s === 'pending' ? 'bg-yellow-100 text-yellow-700' : s === 'completed' ? 'bg-blue-100 text-blue-700' : s === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+  const getStatusColor = (s: string) => s === 'confirmed' ? 'bg-green-100 text-green-700' : s === 'pending' ? 'bg-yellow-100 text-yellow-700' : s === 'completed' ? 'bg-blue-100 text-blue-700' : s === 'cancelled' ? 'bg-red-100 text-red-700' : s === 'no_show' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'
+  const getBookingStatusInfo = (booking: PatientProfile['bookings'][number]) => {
+    if (booking.business_status === 'completed' || booking.status === 'completed') {
+      return { label: 'Completed', key: 'completed' }
+    }
+
+    if (booking.business_status === 'no_show') {
+      return { label: 'No Show', key: 'no_show' }
+    }
+
+    if (booking.business_status === 'cancelled' || booking.status === 'cancelled') {
+      if (booking.cancelled_by_type === 'admin') {
+        return { label: 'Cancelled by Admin', key: 'cancelled' }
+      }
+      if (booking.cancelled_by_type === 'patient') {
+        return { label: 'Cancelled by Patient', key: 'cancelled' }
+      }
+      return { label: 'Cancelled', key: 'cancelled' }
+    }
+
+    if (booking.status === 'confirmed') {
+      return { label: 'Confirmed', key: 'confirmed' }
+    }
+
+    if (booking.status === 'pending') {
+      return { label: 'Pending', key: 'pending' }
+    }
+
+    return { label: 'Scheduled', key: 'scheduled' }
+  }
 
   if (isLoading && users.length === 0) {
     return (
@@ -498,16 +533,27 @@ export function AdminUsers() {
                     {selectedPatient.bookings && selectedPatient.bookings.length > 0 ? (
                       <div className="space-y-2">
                         {selectedPatient.bookings.map((b) => (
+                          (() => {
+                            const statusInfo = getBookingStatusInfo(b)
+                            return (
                           <div key={b.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                             <div>
                               <p className="font-medium text-sm">{b.service_name}</p>
                               <p className="text-xs text-gray-500">{formatDate(b.booking_date)} at {formatTime(b.booking_time)}</p>
+                              {b.cancelled_at && statusInfo.key === 'cancelled' && (
+                                <p className="text-xs text-red-500 mt-1">Cancelled on {formatDate(b.cancelled_at)}</p>
+                              )}
+                              {b.completed_at && statusInfo.key === 'completed' && (
+                                <p className="text-xs text-blue-500 mt-1">Completed on {formatDate(b.completed_at)}</p>
+                              )}
                             </div>
                             <div className="text-right">
-                              <Badge className={getStatusColor(b.status)}>{b.status}</Badge>
+                              <Badge className={getStatusColor(statusInfo.key)}>{statusInfo.label}</Badge>
                               <p className="text-xs text-gray-500 mt-1">{formatPrice(b.amount_paid)}</p>
                             </div>
                           </div>
+                            )
+                          })()
                         ))}
                       </div>
                     ) : (

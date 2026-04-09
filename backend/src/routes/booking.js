@@ -49,7 +49,7 @@ router.get('/patient', [
   query('email').isEmail().withMessage('Valid email is required')
 ], getPatientBookings);
 
-// Cancel a booking (24 hours before required)
+// Cancel a booking (policy-driven minimum hours from settings)
 router.put('/:id/cancel', [
   param('id').isInt().withMessage('Booking ID is required'),
   body('email').isEmail().withMessage('Valid email is required')

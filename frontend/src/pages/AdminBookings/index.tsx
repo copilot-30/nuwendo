@@ -3,7 +3,6 @@ import { AdminLayout } from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -40,6 +39,11 @@ import {
   RefreshCw,
   CalendarClock,
   MoreHorizontal,
+  Loader2,
+  X,
+  FileText,
+  Target,
+  Activity,
 } from 'lucide-react';
 import { API_URL } from '@/config/api';
 
@@ -63,12 +67,39 @@ interface Booking {
   admin_notes?: string;
   completed_at?: string;
   completed_by_name?: string;
+  cancelled_at?: string;
+  cancelled_by_type?: 'admin' | 'patient' | null;
+  cancelled_by_name?: string | null;
   created_at: string;
   reschedule_count?: number;
   original_booking_date?: string;
   original_booking_time?: string;
   rescheduled_at?: string;
   rescheduled_by?: string;
+}
+
+interface PatientProfile {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  date_of_birth: string;
+  gender: string;
+  address: string;
+  medical_conditions: string;
+  allergies: string;
+  created_at: string;
+  bookings: Array<{
+    id: number;
+    booking_date: string;
+    booking_time: string;
+    status: string;
+    business_status?: string;
+    cancelled_by_type?: 'admin' | 'patient' | null;
+    service_name: string;
+    amount_paid: number;
+  }>;
 }
 
 const statusColors: Record<string, string> = {
@@ -245,6 +276,10 @@ export default function AdminBookings() {
     reason: ''
   });
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [selectedPatientProfile, setSelectedPatientProfile] = useState<PatientProfile | null>(null);
+  const [isPatientProfileOpen, setIsPatientProfileOpen] = useState(false);
+  const [loadingPatientProfile, setLoadingPatientProfile] = useState(false);
+  const [patientProfileError, setPatientProfileError] = useState<string | null>(null);
 
   const fetchBookings = async () => {
     try {
@@ -286,6 +321,31 @@ export default function AdminBookings() {
   const handleBookingClick = (booking: Booking) => {
     setSelectedBooking(booking);
     setIsModalOpen(true);
+  };
+
+  const handlePatientProfileOpen = async (email: string) => {
+    setIsPatientProfileOpen(true);
+    setLoadingPatientProfile(true);
+    setPatientProfileError(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/admin/patients/${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data?.patient) {
+        throw new Error(data?.message || 'Failed to load patient profile');
+      }
+
+      setSelectedPatientProfile(data.patient);
+    } catch (error) {
+      console.error('Error loading patient profile:', error);
+      setPatientProfileError(error instanceof Error ? error.message : 'Failed to load patient profile');
+    } finally {
+      setLoadingPatientProfile(false);
+    }
   };
 
   const handleRescheduleClick = () => {
@@ -433,6 +493,14 @@ export default function AdminBookings() {
     }
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 0,
+    }).format(price || 0);
+  };
+
   const hasAppointmentEnded = (bookingDate: string, bookingTime: string, durationMinutes: number) => {
     try {
       const now = new Date();
@@ -467,6 +535,46 @@ export default function AdminBookings() {
     } catch {
       return startTime;
     }
+  };
+
+  const getCancelledByLabel = (booking: Booking) => {
+    if (booking.cancelled_by_type === 'admin') {
+      return booking.cancelled_by_name ? `Cancelled by ${booking.cancelled_by_name}` : 'Cancelled by admin';
+    }
+    if (booking.cancelled_by_type === 'patient') {
+      return 'Cancelled by patient';
+    }
+    return null;
+  };
+
+  const getPatientBookingStatusInfo = (booking: PatientProfile['bookings'][number]) => {
+    if (booking.business_status === 'completed' || booking.status === 'completed') {
+      return { label: 'Completed', className: 'bg-blue-100 text-blue-700' };
+    }
+
+    if (booking.business_status === 'no_show') {
+      return { label: 'No Show', className: 'bg-orange-100 text-orange-700' };
+    }
+
+    if (booking.business_status === 'cancelled' || booking.status === 'cancelled') {
+      if (booking.cancelled_by_type === 'admin') {
+        return { label: 'Cancelled by Admin', className: 'bg-red-100 text-red-700' };
+      }
+      if (booking.cancelled_by_type === 'patient') {
+        return { label: 'Cancelled by Patient', className: 'bg-red-100 text-red-700' };
+      }
+      return { label: 'Cancelled', className: 'bg-red-100 text-red-700' };
+    }
+
+    if (booking.status === 'confirmed') {
+      return { label: 'Confirmed', className: 'bg-green-100 text-green-700' };
+    }
+
+    if (booking.status === 'pending') {
+      return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700' };
+    }
+
+    return { label: 'Scheduled', className: 'bg-gray-100 text-gray-700' };
   };
 
   return (
@@ -588,7 +696,14 @@ export default function AdminBookings() {
                 >
                   <div className="xl:col-span-2 min-w-0">
                     <p className="text-[11px] font-semibold uppercase text-gray-400 xl:hidden mb-1">Patient</p>
-                    <p className="font-semibold text-gray-900 truncate leading-tight">{booking.patient_name}</p>
+                    <button
+                      type="button"
+                      onClick={() => handlePatientProfileOpen(booking.patient_email)}
+                      className="font-semibold text-gray-900 truncate leading-tight text-left hover:text-blue-700 hover:underline"
+                      title="View patient profile"
+                    >
+                      {booking.patient_name}
+                    </button>
                     <p className="text-xs text-gray-500 truncate mt-1">{booking.patient_email}</p>
                   </div>
 
@@ -643,12 +758,15 @@ export default function AdminBookings() {
                       <Badge className={`${businessStatusColors[booking.business_status]} text-xs`}>
                         {booking.business_status}
                       </Badge>
-                      {booking.time_status && (
+                      {booking.business_status === 'scheduled' && booking.time_status && (
                         <Badge className={`${timeStatusColors[booking.time_status]} text-xs`}>
                           {booking.time_status.replace('_', ' ')}
                         </Badge>
                       )}
                     </div>
+                    {booking.business_status === 'cancelled' && getCancelledByLabel(booking) && (
+                      <p className="text-[11px] text-red-600 mt-1">{getCancelledByLabel(booking)}</p>
+                    )}
                     <p className="text-[11px] text-gray-400 mt-2">Booked: {formatDate(booking.created_at)}</p>
                   </div>
 
@@ -736,6 +854,171 @@ export default function AdminBookings() {
             })}
           </div>
         )}
+
+        <Dialog
+          open={isPatientProfileOpen}
+          onOpenChange={(open) => {
+            setIsPatientProfileOpen(open);
+            if (!open) {
+              setSelectedPatientProfile(null);
+              setPatientProfileError(null);
+            }
+          }}
+        >
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-0 overflow-hidden [&>button]:hidden">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Patient Profile</DialogTitle>
+            </DialogHeader>
+
+            {loadingPatientProfile ? (
+              <div className="p-12 text-center">
+                <Loader2 className="w-8 h-8 text-brand animate-spin mx-auto mb-3" />
+                <p className="text-gray-600">Loading patient profile...</p>
+              </div>
+            ) : patientProfileError ? (
+              <div className="p-6">
+                <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+                  {patientProfileError}
+                </div>
+              </div>
+            ) : selectedPatientProfile ? (
+              <>
+                <div className="bg-gradient-to-r from-brand to-brand-600 p-6 text-white relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsPatientProfileOpen(false)}
+                    className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+                    aria-label="Close patient profile"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <div className="flex items-center gap-4 pr-10">
+                    <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
+                      <User className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">
+                        {selectedPatientProfile.first_name} {selectedPatientProfile.last_name}
+                      </h3>
+                      <p className="text-white/85 text-sm">Patient since {formatDate(selectedPatientProfile.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 overflow-y-auto max-h-[65vh]">
+                  {(() => {
+                    let details: { age?: string; height?: string; weight?: string; reasonForConsult?: string; healthGoals?: string[] } = {};
+                    try {
+                      if (selectedPatientProfile.medical_conditions) {
+                        details = JSON.parse(selectedPatientProfile.medical_conditions);
+                      }
+                    } catch {
+                      details = {};
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        {details.age && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                            <User className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Age</p>
+                              <p className="font-medium text-sm">{details.age} years old</p>
+                            </div>
+                          </div>
+                        )}
+                        {details.height && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                            <Activity className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Height</p>
+                              <p className="font-medium text-sm">{details.height} cm</p>
+                            </div>
+                          </div>
+                        )}
+                        {details.weight && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                            <Activity className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Weight</p>
+                              <p className="font-medium text-sm">{details.weight} kg</p>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                          <Mail className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-xs text-gray-500">Email</p>
+                            <p className="font-medium text-sm">{selectedPatientProfile.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                          <Phone className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-xs text-gray-500">Phone</p>
+                            <p className="font-medium text-sm">{selectedPatientProfile.phone_number || 'Not provided'}</p>
+                          </div>
+                        </div>
+                        {selectedPatientProfile.address && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl sm:col-span-2">
+                            <Calendar className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Address</p>
+                              <p className="font-medium text-sm">{selectedPatientProfile.address}</p>
+                            </div>
+                          </div>
+                        )}
+                        {details.reasonForConsult && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl sm:col-span-2">
+                            <FileText className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Reason for Consultation</p>
+                              <p className="font-medium text-sm">{details.reasonForConsult}</p>
+                            </div>
+                          </div>
+                        )}
+                        {details.healthGoals && details.healthGoals.length > 0 && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl sm:col-span-2">
+                            <Target className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Health Goals</p>
+                              <p className="font-medium text-sm">{details.healthGoals.join(', ')}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <h4 className="font-semibold text-gray-900 mb-3">Booking History</h4>
+                  {selectedPatientProfile.bookings?.length ? (
+                    <div className="space-y-2">
+                      {selectedPatientProfile.bookings.map((profileBooking) => {
+                        const statusInfo = getPatientBookingStatusInfo(profileBooking);
+                        return (
+                          <div key={profileBooking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <div>
+                              <p className="font-medium text-sm">{profileBooking.service_name}</p>
+                              <p className="text-xs text-gray-500">
+                                {formatDate(profileBooking.booking_date)} at {formatTime(profileBooking.booking_time)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                              <p className="text-xs text-gray-500 mt-1">{formatPrice(profileBooking.amount_paid)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No booking history</p>
+                  )}
+                </div>
+              </>
+            ) : null}
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-md">
@@ -900,7 +1183,7 @@ export default function AdminBookings() {
                     <Badge className={businessStatusColors[selectedBooking.business_status]}>
                       Business: {selectedBooking.business_status}
                     </Badge>
-                    {selectedBooking.time_status && (
+                    {selectedBooking.business_status === 'scheduled' && selectedBooking.time_status && (
                       <Badge className={timeStatusColors[selectedBooking.time_status]}>
                         Time: {selectedBooking.time_status.replace('_', ' ')}
                       </Badge>
@@ -914,6 +1197,13 @@ export default function AdminBookings() {
                     <p className="text-xs text-gray-500 mb-3">
                       Completed on {formatDate(selectedBooking.completed_at)} 
                       {selectedBooking.completed_by_name && ` by ${selectedBooking.completed_by_name}`}
+                    </p>
+                  )}
+
+                  {selectedBooking.business_status === 'cancelled' && getCancelledByLabel(selectedBooking) && (
+                    <p className="text-xs text-red-600 mb-3">
+                      {getCancelledByLabel(selectedBooking)}
+                      {selectedBooking.cancelled_at ? ` on ${formatDate(selectedBooking.cancelled_at)}` : ''}
                     </p>
                   )}
 
