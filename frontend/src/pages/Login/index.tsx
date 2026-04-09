@@ -274,7 +274,7 @@ export default function Login() {
         <div className="w-full max-w-lg mx-auto">
           {/* Logo */}
           <div className="mb-10">
-            <img src="/logo-full.svg" alt="Nuwendo Metabolic Clinic" className="h-16" />
+            <img src="/NUWENDO.svg" alt="Nuwendo Metabolic Clinic" className="h-16" />
           </div>
 
           {step === 'email' ? (

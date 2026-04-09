@@ -159,7 +159,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             {/* Logo & Brand */}
             <div className="flex items-center gap-4">
               <img 
-                src="/logo-full.svg" 
+                src="/NUWENDO.svg" 
                 alt="Nuwendo" 
                 className="h-10 cursor-pointer" 
                 onClick={() => navigate('/admin/dashboard')}
