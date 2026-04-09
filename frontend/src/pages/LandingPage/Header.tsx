@@ -11,16 +11,16 @@ export function Header() {
   return (
     <>
       {/* Top Bar */}
-      <div className="hidden md:block bg-brand-800 text-white py-2">
+  <div className="hidden md:block bg-[#f0833c] text-white py-2">
         <div className="container flex justify-between items-center text-sm">
           <div className="flex items-center gap-6">
-            <a href="mailto:info@nuwendo.com" className="flex items-center gap-2 hover:text-brand-200 transition-colors">
+            <a href="mailto:info.nuwendoph@gmail.com" className="flex items-center gap-2 hover:text-brand-200 transition-colors">
               <Mail className="h-4 w-4" />
-              info@nuwendo.com
+              info.nuwendoph@gmail.com
             </a>
             <a href="tel:+639065707915" className="flex items-center gap-2 hover:text-brand-200 transition-colors">
               <Phone className="h-4 w-4" />
-              (0906) 570 7915
+              0917 808 4442
             </a>
           </div>
           <div className="text-gray-300">

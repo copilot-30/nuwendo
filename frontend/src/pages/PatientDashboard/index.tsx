@@ -1924,7 +1924,7 @@ export default function PatientDashboard() {
             </div>
             <div className="col-span-2 md:col-span-2 md:text-right">
               <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Contact Us</h4>
-              <p className="text-brand text-sm">hello@nuwendo.com</p>
+              <p className="text-brand text-sm">info.nuwendoph@gmail.com</p>
               <p className="text-brand text-sm flex items-center md:justify-end gap-2 mt-2">
                 <Phone className="w-4 h-4" />
                 (02) 8888-NUWE
