@@ -117,27 +117,47 @@ export default function ServiceNuwendoStarterPage() {
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-10">
-              <div className="relative pl-8 border-l-4 border-brand-200">
-                <p className="text-brand text-2xl font-black">01.</p>
-                <h3 className="mt-3 text-3xl font-black uppercase italic text-brand-800">What is Nuwendo Starter?</h3>
-                <p className="mt-5 text-lg text-slate-700 leading-relaxed">
-                  Nuwendo Starter is the entry program designed to help you begin your weight loss journey with medical guidance
-                  and a clear plan. It includes a full doctor consultation, a customized nutrition plan, and one follow-up check
-                  to track your progress. This package gives you a safe, science-backed starting point, focused on your lifestyle,
-                  your goals, and your long-term health. Available online nationwide or in-person at our Makati clinic.
-                </p>
+            <div className="space-y-12">
+              <div className="grid lg:grid-cols-[1.1fr_1.4fr] gap-10 items-center">
+                <div className="relative">
+                  <img
+                    src="/healthy-adult-woman-with-green-food-in-the-kitchen-2025-01-08-17-25-44-utc-scaled.jpg"
+                    alt="Healthy nutrition guidance"
+                    className="w-full rounded-3xl object-cover shadow-xl"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="relative pl-8 border-l-4 border-brand-200">
+                  <p className="text-brand text-2xl font-black">01.</p>
+                  <h3 className="mt-3 text-3xl font-black uppercase italic text-brand-800">What is Nuwendo Starter?</h3>
+                  <p className="mt-5 text-lg text-slate-700 leading-relaxed">
+                    Nuwendo Starter is the entry program designed to help you begin your weight loss journey with medical guidance
+                    and a clear plan. It includes a full doctor consultation, a customized nutrition plan, and one follow-up check
+                    to track your progress. This package gives you a safe, science-backed starting point, focused on your lifestyle,
+                    your goals, and your long-term health. Available online nationwide or in-person at our Makati clinic.
+                  </p>
+                </div>
               </div>
 
-              <div className="relative pl-8 border-l-4 border-brand-200">
-                <p className="text-brand text-2xl font-black">02.</p>
-                <h3 className="mt-3 text-3xl font-black uppercase italic text-brand-800">Why choose Nuwendo Starter?</h3>
-                <p className="mt-5 text-lg text-slate-700 leading-relaxed">
-                  Choosing Nuwendo Starter means beginning your journey with a doctor-led, personalized plan—not another generic
-                  program. You’ll receive a full consultation, a tailored nutrition strategy, and a follow-up session to keep you
-                  on track. This package is designed to give you safe, science-backed guidance at an affordable starting point,
-                  so you can build healthy habits with confidence and clarity.
-                </p>
+              <div className="grid lg:grid-cols-[1.4fr_1.1fr] gap-10 items-center">
+                <div className="relative pl-8 border-l-4 border-brand-200">
+                  <p className="text-brand text-2xl font-black">02.</p>
+                  <h3 className="mt-3 text-3xl font-black uppercase italic text-brand-800">Why choose Nuwendo Starter?</h3>
+                  <p className="mt-5 text-lg text-slate-700 leading-relaxed">
+                    Choosing Nuwendo Starter means beginning your journey with a doctor-led, personalized plan—not another generic
+                    program. You’ll receive a full consultation, a tailored nutrition strategy, and a follow-up session to keep you
+                    on track. This package is designed to give you safe, science-backed guidance at an affordable starting point,
+                    so you can build healthy habits with confidence and clarity.
+                  </p>
+                </div>
+                <div className="relative">
+                  <img
+                    src="/selective-focus-of-measuring-tape-fruits-with-sca-2024-11-19-00-46-27-utc-scaled.jpg"
+                    alt="Metabolic assessment planning"
+                    className="w-full rounded-3xl object-cover shadow-xl"
+                    loading="lazy"
+                  />
+                </div>
               </div>
             </div>
 
