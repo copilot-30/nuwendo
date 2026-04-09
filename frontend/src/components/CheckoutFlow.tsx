@@ -36,11 +36,37 @@ interface PatientProfile {
   firstName?: string
   lastName?: string
   phone?: string
+  address?: string
   region?: string
   province?: string
   city?: string
   barangay?: string
   street_address?: string
+}
+
+const parseAddressFallback = (address?: string) => {
+  if (!address) return {}
+
+  const parts = address
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  if (parts.length < 3) return {}
+
+  const street_address = parts[0] || ''
+  const barangay = parts[1] || ''
+  const city = parts[2] || ''
+  const province = parts[3] || ''
+  const region = parts.length > 4 ? parts.slice(4).join(', ') : ''
+
+  return {
+    street_address,
+    barangay,
+    city,
+    province,
+    region,
+  }
 }
 
 export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowProps) {
@@ -130,15 +156,17 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     console.log('Profile data:', data)
     if (data.success) {
       const p = data.profile || {}
+      const parsedAddress = parseAddressFallback(p.address)
       const profile = {
         firstName: p.firstName || '',
         lastName: p.lastName || '',
         phone: p.phone || '',
-        region: p.region || '',
-        province: p.province || '',
-        city: p.city || '',
-        barangay: p.barangay || '',
-        street_address: p.street_address || '',
+        address: p.address || '',
+        region: p.region || parsedAddress.region || '',
+        province: p.province || parsedAddress.province || '',
+        city: p.city || parsedAddress.city || '',
+        barangay: p.barangay || parsedAddress.barangay || '',
+        street_address: p.street_address || parsedAddress.street_address || '',
       }
       setRecipientName([p.firstName, p.lastName].filter(Boolean).join(' '))
       setRecipientPhone(p.phone || '')
@@ -291,7 +319,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     if (!recipientName.trim()) return false
     if (!recipientPhone.trim() || !isValidPhilippinePhone(recipientPhone)) return false
     if (useDefaultAddress) {
-      return defaultProfile?.province && defaultProfile?.city && defaultProfile?.barangay
+      return !!(defaultProfile?.province && defaultProfile?.city && defaultProfile?.barangay)
     }
     return selectedRegion && selectedProvince && selectedCity && selectedBarangay && streetAddress.trim() && 
            regions.find(r => r.code === selectedRegion) && 
@@ -427,6 +455,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                       <p className="text-sm text-gray-600 mt-1">
                         {defaultProfile.street_address && `${defaultProfile.street_address}, `}
                         {defaultProfile.barangay}, {defaultProfile.city}, {defaultProfile.province}
+                        {defaultProfile.region ? `, ${defaultProfile.region}` : ''}
                       </p>
                     ) : (
                       <p className="text-sm text-amber-600 mt-1">

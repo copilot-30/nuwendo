@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, Plus, Minus, Trash2, Loader2, AlertCircle } from 'lucide-react'
 import { cartService, Cart as CartType } from '@/services/cartService'
@@ -81,6 +81,10 @@ export default function CartModal({ open, onClose, onCartUpdate }: CartModalProp
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Shopping Cart</DialogTitle>
+            <DialogDescription>Loading your cart items and checkout details.</DialogDescription>
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-brand" />
           </div>
@@ -100,6 +104,9 @@ export default function CartModal({ open, onClose, onCartUpdate }: CartModalProp
               <span className="text-sm text-gray-500">({cart.itemCount} items)</span>
             )}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Review cart items and complete checkout with delivery and payment details.
+          </DialogDescription>
         </DialogHeader>
 
         {error && (

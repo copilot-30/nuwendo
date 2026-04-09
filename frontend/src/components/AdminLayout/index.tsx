@@ -40,6 +40,7 @@ const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: Home },
   { path: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { path: '/admin/payments', label: 'Payments', icon: CreditCard },
+  { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },
 ]
 
 const operationsItems = [
@@ -138,8 +139,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   const isActive = (path: string) => {
-    if (path === '/admin/shop') {
-      return location.pathname === '/admin/shop' || location.pathname.startsWith('/admin/orders')
+    if (path === '/admin/orders') {
+      return location.pathname === '/admin/orders' || location.pathname.startsWith('/admin/orders/')
     }
 
     return location.pathname === path || location.pathname.startsWith(`${path}/`)
