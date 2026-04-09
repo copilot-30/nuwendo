@@ -89,7 +89,7 @@ export function AdminOrders() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [paymentFilter, setPaymentFilter] = useState<string>('all')
+  const [paymentFilter, setPaymentFilter] = useState<string>('true')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [receiptViewer, setReceiptViewer] = useState<ReceiptViewerState | null>(null)
@@ -212,6 +212,14 @@ export function AdminOrders() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const formatPrice = (price: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 }).format(price)
+  const formatOrderReference = (id: number, createdAt: string) => {
+    const date = new Date(createdAt)
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    const paddedId = String(id).padStart(6, '0')
+    return `TXN-${y}${m}${d}-${paddedId}`
+  }
 
   if (isLoading && orders.length === 0) {
     return (
@@ -299,7 +307,7 @@ export function AdminOrders() {
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{formatOrderReference(order.id, order.created_at)}</h3>
                         <Badge className={statusColors[order.status]}>
                           {order.status}
                         </Badge>
@@ -345,7 +353,7 @@ export function AdminOrders() {
                       </Button>
                       {order.payment_receipt_url && (
                         <Button
-                          onClick={() => viewReceipt(order.payment_receipt_url!, `Order #${order.id} Receipt`)}
+                          onClick={() => viewReceipt(order.payment_receipt_url!, `${formatOrderReference(order.id, order.created_at)} Receipt`)}
                           variant="outline"
                           className="w-full"
                         >
@@ -397,7 +405,7 @@ export function AdminOrders() {
             {selectedOrder && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Order #{selectedOrder.id}</DialogTitle>
+                  <DialogTitle>{formatOrderReference(selectedOrder.id, selectedOrder.created_at)}</DialogTitle>
                   <DialogDescription>
                     View order details and manage order status
                   </DialogDescription>
