@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { sendBookingLifecycleEmail } from '../services/emailService.js';
 
 /**
  * Get reschedule settings
@@ -359,6 +360,44 @@ export const rescheduleBooking = async (req, res) => {
     );
 
     await client.query('COMMIT');
+
+    // Send non-blocking user notification email
+    try {
+      const bookingEmailResult = await pool.query(
+        `SELECT b.booking_date, b.booking_time, b.appointment_type,
+                u.email, u.first_name,
+                s.name AS service_name
+         FROM bookings b
+         JOIN users u ON b.user_id = u.id
+         JOIN services s ON b.service_id = s.id
+         WHERE b.id = $1`,
+        [bookingId]
+      );
+
+      if (bookingEmailResult.rows.length > 0) {
+        const bookingEmailData = bookingEmailResult.rows[0];
+        const emailResult = await sendBookingLifecycleEmail({
+          to: bookingEmailData.email,
+          firstName: bookingEmailData.first_name,
+          serviceName: bookingEmailData.service_name,
+          bookingDate: bookingEmailData.booking_date,
+          bookingTime: bookingEmailData.booking_time,
+          appointmentType: bookingEmailData.appointment_type,
+          eventType: 'rescheduled',
+          oldDate: booking.booking_date,
+          oldTime: booking.booking_time,
+          newDate: new_date,
+          newTime: new_time,
+          reason
+        });
+
+        if (!emailResult.success && !emailResult.skipped) {
+          console.warn(`⚠️ Booking reschedule email failed for booking #${bookingId}:`, emailResult.error);
+        }
+      }
+    } catch (emailError) {
+      console.warn(`⚠️ Failed sending reschedule email for booking #${bookingId}:`, emailError.message);
+    }
 
     res.json({
       success: true,

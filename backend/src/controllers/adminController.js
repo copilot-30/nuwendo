@@ -1,5 +1,6 @@
 import pool from '../config/database.js';
 import { createGoogleMeetLink } from '../services/googleCalendarService.js';
+import { sendBookingLifecycleEmail, sendOrderLifecycleEmail } from '../services/emailService.js';
 
 // Get all services for admin management
 const getServices = async (req, res) => {
@@ -620,6 +621,24 @@ const updateBookingStatus = async (req, res) => {
     }
     await createAuditLog(adminId, `Booking status changed: ${oldStatus} → ${status}${meetingLink ? ' (meeting link generated)' : ''}`, 'bookings', parseInt(id), { status: oldStatus }, auditNewValues);
 
+    if (status === 'confirmed' || status === 'cancelled') {
+      const eventType = status === 'confirmed' ? 'approved' : 'cancelled';
+      const emailResult = await sendBookingLifecycleEmail({
+        to: booking.email,
+        firstName: booking.first_name,
+        serviceName: booking.service_name,
+        bookingDate: booking.booking_date,
+        bookingTime: booking.booking_time,
+        appointmentType: booking.appointment_type,
+        eventType,
+        meetingLink
+      });
+
+      if (!emailResult.success && !emailResult.skipped) {
+        console.warn(`⚠️ Booking ${eventType} email failed for booking #${id}:`, emailResult.error);
+      }
+    }
+
     res.json({
       success: true,
       message: `Booking status updated successfully${meetingLink ? '. Meeting link generated for online appointment.' : ''}`,
@@ -648,7 +667,7 @@ const updateBookingBusinessStatus = async (req, res) => {
 
     // Get current booking details
     const oldResult = await pool.query(`
-      SELECT b.id, b.business_status, b.user_id,
+      SELECT b.id, b.business_status, b.user_id, b.booking_date, b.booking_time, b.appointment_type,
              u.email, u.first_name, u.last_name,
              s.name as service_name
       FROM bookings b
@@ -726,6 +745,22 @@ const updateBookingBusinessStatus = async (req, res) => {
       { business_status: oldBusinessStatus }, 
       auditNewValues
     );
+
+    if (['completed', 'cancelled', 'no_show'].includes(business_status)) {
+      const emailResult = await sendBookingLifecycleEmail({
+        to: booking.email,
+        firstName: booking.first_name,
+        serviceName: booking.service_name,
+        bookingDate: booking.booking_date,
+        bookingTime: booking.booking_time,
+        eventType: business_status,
+        reason: admin_notes || undefined
+      });
+
+      if (!emailResult.success && !emailResult.skipped) {
+        console.warn(`⚠️ Booking ${business_status} email failed for booking #${id}:`, emailResult.error);
+      }
+    }
 
     res.json({
       success: true,
@@ -1143,11 +1178,27 @@ const getOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const rawStatus = String(req.body?.status || '').toLowerCase().trim();
+    const status = rawStatus === 'shipping' ? 'shipped' : rawStatus;
+    const validStatuses = ['confirmed', 'shipped', 'delivered', 'cancelled'];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: `Invalid order status. Allowed values: ${validStatuses.join(', ')}`
+      });
+    }
+
     const adminId = req.admin.adminId;
 
     // Get old status for audit log
-    const oldResult = await pool.query('SELECT status FROM shop_orders WHERE id = $1', [id]);
+    const oldResult = await pool.query(
+      `SELECT so.status, so.created_at, so.total_amount,
+              u.email, u.first_name, u.last_name
+       FROM shop_orders so
+       JOIN users u ON so.user_id = u.id
+       WHERE so.id = $1`,
+      [id]
+    );
     if (oldResult.rows.length === 0) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -1161,6 +1212,20 @@ const updateOrderStatus = async (req, res) => {
 
     // Log the action
     await createAuditLog(adminId, `Updated order status from ${oldStatus} to ${status}`, 'shop_orders', id, { status: oldStatus }, { status });
+
+    const orderOwner = oldResult.rows[0];
+    const statusEmailResult = await sendOrderLifecycleEmail({
+      to: orderOwner.email,
+      firstName: orderOwner.first_name,
+      orderId: id,
+      createdAt: orderOwner.created_at,
+      status,
+      totalAmount: orderOwner.total_amount
+    });
+
+    if (!statusEmailResult.success && !statusEmailResult.skipped) {
+      console.warn(`⚠️ Order status email failed for order #${id}:`, statusEmailResult.error);
+    }
 
     res.json({
       success: true,
@@ -1181,7 +1246,14 @@ const verifyPayment = async (req, res) => {
     const adminId = req.admin.adminId;
 
     // Get old verification status for audit log
-    const oldResult = await pool.query('SELECT payment_verified FROM shop_orders WHERE id = $1', [id]);
+    const oldResult = await pool.query(
+      `SELECT so.payment_verified, so.created_at, so.total_amount,
+              u.email, u.first_name, u.last_name
+       FROM shop_orders so
+       JOIN users u ON so.user_id = u.id
+       WHERE so.id = $1`,
+      [id]
+    );
     if (oldResult.rows.length === 0) {
       return res.status(404).json({ message: 'Order not found' });
     }
@@ -1190,7 +1262,11 @@ const verifyPayment = async (req, res) => {
     // Update payment verification — payment_verified_by stores admin_users.id (no FK constraint after migration 023)
     const result = await pool.query(
       `UPDATE shop_orders 
-       SET payment_verified = $1, 
+       SET payment_verified = $1,
+           status = CASE
+             WHEN $1 = true AND status = 'pending' THEN 'confirmed'
+             ELSE status
+           END,
            payment_verified_by = $2, 
            payment_verified_at = NOW(),
            updated_at = NOW()
@@ -1201,6 +1277,22 @@ const verifyPayment = async (req, res) => {
 
     // Log the action
     await createAuditLog(adminId, payment_verified ? 'Verified order payment' : 'Unverified order payment', 'shop_orders', id, { payment_verified: oldVerified }, { payment_verified });
+
+    if (payment_verified === true) {
+      const orderOwner = oldResult.rows[0];
+      const paymentEmailResult = await sendOrderLifecycleEmail({
+        to: orderOwner.email,
+        firstName: orderOwner.first_name,
+        orderId: id,
+        createdAt: orderOwner.created_at,
+        paymentVerified: true,
+        totalAmount: orderOwner.total_amount
+      });
+
+      if (!paymentEmailResult.success && !paymentEmailResult.skipped) {
+        console.warn(`⚠️ Order payment approval email failed for order #${id}:`, paymentEmailResult.error);
+      }
+    }
 
     res.json({
       success: true,
@@ -1216,7 +1308,11 @@ const verifyPayment = async (req, res) => {
         const { payment_verified } = req.body;
         const result = await pool.query(
           `UPDATE shop_orders 
-           SET payment_verified = $1, 
+           SET payment_verified = $1,
+               status = CASE
+                 WHEN $1 = true AND status = 'pending' THEN 'confirmed'
+                 ELSE status
+               END,
                payment_verified_at = NOW(),
                updated_at = NOW()
            WHERE id = $2 

@@ -1,5 +1,6 @@
 import pool from '../config/database.js';
 import { uploadBase64Image } from '../services/storageService.js';
+import { sendBookingLifecycleEmail } from '../services/emailService.js';
 
 const sanitizeForPath = (value, fallback = 'unknown') => {
   return String(value || fallback)
@@ -261,9 +262,10 @@ const cancelBooking = async (req, res) => {
 
     // Get booking details
     const bookingResult = await pool.query(
-      `SELECT b.*, u.email 
+      `SELECT b.*, u.email, u.first_name, s.name AS service_name 
        FROM bookings b 
        JOIN users u ON b.user_id = u.id 
+       JOIN services s ON b.service_id = s.id
        WHERE b.id = $1`,
       [id]
     );
@@ -324,6 +326,20 @@ const cancelBooking = async (req, res) => {
        WHERE id = $1`,
       [id]
     );
+
+    const emailResult = await sendBookingLifecycleEmail({
+      to: booking.email,
+      firstName: booking.first_name,
+      serviceName: booking.service_name,
+      bookingDate: booking.booking_date,
+      bookingTime: booking.booking_time,
+      appointmentType: booking.appointment_type,
+      eventType: 'cancelled'
+    });
+
+    if (!emailResult.success && !emailResult.skipped) {
+      console.warn(`⚠️ Booking cancellation email failed for booking #${id}:`, emailResult.error);
+    }
 
     res.json({
       success: true,
