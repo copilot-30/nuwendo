@@ -27,7 +27,7 @@ export function Hero() {
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
                 Doctor-Led
                 <br />
-                <span className="text-brand-200">Weight Loss</span>
+                <span className="text-accent">Weight Loss</span>
                 <br />
                 & Metabolic Health
               </h1>
@@ -38,7 +38,7 @@ export function Hero() {
 
             <div>
               <Link to="/signup">
-                <Button size="lg" className="bg-brand hover:bg-brand-600 text-white gap-2 w-full sm:w-auto">
+                <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 w-full sm:w-auto">
                   Book Consultation
                   <ArrowRight className="w-4 h-4" />
                 </Button>
