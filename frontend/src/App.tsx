@@ -24,7 +24,6 @@ import { AdminPayments } from '@/pages/AdminPayments'
 import { AdminUsers } from '@/pages/AdminUsers'
 import { AdminAuditLog } from '@/pages/AdminAuditTrail'
 import AdminBookings from '@/pages/AdminBookings'
-import AdminSettings from '@/pages/AdminSettings'
 import { AdminOrders } from '@/pages/AdminOrders'
 import AdminReports from '@/pages/AdminReports'
 
@@ -104,7 +103,6 @@ function AppRoutes() {
         <Route path="/admin/orders" element={hasAdminSession ? <AdminOrders /> : <Navigate to="/login" replace />} />
         <Route path="/admin/audit-logs" element={hasAdminSession ? <AdminAuditLog /> : <Navigate to="/login" replace />} />
   <Route path="/admin/reports" element={hasAdminSession ? <AdminReports /> : <Navigate to="/login" replace />} />
-        <Route path="/admin/settings" element={hasAdminSession ? <AdminSettings /> : <Navigate to="/login" replace />} />
     </Routes>
   )
 }

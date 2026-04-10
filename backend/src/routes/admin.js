@@ -97,7 +97,20 @@ router.get('/bookings', [
 ], getBookings);
 
 router.patch('/bookings/:id/status', [
-  body('status').isIn(['pending', 'confirmed', 'completed', 'cancelled']).withMessage('Invalid status')
+  body('status').isIn(['pending', 'confirmed', 'completed', 'cancelled']).withMessage('Invalid status'),
+  body('video_call_link')
+    .optional()
+    .isString()
+    .withMessage('video_call_link must be a string')
+    .custom((value) => {
+      try {
+        const parsed = new URL(String(value).trim())
+        return parsed.protocol === 'https:' && parsed.hostname === 'meet.google.com' && parsed.pathname !== '/'
+      } catch {
+        return false
+      }
+    })
+    .withMessage('video_call_link must be a valid Google Meet URL (https://meet.google.com/...)')
 ], updateBookingStatus);
 
 router.patch('/bookings/:id/business-status', [

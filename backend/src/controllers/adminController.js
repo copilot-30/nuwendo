@@ -1,5 +1,4 @@
 import pool from '../config/database.js';
-import { createGoogleMeetLink } from '../services/googleCalendarService.js';
 import { sendBookingLifecycleEmail, sendOrderLifecycleEmail } from '../services/emailService.js';
 
 // Get all services for admin management
@@ -486,10 +485,19 @@ const getBookings = async (req, res) => {
 };
 
 // Update booking status
+const isValidGoogleMeetLink = (value) => {
+  try {
+    const parsed = new URL(String(value || '').trim());
+    return parsed.protocol === 'https:' && parsed.hostname === 'meet.google.com' && parsed.pathname !== '/';
+  } catch {
+    return false;
+  }
+};
+
 const updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, video_call_link } = req.body;
     const adminId = req.admin.adminId;
 
     // Get booking details including patient info and service details
@@ -510,56 +518,19 @@ const updateBookingStatus = async (req, res) => {
     const booking = oldResult.rows[0];
     const oldStatus = booking.status;
     const isOnlineAppointment = booking.appointment_type === 'online';
+    const manualMeetingLink = typeof video_call_link === 'string' ? video_call_link.trim() : '';
 
-    // Generate meeting link for online appointments when confirming
-    let meetingLink = null;
     if (status === 'confirmed' && isOnlineAppointment) {
-      try {
-        // Create appointment date/time
-        let appointmentDateTime;
-        
-        // Handle different date formats
-        const dateStr = booking.booking_date instanceof Date 
-          ? booking.booking_date.toISOString().split('T')[0]
-          : String(booking.booking_date).split('T')[0]; // Handle both Date and string
-        
-        const timeStr = String(booking.booking_time).substring(0, 8); // Ensure HH:MM:SS format
-        
-        appointmentDateTime = new Date(`${dateStr}T${timeStr}`);
-        
-        console.log('Creating Google Meet link for:', {
-          dateStr,
-          timeStr,
-          appointmentDateTime: appointmentDateTime.toISOString()
+      if (!manualMeetingLink) {
+        return res.status(400).json({
+          message: 'Meeting link is required when confirming online bookings.'
         });
-        
-        // Validate the date
-        if (isNaN(appointmentDateTime.getTime())) {
-          throw new Error(`Invalid date/time: date=${dateStr}, time=${timeStr}`);
-        }
-        
-        // Use Google Calendar service to create meet link
-        const meetResult = await createGoogleMeetLink({
-          summary: `${booking.service_name} - ${booking.first_name} ${booking.last_name}`,
-          description: `Nuwendo Clinic - ${booking.service_name} consultation`,
-          startDateTime: appointmentDateTime,
-          durationMinutes: booking.duration_minutes || 30,
-          attendeeEmail: booking.email
+      }
+
+      if (!isValidGoogleMeetLink(manualMeetingLink)) {
+        return res.status(400).json({
+          message: 'Invalid Google Meet link. Use format: https://meet.google.com/...'
         });
-        
-        meetingLink = meetResult.meetLink;
-        console.log('✅ Google Meet link created successfully:', meetingLink);
-      } catch (error) {
-        console.error('❌ Error creating Google Meet link:', error.message);
-        console.error('Booking details:', {
-          booking_date: booking.booking_date,
-          booking_time: booking.booking_time,
-          service_name: booking.service_name
-        });
-        
-        // Don't fail the entire request - just log the error and continue without meeting link
-        // The admin can manually add a meeting link later
-        console.warn('⚠️ Continuing without Google Meet link');
       }
     }
 
@@ -568,8 +539,8 @@ const updateBookingStatus = async (req, res) => {
     let queryParams;
 
     if (status === 'confirmed') {
-      if (isOnlineAppointment && meetingLink) {
-        // Confirming online appointment - include meeting link
+      if (isOnlineAppointment && manualMeetingLink) {
+        // Confirming online appointment - include manually provided meeting link
         updateQuery = `UPDATE bookings 
           SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
               video_call_link = $3,
@@ -578,9 +549,9 @@ const updateBookingStatus = async (req, res) => {
               cancelled_at = NULL,
               updated_at = CURRENT_TIMESTAMP 
           WHERE id = $4 RETURNING *`;
-        queryParams = [status, adminId, meetingLink, id];
+        queryParams = [status, adminId, manualMeetingLink, id];
       } else {
-        // Confirming on-site appointment - no meeting link
+        // Confirming booking without meeting link update
         updateQuery = `UPDATE bookings 
           SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
               cancelled_by_type = NULL,
@@ -616,10 +587,10 @@ const updateBookingStatus = async (req, res) => {
 
     // Log the action
     const auditNewValues = { status };
-    if (meetingLink) {
-      auditNewValues.video_call_link = meetingLink;
+    if (manualMeetingLink) {
+      auditNewValues.video_call_link = manualMeetingLink;
     }
-    await createAuditLog(adminId, `Booking status changed: ${oldStatus} → ${status}${meetingLink ? ' (meeting link generated)' : ''}`, 'bookings', parseInt(id), { status: oldStatus }, auditNewValues);
+    await createAuditLog(adminId, `Booking status changed: ${oldStatus} → ${status}${manualMeetingLink ? ' (meeting link updated)' : ''}`, 'bookings', parseInt(id), { status: oldStatus }, auditNewValues);
 
     if (status === 'confirmed' || status === 'cancelled') {
       const eventType = status === 'confirmed' ? 'approved' : 'cancelled';
@@ -634,7 +605,7 @@ const updateBookingStatus = async (req, res) => {
         eventType,
         status,
         businessStatus: booking.business_status,
-        meetingLink
+        meetingLink: manualMeetingLink || undefined
       });
 
       if (!emailResult.success && !emailResult.skipped) {
@@ -644,7 +615,7 @@ const updateBookingStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Booking status updated successfully${meetingLink ? '. Meeting link generated for online appointment.' : ''}`,
+      message: `Booking status updated successfully${manualMeetingLink ? '. Meeting link saved for online appointment.' : ''}`,
       booking: result.rows[0]
     });
   } catch (error) {

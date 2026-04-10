@@ -86,6 +86,15 @@ interface ReceiptViewerState {
   title: string
 }
 
+const isValidGoogleMeetLink = (value: string) => {
+  try {
+    const parsed = new URL(value.trim())
+    return parsed.protocol === 'https:' && parsed.hostname === 'meet.google.com' && parsed.pathname !== '/'
+  } catch {
+    return false
+  }
+}
+
 export function AdminPayments() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -105,6 +114,8 @@ export function AdminPayments() {
   const [receiptViewer, setReceiptViewer] = useState<ReceiptViewerState | null>(null)
   const [approvingId, setApprovingId] = useState<number | null>(null)
   const [rejectingId, setRejectingId] = useState<number | null>(null)
+  const [meetingLinks, setMeetingLinks] = useState<Record<number, string>>({})
+  const [meetingLinkErrors, setMeetingLinkErrors] = useState<Record<number, string>>({})
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'last7days' | 'last30days'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -314,25 +325,57 @@ export function AdminPayments() {
 
   const handleApprovePayment = async (bookingId: number) => {
     const booking = pendingBookings.find(b => b.id === bookingId)
+    const manualMeetingLink = (meetingLinks[bookingId] || '').trim()
+
+    if (booking?.appointment_type === 'online' && !manualMeetingLink) {
+      setMeetingLinkErrors(prev => ({
+        ...prev,
+        [bookingId]: 'Meeting link is required before approving this online booking.'
+      }))
+      setError('Please add the meeting link first.')
+      return
+    }
+
+    if (booking?.appointment_type === 'online' && !isValidGoogleMeetLink(manualMeetingLink)) {
+      setMeetingLinkErrors(prev => ({
+        ...prev,
+        [bookingId]: 'Enter a valid Google Meet link (https://meet.google.com/...) before approval.'
+      }))
+      setError('Invalid Google Meet link format.')
+      return
+    }
+
+    setMeetingLinkErrors(prev => {
+      const { [bookingId]: _removed, ...rest } = prev
+      return rest
+    })
+
     setApprovingId(bookingId)
     try {
       const token = localStorage.getItem('adminToken')
+
       const response = await fetch(`${API_URL}/admin/bookings/${bookingId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status: 'confirmed' })
+        body: JSON.stringify({
+          status: 'confirmed',
+          video_call_link: booking?.appointment_type === 'online' ? manualMeetingLink : undefined
+        })
       })
 
       const data = await response.json()
       if (data.success) {
         setPendingBookings(prev => prev.filter(b => b.id !== bookingId))
+        setMeetingLinks(prev => {
+          const { [bookingId]: _removed, ...rest } = prev
+          return rest
+        })
         
-        // Show success message with meeting link for online appointments
-        if (booking?.appointment_type === 'online' && data.booking?.meeting_link) {
-          setSuccess(`Payment approved! Meeting link generated: ${data.booking.meeting_link}`)
+        if (booking?.appointment_type === 'online') {
+          setSuccess('Payment approved and booking confirmed with the meeting link.')
         } else {
           setSuccess('Payment approved and booking confirmed!')
         }
@@ -706,6 +749,35 @@ export function AdminPayments() {
                             </button>
                           ) : (
                             <p className="text-sm text-gray-400">No receipt</p>
+                          )}
+
+                          {booking.appointment_type === 'online' && (
+                            <div className="mt-3 space-y-1">
+                              <Label htmlFor={`meeting-link-${booking.id}`} className="text-xs text-gray-600">
+                                Meeting Link (required)
+                              </Label>
+                              <Input
+                                id={`meeting-link-${booking.id}`}
+                                placeholder="https://meet.google.com/..."
+                                value={meetingLinks[booking.id] || ''}
+                                onChange={(e) =>
+                                  {
+                                    const value = e.target.value
+                                    setMeetingLinks(prev => ({ ...prev, [booking.id]: value }))
+                                    if (value.trim() && isValidGoogleMeetLink(value)) {
+                                      setMeetingLinkErrors(prev => {
+                                        const { [booking.id]: _removed, ...rest } = prev
+                                        return rest
+                                      })
+                                    }
+                                  }
+                                }
+                                className={`h-8 text-xs ${meetingLinkErrors[booking.id] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                              />
+                              {meetingLinkErrors[booking.id] && (
+                                <p className="text-xs text-red-600">{meetingLinkErrors[booking.id]}</p>
+                              )}
+                            </div>
                           )}
                         </div>
 
