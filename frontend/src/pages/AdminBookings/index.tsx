@@ -62,6 +62,7 @@ interface Booking {
   duration_minutes: number;
   appointment_type: 'online' | 'in-person';
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  payment_status?: string;
   business_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
   time_status?: 'upcoming' | 'in_progress' | 'past';
   video_call_link?: string;
@@ -98,6 +99,7 @@ interface PatientProfile {
     booking_date: string;
     booking_time: string;
     status: string;
+  payment_status?: string;
     business_status?: string;
     cancelled_by_type?: 'admin' | 'patient' | null;
     service_name: string;
@@ -567,6 +569,9 @@ export default function AdminBookings() {
 
   const getCancelledByLabel = (booking: Booking) => {
     if (booking.cancelled_by_type === 'admin') {
+      if (booking.payment_status === 'rejected') {
+        return 'Rejected';
+      }
       return booking.cancelled_by_name ? `Cancelled by ${booking.cancelled_by_name}` : 'Cancelled by admin';
     }
     if (booking.cancelled_by_type === 'patient') {
@@ -586,6 +591,9 @@ export default function AdminBookings() {
 
     if (booking.business_status === 'cancelled' || booking.status === 'cancelled') {
       if (booking.cancelled_by_type === 'admin') {
+        if (booking.payment_status === 'rejected') {
+          return { label: 'Rejected', className: 'bg-red-100 text-red-700' };
+        }
         return { label: 'Cancelled by Admin', className: 'bg-red-100 text-red-700' };
       }
       if (booking.cancelled_by_type === 'patient') {

@@ -250,7 +250,7 @@ router.post('/checkout', flexibleAuthMiddleware, async (req, res) => {
         recipient_name, recipient_phone,
         use_default_address, delivery_province, delivery_city, delivery_barangay, delivery_street_address, delivery_address
       )
-       VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         userId,

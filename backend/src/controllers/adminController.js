@@ -511,7 +511,7 @@ const updateBookingStatus = async (req, res) => {
 
     // Get booking details including patient info and service details
     const oldResult = await pool.query(`
-      SELECT b.id, b.status, b.business_status, b.user_id, b.appointment_type, b.booking_date, b.booking_time,
+      SELECT b.id, b.status, b.business_status, b.payment_status, b.user_id, b.appointment_type, b.booking_date, b.booking_time,
              u.email, u.first_name, u.last_name,
              s.name as service_name, s.duration_minutes
       FROM bookings b
@@ -538,6 +538,7 @@ const updateBookingStatus = async (req, res) => {
       [[
         'payment_approved_by',
         'payment_approved_at',
+        'payment_status',
         'video_call_link',
         'cancelled_by_type',
         'cancelled_by_admin_id',
@@ -599,6 +600,10 @@ const updateBookingStatus = async (req, res) => {
     } else if (status === 'cancelled') {
       if (bookingColumns.has('business_status')) {
         addRawClause('business_status', `'cancelled'`);
+      }
+      // Never leave pending payment state after an admin cancellation.
+      if (bookingColumns.has('payment_status') && (!booking.payment_status || booking.payment_status === 'pending')) {
+        addRawClause('payment_status', `'rejected'`);
       }
       if (bookingColumns.has('cancelled_by_type')) {
         addRawClause('cancelled_by_type', `'admin'`);
@@ -689,7 +694,7 @@ const updateBookingBusinessStatus = async (req, res) => {
 
     // Get current booking details
     const oldResult = await pool.query(`
-      SELECT b.id, b.status, b.business_status, b.user_id, b.booking_date, b.booking_time, b.appointment_type,
+      SELECT b.id, b.status, b.business_status, b.payment_status, b.user_id, b.booking_date, b.booking_time, b.appointment_type,
              u.email, u.first_name, u.last_name,
              s.name as service_name
       FROM bookings b
@@ -726,10 +731,11 @@ const updateBookingBusinessStatus = async (req, res) => {
         RETURNING *`;
       queryParams = [business_status, admin_notes || null, adminId, id];
     } else if (business_status === 'cancelled') {
-      updateQuery = `
+  updateQuery = `
         UPDATE bookings 
         SET business_status = $1,
             status = 'cancelled',
+            payment_status = CASE WHEN payment_status IS NULL OR payment_status = 'pending' THEN 'rejected' ELSE payment_status END,
             admin_notes = $2,
             cancelled_by_type = 'admin',
             cancelled_by_admin_id = $3,
@@ -938,7 +944,7 @@ const getPatientProfile = async (req, res) => {
     const hasCompletedBy = bookingColumns.has('completed_by');
 
     // Get booking history
-    const bookingHistoryQuery = `SELECT b.id, b.booking_date, b.booking_time, b.status, b.business_status, b.amount_paid, b.appointment_type,
+  const bookingHistoryQuery = `SELECT b.id, b.booking_date, b.booking_time, b.status, b.business_status, b.payment_status, b.amount_paid, b.appointment_type,
               ${hasCancelledByType ? 'b.cancelled_by_type' : 'NULL::text AS cancelled_by_type'},
               ${hasCancelledAt ? 'b.cancelled_at' : 'NULL::timestamp AS cancelled_at'},
               ${hasCompletedAt ? 'b.completed_at' : 'NULL::timestamp AS completed_at'},

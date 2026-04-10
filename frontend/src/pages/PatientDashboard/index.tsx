@@ -42,6 +42,7 @@ interface Appointment {
   booking_time: string
   appointment_type: string
   status: string
+  payment_status?: string
   first_name?: string
   last_name?: string
   phone_number?: string
@@ -731,7 +732,10 @@ export default function PatientDashboard() {
     if (appointment.business_status === 'completed') return 'completed'
 
     if (appointment.status === 'cancelled' || appointment.business_status === 'cancelled') {
-      if (appointment.cancelled_by_type === 'admin') return 'cancelled by admin'
+      if (appointment.cancelled_by_type === 'admin') {
+        if (appointment.payment_status === 'rejected') return 'rejected'
+        return 'cancelled by admin'
+      }
       if (appointment.cancelled_by_type === 'patient') return 'cancelled by patient'
       return 'cancelled'
     }

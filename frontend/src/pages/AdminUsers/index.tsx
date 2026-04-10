@@ -45,6 +45,7 @@ interface PatientProfile {
     booking_date: string
     booking_time: string
     status: string
+  payment_status?: string
     business_status?: string
     cancelled_by_type?: 'admin' | 'patient' | null
     cancelled_at?: string | null
@@ -170,6 +171,9 @@ export function AdminUsers() {
 
     if (booking.business_status === 'cancelled' || booking.status === 'cancelled') {
       if (booking.cancelled_by_type === 'admin') {
+        if (booking.payment_status === 'rejected') {
+          return { label: 'Rejected', key: 'cancelled' }
+        }
         return { label: 'Cancelled by Admin', key: 'cancelled' }
       }
       if (booking.cancelled_by_type === 'patient') {
