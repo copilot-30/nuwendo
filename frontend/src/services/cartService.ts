@@ -100,7 +100,10 @@ export const cartService = {
     notes?: string
     payment_receipt_url?: string
     payment_qr_reference?: string
+    recipient_name?: string
+    recipient_phone?: string
     use_default_address: boolean
+    delivery_address?: string
     delivery_province?: string
     delivery_city?: string
     delivery_barangay?: string

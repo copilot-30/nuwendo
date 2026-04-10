@@ -5,9 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Upload, CheckCircle } from 'lucide-react'
-import { addressService } from '@/services/addressService'
 import { cartService, Cart as CartType } from '@/services/cartService'
 import { API_URL } from '@/config/api'
 
@@ -17,56 +15,11 @@ interface CheckoutFlowProps {
   onSuccess: () => void
 }
 
-interface Province {
-  code: string
-  name: string
-}
-
-interface City {
-  code: string
-  name: string
-}
-
-interface Barangay {
-  code: string
-  name: string
-}
-
 interface PatientProfile {
   firstName?: string
   lastName?: string
   phone?: string
   address?: string
-  region?: string
-  province?: string
-  city?: string
-  barangay?: string
-  street_address?: string
-}
-
-const parseAddressFallback = (address?: string) => {
-  if (!address) return {}
-
-  const parts = address
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-  if (parts.length < 3) return {}
-
-  const street_address = parts[0] || ''
-  const barangay = parts[1] || ''
-  const city = parts[2] || ''
-  const province = parts[3] || ''
-  const region = parts.length > 4 ? parts.slice(4).join(', ') : ''
-
-  return {
-    street_address,
-    barangay,
-    city,
-    province,
-    region,
-  }
 }
 
 export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowProps) {
@@ -81,15 +34,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   const [recipientPhone, setRecipientPhone] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
   const [phoneTouched, setPhoneTouched] = useState(false)
-  const [regions, setRegions] = useState<Province[]>([])
-  const [provinces, setProvinces] = useState<Province[]>([])
-  const [cities, setCities] = useState<City[]>([])
-  const [barangays, setBarangays] = useState<Barangay[]>([])
-  const [selectedRegion, setSelectedRegion] = useState('')
-  const [selectedProvince, setSelectedProvince] = useState('')
-  const [selectedCity, setSelectedCity] = useState('')
-  const [selectedBarangay, setSelectedBarangay] = useState('')
-  const [streetAddress, setStreetAddress] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
 
   // Order details
   const [notes, setNotes] = useState('')
@@ -112,12 +57,10 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
   const loadInitialData = async () => {
     try {
       setLoading(true)
-      const [regionsData, profile, pmtSettings] = await Promise.all([
-        addressService.getRegions(),
+      const [profile, pmtSettings] = await Promise.all([
         loadDefaultProfile(),
         loadPaymentSettings()
       ])
-      setRegions(regionsData)
       setDefaultProfile(profile)
       setPaymentSettings(pmtSettings)
     } catch (err: any) {
@@ -156,65 +99,18 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     console.log('Profile data:', data)
     if (data.success) {
       const p = data.profile || {}
-      const parsedAddress = parseAddressFallback(p.address)
+      const fullAddress = (p.address || p.street_address || '').trim()
       const profile = {
         firstName: p.firstName || '',
         lastName: p.lastName || '',
         phone: p.phone || '',
-        address: p.address || '',
-        region: p.region || parsedAddress.region || '',
-        province: p.province || parsedAddress.province || '',
-        city: p.city || parsedAddress.city || '',
-        barangay: p.barangay || parsedAddress.barangay || '',
-        street_address: p.street_address || parsedAddress.street_address || '',
+        address: fullAddress,
       }
       setRecipientName([p.firstName, p.lastName].filter(Boolean).join(' '))
       setRecipientPhone(p.phone || '')
       return profile
     }
     return {}
-  }
-
-  const handleRegionChange = async (regionCode: string) => {
-    setSelectedRegion(regionCode)
-    setSelectedProvince('')
-    setSelectedCity('')
-    setSelectedBarangay('')
-    setProvinces([])
-    setCities([])
-    setBarangays([])
-    try {
-      const provincesData = await addressService.getProvinces(regionCode)
-      setProvinces(provincesData)
-    } catch (err: any) {
-      setError(err.message || 'Failed to load provinces')
-    }
-  }
-
-  const handleProvinceChange = async (provinceCode: string) => {
-    setSelectedProvince(provinceCode)
-    setSelectedCity('')
-    setSelectedBarangay('')
-    setCities([])
-    setBarangays([])
-    try {
-      const citiesData = await addressService.getCities(provinceCode)
-      setCities(citiesData)
-    } catch (err: any) {
-      setError(err.message || 'Failed to load cities')
-    }
-  }
-
-  const handleCityChange = async (cityCode: string) => {
-    setSelectedCity(cityCode)
-    setSelectedBarangay('')
-    setBarangays([])
-    try {
-      const barangaysData = await addressService.getBarangays(cityCode)
-      setBarangays(barangaysData)
-    } catch (err: any) {
-      setError(err.message || 'Failed to load barangays')
-    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,13 +156,13 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
 
       // Validate required fields
       if (!useDefaultAddress) {
-        if (!selectedRegion || !selectedProvince || !selectedCity || !selectedBarangay || !streetAddress) {
-          setError('Please complete all address fields')
+        if (!deliveryAddress.trim()) {
+          setError('Please enter your delivery address')
           return
         }
       } else {
-        if (!defaultProfile?.province || !defaultProfile?.city || !defaultProfile?.barangay) {
-          setError('Your default address is incomplete. Please use custom address.')
+        if (!defaultProfile?.address?.trim()) {
+          setError('No default address set. Please use a different address.')
           return
         }
       }
@@ -278,6 +174,9 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
 
       // Upload receipt to Supabase Storage via backend
       const receiptUrl = await uploadReceiptToStorage(receiptPreview)
+      const selectedDeliveryAddress = useDefaultAddress
+        ? defaultProfile?.address?.trim() || ''
+        : deliveryAddress.trim()
 
       // Submit order
       const checkoutData = {
@@ -286,19 +185,11 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
         recipient_name: recipientName,
         recipient_phone: recipientPhone,
         use_default_address: useDefaultAddress,
-        delivery_region: useDefaultAddress 
-          ? defaultProfile?.region 
-          : regions.find(r => r.code === selectedRegion)?.name || selectedRegion,
-        delivery_province: useDefaultAddress 
-          ? defaultProfile?.province 
-          : provinces.find(p => p.code === selectedProvince)?.name || selectedProvince,
-        delivery_city: useDefaultAddress 
-          ? defaultProfile?.city 
-          : cities.find(c => c.code === selectedCity)?.name || selectedCity,
-        delivery_barangay: useDefaultAddress 
-          ? defaultProfile?.barangay 
-          : barangays.find(b => b.code === selectedBarangay)?.name || selectedBarangay,
-        delivery_street_address: useDefaultAddress ? defaultProfile?.street_address : streetAddress
+        delivery_address: selectedDeliveryAddress,
+        delivery_province: '',
+        delivery_city: '',
+        delivery_barangay: '',
+        delivery_street_address: selectedDeliveryAddress
       }
 
       await cartService.checkout(checkoutData)
@@ -319,13 +210,9 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     if (!recipientName.trim()) return false
     if (!recipientPhone.trim() || !isValidPhilippinePhone(recipientPhone)) return false
     if (useDefaultAddress) {
-      return !!(defaultProfile?.province && defaultProfile?.city && defaultProfile?.barangay)
+      return !!defaultProfile?.address?.trim()
     }
-    return selectedRegion && selectedProvince && selectedCity && selectedBarangay && streetAddress.trim() && 
-           regions.find(r => r.code === selectedRegion) && 
-           provinces.find(p => p.code === selectedProvince) && 
-           cities.find(c => c.code === selectedCity) && 
-           barangays.find(b => b.code === selectedBarangay)
+    return !!deliveryAddress.trim()
   }
 
   const canProceedFromStep3 = () => {
@@ -451,15 +338,13 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                     <Label htmlFor="default" className="font-medium cursor-pointer">
                       Use Default Address
                     </Label>
-                    {defaultProfile && defaultProfile.province ? (
+                    {defaultProfile?.address ? (
                       <p className="text-sm text-gray-600 mt-1">
-                        {defaultProfile.street_address && `${defaultProfile.street_address}, `}
-                        {defaultProfile.barangay}, {defaultProfile.city}, {defaultProfile.province}
-                        {defaultProfile.region ? `, ${defaultProfile.region}` : ''}
+                        {defaultProfile.address}
                       </p>
                     ) : (
                       <p className="text-sm text-amber-600 mt-1">
-                        No default address set. Please select custom address.
+                        No default address set. Please select "Use Different Address".
                       </p>
                     )}
                   </div>
@@ -477,76 +362,12 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
             {!useDefaultAddress && (
               <div className="space-y-3 pl-6">
                 <div>
-                  <Label htmlFor="region">Region</Label>
-                  <Select value={selectedRegion} onValueChange={handleRegionChange}>
-                    <SelectTrigger id="region">
-                      <SelectValue placeholder="Select region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.code} value={region.code}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="province">Province</Label>
-                  <Select value={selectedProvince} onValueChange={handleProvinceChange} disabled={!selectedRegion}>
-                    <SelectTrigger id="province">
-                      <SelectValue placeholder="Select province" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provinces.map((province) => (
-                        <SelectItem key={province.code} value={province.code}>
-                          {province.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="city">City/Municipality</Label>
-                  <Select value={selectedCity} onValueChange={handleCityChange} disabled={!selectedProvince}>
-                    <SelectTrigger id="city">
-                      <SelectValue placeholder="Select city" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city.code} value={city.code}>
-                          {city.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="barangay">Barangay</Label>
-                  <Select value={selectedBarangay} onValueChange={setSelectedBarangay} disabled={!selectedCity}>
-                    <SelectTrigger id="barangay">
-                      <SelectValue placeholder="Select barangay" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {barangays.map((barangay) => (
-                        <SelectItem key={barangay.code} value={barangay.code}>
-                          {barangay.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="street">House/Building No., Street Name</Label>
+                  <Label htmlFor="deliveryAddress">Complete Address</Label>
                   <Input
-                    id="street"
-                    value={streetAddress}
-                    onChange={(e) => setStreetAddress(e.target.value)}
-                    placeholder="e.g., 123 Main Street, Building A"
+                    id="deliveryAddress"
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder="e.g., 123 Main Street, Brgy. San Jose, Quezon City"
                   />
                 </div>
               </div>
@@ -586,17 +407,9 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
               )}
               <p className="text-sm">
                 {useDefaultAddress ? (
-                  <>
-                    {defaultProfile?.street_address && `${defaultProfile.street_address}, `}
-                    {defaultProfile?.barangay}, {defaultProfile?.city}, {defaultProfile?.province}, {defaultProfile?.region}
-                  </>
+                  defaultProfile?.address || '-'
                 ) : (
-                  <>
-                    {streetAddress}, {barangays.find(b => b.code === selectedBarangay)?.name || selectedBarangay},{' '}
-                    {cities.find(c => c.code === selectedCity)?.name || selectedCity},{' '}
-                    {provinces.find(p => p.code === selectedProvince)?.name || selectedProvince},{' '}
-                    {regions.find(r => r.code === selectedRegion)?.name || selectedRegion}
-                  </>
+                  deliveryAddress || '-'
                 )}
               </p>
             </div>

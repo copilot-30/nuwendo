@@ -433,8 +433,12 @@ export function AdminOrders() {
                         <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
                         <div>
                           <p>{selectedOrder.delivery_street_address}</p>
-                          <p>{selectedOrder.delivery_barangay}, {selectedOrder.delivery_city}</p>
-                          <p>{selectedOrder.delivery_province}, {selectedOrder.delivery_region}</p>
+                          {([selectedOrder.delivery_barangay, selectedOrder.delivery_city].filter(Boolean) as string[]).length > 0 && (
+                            <p>{([selectedOrder.delivery_barangay, selectedOrder.delivery_city].filter(Boolean) as string[]).join(', ')}</p>
+                          )}
+                          {([selectedOrder.delivery_province, selectedOrder.delivery_region].filter(Boolean) as string[]).length > 0 && (
+                            <p>{([selectedOrder.delivery_province, selectedOrder.delivery_region].filter(Boolean) as string[]).join(', ')}</p>
+                          )}
                         </div>
                       </div>
                     </div>

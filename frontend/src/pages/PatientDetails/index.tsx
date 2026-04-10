@@ -6,10 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, User } from 'lucide-react'
 import { BASE_URL } from '@/config/api'
-import { addressService } from '@/services/addressService'
 import {
   getPhilippinePhoneValidationMessage,
   maskPhilippinePhone,
@@ -23,11 +21,7 @@ interface PatientDetailsFormData {
   lastName: string
   age: string
   contactNumber: string
-  region: string
-  province: string
-  city: string
-  barangay: string
-  streetAddress: string
+  address: string
   height: string
   weight: string
   reasonForConsult: string
@@ -36,19 +30,7 @@ interface PatientDetailsFormData {
 
 interface PatientDetailsDraft {
   formData: PatientDetailsFormData
-  selectedRegionCode: string
-  selectedProvinceCode: string
-  selectedCityCode: string
 }
-
-interface PersistedPatientDetails extends PatientDetailsFormData {
-  selectedRegionCode?: string
-  selectedProvinceCode?: string
-  selectedCityCode?: string
-}
-
-const normalizeLocationName = (value: string | undefined | null) =>
-  (value || '').trim().toLowerCase()
 
 const hasUsableDraftData = (draft: Partial<PatientDetailsDraft> | null | undefined) => {
   if (!draft || !draft.formData) return false
@@ -57,21 +39,14 @@ const hasUsableDraftData = (draft: Partial<PatientDetailsDraft> | null | undefin
 
   return Boolean(
     data.firstName?.trim() ||
-    data.lastName?.trim() ||
-    data.age?.trim() ||
-    data.contactNumber?.trim() ||
-    data.region?.trim() ||
-    data.province?.trim() ||
-    data.city?.trim() ||
-    data.barangay?.trim() ||
-    data.streetAddress?.trim() ||
-    data.height?.trim() ||
-    data.weight?.trim() ||
-    data.reasonForConsult?.trim() ||
-    (Array.isArray(data.healthGoals) && data.healthGoals.length > 0) ||
-    draft.selectedRegionCode ||
-    draft.selectedProvinceCode ||
-    draft.selectedCityCode
+      data.lastName?.trim() ||
+      data.age?.trim() ||
+      data.contactNumber?.trim() ||
+      data.address?.trim() ||
+      data.height?.trim() ||
+      data.weight?.trim() ||
+      data.reasonForConsult?.trim() ||
+      (Array.isArray(data.healthGoals) && data.healthGoals.length > 0)
   )
 }
 
@@ -85,39 +60,26 @@ export default function PatientDetails() {
     lastName: '',
     age: '',
     contactNumber: '',
-    region: '',
-    province: '',
-    city: '',
-    barangay: '',
-    streetAddress: '',
+    address: '',
     height: '',
     weight: '',
     reasonForConsult: '',
     healthGoals: []
   }
-  
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [formData, setFormData] = useState<PatientDetailsFormData>(initialFormData)
-
-  const [regions, setRegions] = useState<Array<{code: string, name: string}>>([])
-  const [provinces, setProvinces] = useState<Array<{code: string, name: string}>>([])
-  const [cities, setCities] = useState<Array<{code: string, name: string}>>([])
-  const [barangays, setBarangays] = useState<Array<{code: string, name: string}>>([])
-  const [selectedRegionCode, setSelectedRegionCode] = useState('')
-  const [selectedProvinceCode, setSelectedProvinceCode] = useState('')
-  const [selectedCityCode, setSelectedCityCode] = useState('')
   const [isDraftHydrated, setIsDraftHydrated] = useState(false)
 
   useEffect(() => {
-    const initializeForm = async () => {
-      const regionsData = await loadRegions()
-
+    const initializeForm = () => {
       const rawDraft = sessionStorage.getItem(PATIENT_DETAILS_DRAFT_KEY)
       const rawSavedDetails = sessionStorage.getItem('patientDetails')
+
       let parsedDraft: PatientDetailsDraft | null = null
-  let parsedSavedDetails: PersistedPatientDetails | null = null
+      let parsedSavedDetails: PatientDetailsFormData | null = null
 
       if (rawDraft) {
         try {
@@ -136,84 +98,26 @@ export default function PatientDetails() {
       }
 
       const source = hasUsableDraftData(parsedDraft)
-        ? { parsed: parsedDraft, sourceType: 'draft' as const }
+        ? parsedDraft?.formData
         : parsedSavedDetails
-          ? { parsed: parsedSavedDetails, sourceType: 'saved' as const }
-          : null
 
       if (!source) {
         setIsDraftHydrated(true)
         return
       }
 
-      try {
-        const parsed = source.parsed
-
-        const parsedFormData: PatientDetailsFormData = (source.sourceType === 'draft' && (parsed as PatientDetailsDraft)?.formData)
-          ? {
-              ...initialFormData,
-              ...(parsed as PatientDetailsDraft).formData,
-              healthGoals: Array.isArray((parsed as PatientDetailsDraft).formData.healthGoals) ? (parsed as PatientDetailsDraft).formData.healthGoals : []
-            }
-          : {
-              ...initialFormData,
-              ...(parsed as PersistedPatientDetails),
-              healthGoals: Array.isArray((parsed as PersistedPatientDetails)?.healthGoals) ? (parsed as PersistedPatientDetails).healthGoals : []
-            }
-
-        if (parsedFormData.contactNumber) {
-          parsedFormData.contactNumber = maskPhilippinePhone(parsedFormData.contactNumber)
-        }
-
-        setFormData(parsedFormData)
-
-        const savedRegionCode = source.sourceType === 'draft'
-          ? (parsed as PatientDetailsDraft)?.selectedRegionCode || ''
-          : (parsed as PersistedPatientDetails)?.selectedRegionCode || ''
-        const savedProvinceCode = source.sourceType === 'draft'
-          ? (parsed as PatientDetailsDraft)?.selectedProvinceCode || ''
-          : (parsed as PersistedPatientDetails)?.selectedProvinceCode || ''
-        const savedCityCode = source.sourceType === 'draft'
-          ? (parsed as PatientDetailsDraft)?.selectedCityCode || ''
-          : (parsed as PersistedPatientDetails)?.selectedCityCode || ''
-
-        const resolvedRegionCode =
-          savedRegionCode ||
-          regionsData.find((r: { name: string; code: string }) => normalizeLocationName(r.name) === normalizeLocationName(parsedFormData.region))?.code ||
-          ''
-
-        if (!resolvedRegionCode) return
-
-        setSelectedRegionCode(resolvedRegionCode)
-        const provincesData = await addressService.getProvinces(resolvedRegionCode)
-        setProvinces(provincesData)
-
-        const resolvedProvinceCode =
-          savedProvinceCode ||
-          provincesData.find((p: { name: string; code: string }) => normalizeLocationName(p.name) === normalizeLocationName(parsedFormData.province))?.code ||
-          ''
-
-        if (!resolvedProvinceCode) return
-
-        setSelectedProvinceCode(resolvedProvinceCode)
-        const citiesData = await addressService.getCities(resolvedProvinceCode)
-        setCities(citiesData)
-
-        const resolvedCityCode =
-          savedCityCode ||
-          citiesData.find((c: { name: string; code: string }) => normalizeLocationName(c.name) === normalizeLocationName(parsedFormData.city))?.code ||
-          ''
-
-        if (!resolvedCityCode) return
-
-        setSelectedCityCode(resolvedCityCode)
-        const barangaysData = await addressService.getBarangays(resolvedCityCode)
-        setBarangays(barangaysData)
-      } catch (restoreError) {
-        console.error('Failed to restore patient details draft:', restoreError)
-      } finally {
-        setIsDraftHydrated(true)
+      const parsedFormData: PatientDetailsFormData = {
+        ...initialFormData,
+        ...source,
+        healthGoals: Array.isArray(source.healthGoals) ? source.healthGoals : []
       }
+
+      if (parsedFormData.contactNumber) {
+        parsedFormData.contactNumber = maskPhilippinePhone(parsedFormData.contactNumber)
+      }
+
+      setFormData(parsedFormData)
+      setIsDraftHydrated(true)
     }
 
     initializeForm()
@@ -229,80 +133,11 @@ export default function PatientDetails() {
     if (!isDraftHydrated) return
 
     const draft: PatientDetailsDraft = {
-      formData,
-      selectedRegionCode,
-      selectedProvinceCode,
-      selectedCityCode
+      formData
     }
 
     sessionStorage.setItem(PATIENT_DETAILS_DRAFT_KEY, JSON.stringify(draft))
-  }, [formData, selectedRegionCode, selectedProvinceCode, selectedCityCode, isDraftHydrated])
-
-  const loadRegions = async () => {
-    try {
-      const data = await addressService.getRegions()
-      setRegions(data)
-      return data
-    } catch (err) {
-      console.error('Failed to load regions:', err)
-      return []
-    }
-  }
-
-  const handleRegionChange = async (regionCode: string) => {
-    if (!regionCode) return
-
-    setSelectedRegionCode(regionCode)
-    const region = regions.find(r => r.code === regionCode)
-    setFormData(prev => ({ ...prev, region: region?.name || '', province: '', city: '', barangay: '' }))
-    setSelectedProvinceCode('')
-    setSelectedCityCode('')
-    setProvinces([])
-    setCities([])
-    setBarangays([])
-    try {
-      const provincesData = await addressService.getProvinces(regionCode)
-      setProvinces(provincesData)
-    } catch (err) {
-      console.error('Failed to load provinces:', err)
-    }
-  }
-
-  const handleProvinceChange = async (provinceCode: string) => {
-    if (!provinceCode) return
-
-    setSelectedProvinceCode(provinceCode)
-    const province = provinces.find(p => p.code === provinceCode)
-    setFormData(prev => ({ ...prev, province: province?.name || '', city: '', barangay: '' }))
-    setSelectedCityCode('')
-    setCities([])
-    setBarangays([])
-    try {
-      const citiesData = await addressService.getCities(provinceCode)
-      setCities(citiesData)
-    } catch (err) {
-      console.error('Failed to load cities:', err)
-    }
-  }
-
-  const handleCityChange = async (cityCode: string) => {
-    if (!cityCode) return
-
-    setSelectedCityCode(cityCode)
-    const city = cities.find(c => c.code === cityCode)
-    setFormData(prev => ({ ...prev, city: city?.name || '', barangay: '' }))
-    setBarangays([])
-    try {
-      const barangaysData = await addressService.getBarangays(cityCode)
-      setBarangays(barangaysData)
-    } catch (err) {
-      console.error('Failed to load barangays:', err)
-    }
-  }
-
-  const handleBarangayChange = (barangayName: string) => {
-    setFormData(prev => ({ ...prev, barangay: barangayName }))
-  }
+  }, [formData, isDraftHydrated])
 
   const healthGoalOptions = [
     'Weight loss / fat loss',
@@ -342,34 +177,29 @@ export default function PatientDetails() {
       setError('Please enter a valid Philippine mobile number (e.g., 0912 345 6789).')
       return
     }
-    
+
     if (formData.healthGoals.length === 0) {
       setError('Please select at least one health goal')
       return
     }
 
-    if (!formData.region || !formData.province || !formData.city || !formData.barangay || !formData.streetAddress) {
-      setError('Please complete all address fields')
+    if (!formData.address.trim()) {
+      setError('Please enter your complete address')
       return
     }
-    
+
     setError('')
     setPhoneError('')
     setIsLoading(true)
 
     try {
-      // Store patient details in session
       const payload = {
         ...formData,
-        contactNumber: normalizedPhone,
-        selectedRegionCode,
-        selectedProvinceCode,
-        selectedCityCode
+        contactNumber: normalizedPhone
       }
 
       sessionStorage.setItem('patientDetails', JSON.stringify(payload))
-      
-      // Save to backend
+
       const response = await fetch(`${BASE_URL}/api/patient/profile/${encodeURIComponent(email)}`, {
         method: 'PUT',
         headers: {
@@ -379,12 +209,12 @@ export default function PatientDetails() {
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: normalizedPhone,
-          address: `${formData.streetAddress}, ${formData.barangay}, ${formData.city}, ${formData.province}, ${formData.region}`,
-          region: formData.region,
-          province: formData.province,
-          city: formData.city,
-          barangay: formData.barangay,
-          street_address: formData.streetAddress,
+          address: formData.address,
+          region: '',
+          province: '',
+          city: '',
+          barangay: '',
+          street_address: formData.address,
           age: formData.age,
           height: formData.height,
           weight: formData.weight,
@@ -399,8 +229,7 @@ export default function PatientDetails() {
         setError('Failed to save your details. Please try again.')
         return
       }
-      
-      // Navigate to choose service
+
       navigate('/choose-service')
     } catch (err) {
       console.error('Profile save error:', err)
@@ -508,85 +337,15 @@ export default function PatientDetails() {
             </div>
 
             {/* Address Fields */}
-            <div className="space-y-4">
-              <Label className="text-base font-semibold">Complete Address *</Label>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="region">Region</Label>
-                  <Select value={selectedRegionCode} onValueChange={handleRegionChange}>
-                    <SelectTrigger id="region">
-                      <SelectValue placeholder="Select region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.code} value={region.code}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="province">Province</Label>
-                  <Select value={selectedProvinceCode} onValueChange={handleProvinceChange} disabled={!selectedRegionCode}>
-                    <SelectTrigger id="province">
-                      <SelectValue placeholder="Select province" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provinces.map((province) => (
-                        <SelectItem key={province.code} value={province.code}>
-                          {province.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="city">City/Municipality</Label>
-                  <Select value={selectedCityCode} onValueChange={handleCityChange} disabled={!selectedProvinceCode}>
-                    <SelectTrigger id="city">
-                      <SelectValue placeholder="Select city" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city.code} value={city.code}>
-                          {city.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="barangay">Barangay</Label>
-                  <Select value={formData.barangay} onValueChange={handleBarangayChange} disabled={!selectedCityCode}>
-                    <SelectTrigger id="barangay">
-                      <SelectValue placeholder="Select barangay" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {barangays.map((barangay) => (
-                        <SelectItem key={barangay.code} value={barangay.name}>
-                          {barangay.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="streetAddress">House/Building No., Street Name *</Label>
-                <Input
-                  id="streetAddress"
-                  placeholder="e.g., 123 Main Street, Building A"
-                  value={formData.streetAddress}
-                  onChange={(e) => setFormData({ ...formData, streetAddress: e.target.value })}
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Complete Address *</Label>
+              <Input
+                id="address"
+                placeholder="e.g., Unit 4B, 123 Main Street, Brgy. Poblacion, Makati City"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                required
+              />
             </div>
 
             {/* Height and Weight */}
@@ -644,10 +403,7 @@ export default function PatientDetails() {
                       checked={formData.healthGoals.includes(goal)}
                       onCheckedChange={() => handleHealthGoalToggle(goal)}
                     />
-                    <label
-                      htmlFor={goal}
-                      className="text-sm leading-tight cursor-pointer"
-                    >
+                    <label htmlFor={goal} className="text-sm leading-tight cursor-pointer">
                       {goal}
                     </label>
                   </div>
@@ -666,8 +422,8 @@ export default function PatientDetails() {
               </div>
             )}
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-12 text-base bg-brand hover:bg-brand-600"
               disabled={isLoading}
             >
