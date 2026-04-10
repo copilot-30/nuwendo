@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Phone, Mail, MapPin, Facebook, Instagram, Linkedin } from 'lucide-react'
+import { Phone, Mail, MapPin, Facebook, Instagram } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function Footer() {
@@ -23,7 +23,7 @@ export function Footer() {
             </p>
             <div className="flex gap-4">
               <a 
-                href="https://facebook.com/nuwendo" 
+                href="https://www.facebook.com/nuwendoph" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand transition-colors"
@@ -31,20 +31,12 @@ export function Footer() {
                 <Facebook className="h-5 w-5" />
               </a>
               <a 
-                href="https://instagram.com/nuwendo.ph" 
+                href="https://www.instagram.com/nuwendoph" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand transition-colors"
               >
                 <Instagram className="h-5 w-5" />
-              </a>
-              <a 
-                href="https://linkedin.com/company/nuwendo" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand transition-colors"
-              >
-                <Linkedin className="h-5 w-5" />
               </a>
             </div>
           </motion.div>
