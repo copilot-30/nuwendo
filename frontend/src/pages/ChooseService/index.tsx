@@ -30,6 +30,8 @@ interface Service {
   availability_type: 'online' | 'on-site' | 'both'
 }
 
+type AppointmentType = 'online' | 'on-site'
+
 const categoryIcons: Record<string, any> = {
   'Services': Stethoscope,
   'Peptides': Pill
@@ -64,6 +66,7 @@ export default function ChooseService() {
   
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [selectedAppointmentType, setSelectedAppointmentType] = useState<AppointmentType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -89,10 +92,16 @@ export default function ChooseService() {
   }, [isValidUser, navigate])
 
   const handleContinue = () => {
-    if (selectedService) {
+    if (selectedService && selectedAppointmentType) {
       sessionStorage.setItem('selectedService', JSON.stringify(selectedService))
+      sessionStorage.setItem('appointmentType', selectedAppointmentType)
       navigate('/choose-schedule')
     }
+  }
+
+  const handleServiceSelect = (service: Service) => {
+    setSelectedService(service)
+    setSelectedAppointmentType(null)
   }
 
   const formatPrice = (price: string) => {
@@ -185,7 +194,7 @@ export default function ChooseService() {
                           key={service.id}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => setSelectedService(service)}
+                          onClick={() => handleServiceSelect(service)}
                           className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
                             selectedService?.id === service.id
                               ? 'border-brand bg-brand-50'
@@ -213,27 +222,13 @@ export default function ChooseService() {
                                 </span>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full cursor-help ${
-                                      service.availability_type === 'online' 
-                                        ? 'bg-blue-100 text-blue-700' 
-                                        : service.availability_type === 'on-site'
-                                          ? 'bg-green-100 text-green-700'
-                                          : 'bg-purple-100 text-purple-700'
-                                    }`}>
-                                      {service.availability_type === 'online' && <Monitor className="h-3 w-3" />}
-                                      {service.availability_type === 'on-site' && <Building2 className="h-3 w-3" />}
-                                      {service.availability_type === 'both' && <Monitor className="h-3 w-3" />}
-                                      {service.availability_type === 'online' ? 'Online' : service.availability_type === 'on-site' ? 'Clinic' : 'Both'}
+                                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full cursor-help bg-purple-100 text-purple-700">
+                                      <Monitor className="h-3 w-3" />
+                                      Online & Clinic
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>
-                                      {service.availability_type === 'online' 
-                                        ? 'Available for online consultations only' 
-                                        : service.availability_type === 'on-site'
-                                          ? 'Available for in-clinic visits only'
-                                          : 'Available for both online and in-clinic visits'}
-                                    </p>
+                                    <p>Choose Online or On-Site in the next step.</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </div>
@@ -249,9 +244,53 @@ export default function ChooseService() {
             </TooltipProvider>
           )}
 
+          {/* Appointment Type Selection */}
+          {selectedService && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Choose appointment type</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Select how you want to attend this consultation.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAppointmentType('online')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    selectedAppointmentType === 'online'
+                      ? 'border-brand bg-brand-50'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Monitor className="h-4 w-4 text-brand" />
+                    <span className="font-semibold text-gray-900">Online</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Video consultation</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAppointmentType('on-site')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    selectedAppointmentType === 'on-site'
+                      ? 'border-brand bg-brand-50'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Building2 className="h-4 w-4 text-brand" />
+                    <span className="font-semibold text-gray-900">On-Site</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Clinic visit</p>
+                </button>
+              </div>
+            </div>
+          )}
+
         <Button 
           className="w-full h-12 text-base bg-brand hover:bg-brand-600"
-          disabled={!selectedService}
+          disabled={!selectedService || !selectedAppointmentType}
           onClick={handleContinue}
         >
           Continue

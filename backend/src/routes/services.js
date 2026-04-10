@@ -6,18 +6,7 @@ const router = express.Router();
 // Get all active services (public endpoint for patients)
 router.get('/', async (req, res) => {
   try {
-    const { appointmentType } = req.query;
-    
-    let query = 'SELECT id, name, description, duration_minutes, price, category, availability_type FROM services WHERE is_active = true';
-    
-    // Filter by appointment type if provided
-    if (appointmentType === 'online') {
-      query += " AND (availability_type = 'online' OR availability_type = 'both')";
-    } else if (appointmentType === 'on-site') {
-      query += " AND (availability_type = 'on-site' OR availability_type = 'both')";
-    }
-    
-    query += ' ORDER BY category, name';
+    const query = 'SELECT id, name, description, duration_minutes, price, category, availability_type FROM services WHERE is_active = true ORDER BY category, name';
     
     const result = await pool.query(query);
     

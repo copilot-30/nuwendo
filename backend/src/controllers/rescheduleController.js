@@ -222,9 +222,9 @@ export const rescheduleBooking = async (req, res) => {
 
     const booking = permission.booking;
 
-    // ✅ CRITICAL: Validate that the service supports the appointment type
+    // ✅ Validate that the service exists and is active
     const serviceCheck = await client.query(
-      `SELECT availability_type, name 
+      `SELECT name 
        FROM services 
        WHERE id = $1 AND is_active = true`,
       [booking.service_id]
@@ -238,28 +238,7 @@ export const rescheduleBooking = async (req, res) => {
       });
     }
 
-    const service = serviceCheck.rows[0];
     const appointmentType = booking.appointment_type;
-
-    // Check if service availability matches appointment type
-    // availability_type can be: 'online', 'on-site', or 'both'
-    if (service.availability_type === 'online' && appointmentType !== 'online') {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ 
-        success: false, 
-        message: `This service (${service.name}) is only available for online appointments. You cannot reschedule an online appointment to on-site.` 
-      });
-    }
-
-    if (service.availability_type === 'on-site' && appointmentType !== 'on-site') {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ 
-        success: false, 
-        message: `This service (${service.name}) is only available for on-site appointments. You cannot reschedule an on-site appointment to online.` 
-      });
-    }
-
-    // If availability_type is 'both', allow either appointment type
 
     // ✅ CRITICAL: Check if the new time slot is available
     const conflictCheck = await client.query(

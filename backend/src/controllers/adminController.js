@@ -27,18 +27,18 @@ const getServices = async (req, res) => {
 // Create new service
 const createService = async (req, res) => {
   try {
-    const { name, description, duration_minutes, price, category, availability_type } = req.body;
+    const { name, description, duration_minutes, price, category } = req.body;
     const adminId = req.admin.adminId;
 
     const result = await pool.query(
       `INSERT INTO services (name, description, duration_minutes, price, category, availability_type, created_by, updated_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
        RETURNING *`,
-      [name, description, duration_minutes, price, category, availability_type || 'both', adminId]
+      [name, description, duration_minutes, price, category, 'both', adminId]
     );
 
     // Log the action
-    await createAuditLog(adminId, 'Created service', 'services', result.rows[0].id, null, { name, description, duration_minutes, price, category, availability_type });
+    await createAuditLog(adminId, 'Created service', 'services', result.rows[0].id, null, { name, description, duration_minutes, price, category, availability_type: 'both' });
 
     res.status(201).json({
       success: true,
@@ -55,7 +55,7 @@ const createService = async (req, res) => {
 const updateService = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, duration_minutes, price, category, is_active, availability_type } = req.body;
+    const { name, description, duration_minutes, price, category, is_active } = req.body;
     const adminId = req.admin.adminId;
 
     // Get old values for audit
@@ -68,7 +68,7 @@ const updateService = async (req, res) => {
            category = $5, is_active = $6, availability_type = $7, updated_by = $8, updated_at = CURRENT_TIMESTAMP
        WHERE id = $9
        RETURNING *`,
-      [name, description, duration_minutes, price, category, is_active, availability_type || 'both', adminId, id]
+      [name, description, duration_minutes, price, category, is_active, 'both', adminId, id]
     );
 
     if (result.rows.length === 0) {
@@ -76,7 +76,7 @@ const updateService = async (req, res) => {
     }
 
     // Log the action
-    await createAuditLog(adminId, 'Updated service', 'services', parseInt(id), oldValues, { name, description, duration_minutes, price, category, is_active, availability_type });
+  await createAuditLog(adminId, 'Updated service', 'services', parseInt(id), oldValues, { name, description, duration_minutes, price, category, is_active, availability_type: 'both' });
 
     res.json({
       success: true,

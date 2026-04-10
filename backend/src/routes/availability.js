@@ -9,7 +9,7 @@ const router = express.Router();
  */
 router.get('/types', async (req, res) => {
   try {
-    const { date, serviceId } = req.query;
+    const { date } = req.query;
 
     if (!date) {
       return res.status(400).json({ success: false, message: 'Date parameter is required' });
@@ -32,29 +32,11 @@ router.get('/types', async (req, res) => {
 
     const scheduledTypes = result.rows.map(r => r.appointment_type);
 
-    // If a serviceId is given, also filter by what the service supports
-    let allowedTypes = scheduledTypes;
-    if (serviceId) {
-      const serviceResult = await pool.query(
-        'SELECT availability_type FROM services WHERE id = $1',
-        [serviceId]
-      );
-      if (serviceResult.rows.length > 0) {
-        const serviceAvailability = serviceResult.rows[0].availability_type;
-        if (serviceAvailability === 'online') {
-          allowedTypes = scheduledTypes.filter(t => t === 'online');
-        } else if (serviceAvailability === 'on-site') {
-          allowedTypes = scheduledTypes.filter(t => t === 'on-site');
-        }
-        // 'both' => keep all scheduled types
-      }
-    }
-
     res.json({
       success: true,
       date,
       dayOfWeek,
-      availableTypes: allowedTypes  // e.g. ['on-site'] or ['online', 'on-site'] or []
+      availableTypes: scheduledTypes  // e.g. ['on-site'] or ['online', 'on-site'] or []
     });
   } catch (error) {
     console.error('Error fetching availability types:', error);

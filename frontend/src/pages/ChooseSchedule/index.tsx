@@ -28,66 +28,33 @@ export default function ChooseSchedule() {
   
   const service = JSON.parse(sessionStorage.getItem('selectedService') || '{}')
   const serviceId = service?.id
+  const storedAppointmentType = sessionStorage.getItem('appointmentType')
+  const appointmentType = storedAppointmentType === 'online' || storedAppointmentType === 'on-site'
+    ? (storedAppointmentType as AppointmentType)
+    : null
   
-  const [appointmentType, setAppointmentType] = useState<AppointmentType>('on-site')
-  const [availableTypes, setAvailableTypes] = useState<AppointmentType[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingTypes, setIsLoadingTypes] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [timeFilter, setTimeFilter] = useState<'AM' | 'PM'>('AM')
 
   useEffect(() => {
-    if (!isValidUser || !serviceId) {
+    if (!isValidUser) {
       navigate('/signup')
-    }
-  }, [isValidUser, serviceId, navigate])
-
-  // When date changes: fetch which types have working hours for that day, then auto-select best type
-  useEffect(() => {
-    if (!selectedDate) return
-
-    const fetchTypes = async () => {
-      setIsLoadingTypes(true)
-      setAvailableTypes([])
-      setAvailableSlots([])
-      setSelectedSlot(null)
-      try {
-        const year = selectedDate.getFullYear()
-        const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
-        const day = String(selectedDate.getDate()).padStart(2, '0')
-        const dateStr = `${year}-${month}-${day}`
-
-        const response = await fetch(
-          `${BASE_URL}/api/availability/types?date=${dateStr}&serviceId=${serviceId}`
-        )
-        const data = await response.json()
-        const types: AppointmentType[] = data.availableTypes || []
-        setAvailableTypes(types)
-
-        // Auto-select: prefer on-site, then online, then whatever first
-        if (types.includes('on-site')) {
-          setAppointmentType('on-site')
-        } else if (types.includes('online')) {
-          setAppointmentType('online')
-        } else if (types.length > 0) {
-          setAppointmentType(types[0])
-        }
-      } catch {
-        setAvailableTypes([])
-      } finally {
-        setIsLoadingTypes(false)
-      }
+      return
     }
 
-    fetchTypes()
-  }, [selectedDate, serviceId])
+    if (!serviceId || !appointmentType) {
+      navigate('/choose-service')
+      return
+    }
+  }, [appointmentType, isValidUser, navigate, serviceId])
 
-  // Fetch time slots when date or appointmentType changes (only when type is available for that day)
+  // Fetch time slots based on selected date and chosen appointment type
   useEffect(() => {
-    if (!selectedDate || !availableTypes.includes(appointmentType)) return
+    if (!selectedDate || !appointmentType || !serviceId) return
 
     const fetchSlots = async () => {
       setIsLoading(true)
@@ -98,7 +65,7 @@ export default function ChooseSchedule() {
         const day = String(selectedDate.getDate()).padStart(2, '0')
         const dateStr = `${year}-${month}-${day}`
 
-  const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${serviceId}`)
+    const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&type=${appointmentType}&serviceId=${serviceId}`)
         const data = await response.json()
         setAvailableSlots(data.availableSlots || [])
         setSelectedSlot(null)
@@ -126,10 +93,10 @@ export default function ChooseSchedule() {
       }
     }
     fetchSlots()
-  }, [selectedDate, appointmentType, availableTypes, serviceId])
+  }, [selectedDate, appointmentType, serviceId])
 
   const handleContinue = () => {
-    if (selectedDate && selectedSlot) {
+    if (selectedDate && selectedSlot && appointmentType) {
       // Format date as YYYY-MM-DD in local timezone (avoid UTC conversion)
       const year = selectedDate.getFullYear()
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
@@ -250,103 +217,12 @@ export default function ChooseSchedule() {
             </p>
           </div>
 
-          {/* Appointment Type Selection — only shown after a date is picked */}
-          {selectedDate && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment Type</h2>
-            {isLoadingTypes ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-6 w-6 animate-spin text-brand" />
-              </div>
-            ) : availableTypes.length === 0 ? (
-              <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-4 py-3">
-                No appointments available on this day.
-              </p>
-            ) : (
-            <div className={`grid gap-4 ${availableTypes.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              {/* Online button */}
-              {availableTypes.includes('online') && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.2 }}
-                  whileHover={{ scale: availableTypes.length > 1 ? 1.02 : 1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setAppointmentType('online')
-                    setSelectedSlot(null)
-                  }}
-                  className={`p-6 rounded-xl border-2 transition-all ${
-                    appointmentType === 'online'
-                      ? 'border-brand bg-brand-50 shadow-lg shadow-brand/20'
-                      : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
-                  } ${availableTypes.length === 1 ? 'cursor-default' : ''}`}
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                      appointmentType === 'online' ? 'bg-brand-100 ring-4 ring-brand/10' : 'bg-gray-100'
-                    }`}>
-                      <Monitor className={`w-7 h-7 ${
-                        appointmentType === 'online' ? 'text-brand' : 'text-gray-600'
-                      }`} />
-                    </div>
-                    <div>
-                      <p className={`font-semibold text-lg ${
-                        appointmentType === 'online' ? 'text-brand-900' : 'text-gray-900'
-                      }`}>
-                        Online
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {service.duration_minutes || 15} min video call
-                      </p>
-                    </div>
-                  </div>
-                </motion.button>
-              )}
-
-              {/* On-site button */}
-              {availableTypes.includes('on-site') && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.2, delay: availableTypes.length > 1 ? 0.1 : 0 }}
-                  whileHover={{ scale: availableTypes.length > 1 ? 1.02 : 1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setAppointmentType('on-site')
-                    setSelectedSlot(null)
-                  }}
-                  className={`p-6 rounded-xl border-2 transition-all ${
-                    appointmentType === 'on-site'
-                      ? 'border-brand bg-brand-50 shadow-lg shadow-brand/20'
-                      : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
-                  } ${availableTypes.length === 1 ? 'cursor-default' : ''}`}
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                      appointmentType === 'on-site' ? 'bg-brand-100 ring-4 ring-brand/10' : 'bg-gray-100'
-                    }`}>
-                      <Building2 className={`w-7 h-7 ${
-                        appointmentType === 'on-site' ? 'text-brand' : 'text-gray-600'
-                      }`} />
-                    </div>
-                    <div>
-                      <p className={`font-semibold text-lg ${
-                        appointmentType === 'on-site' ? 'text-brand-900' : 'text-gray-900'
-                      }`}>
-                        On-Site
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        60 min clinic visit
-                      </p>
-                    </div>
-                  </div>
-                </motion.button>
-              )}
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
+              {appointmentType === 'online' ? <Monitor className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+              {appointmentType === 'online' ? 'Online appointment selected' : 'On-site appointment selected'}
             </div>
-            )}
           </div>
-          )}
 
           {/* Calendar */}
           <div className="bg-gray-50 rounded-2xl p-6 mb-6">
@@ -467,7 +343,7 @@ export default function ChooseSchedule() {
 
         <Button 
           className="w-full h-12 text-base bg-brand hover:bg-brand-600"
-          disabled={!selectedDate || !selectedSlot}
+          disabled={!selectedDate || !selectedSlot || !appointmentType}
           onClick={handleContinue}
         >
           Continue

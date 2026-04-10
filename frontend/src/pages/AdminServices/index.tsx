@@ -22,16 +22,12 @@ import {
   ToggleLeft,
   ToggleRight,
   Loader2,
-  Monitor,
-  Building2,
-  Globe
+  Monitor
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
 
 import { API_URL } from '@/config/api'
-
-type AvailabilityType = 'online' | 'on-site' | 'both'
 
 interface Service {
   id: number
@@ -40,7 +36,7 @@ interface Service {
   duration_minutes: number
   price: string
   category: string
-  availability_type: AvailabilityType
+  availability_type: 'online' | 'on-site' | 'both'
   is_active: boolean
   created_at: string
   updated_at: string
@@ -64,7 +60,6 @@ export function AdminServices() {
     duration_minutes: 30,
     price: '',
     category: '',
-    availability_type: 'both' as AvailabilityType,
     is_active: true
   })
 
@@ -206,7 +201,6 @@ export function AdminServices() {
       duration_minutes: 30,
       price: '',
       category: '',
-      availability_type: 'both',
       is_active: true
     })
     setShowCustomCategory(false)
@@ -222,7 +216,6 @@ export function AdminServices() {
       duration_minutes: service.duration_minutes,
       price: service.price,
       category: service.category,
-      availability_type: service.availability_type || 'both',
       is_active: service.is_active
     })
     setEditingService(service)
@@ -375,41 +368,9 @@ export function AdminServices() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Availability Type *</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant={formData.availability_type === 'online' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFormData({...formData, availability_type: 'online'})}
-                    className={formData.availability_type === 'online' ? 'bg-[#2c4d5c] hover:bg-[#3a6275]' : ''}
-                  >
-                    <Globe className="h-4 w-4 mr-1" />
-                    Online Only
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={formData.availability_type === 'on-site' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFormData({...formData, availability_type: 'on-site'})}
-                    className={formData.availability_type === 'on-site' ? 'bg-[#2c4d5c] hover:bg-[#3a6275]' : ''}
-                  >
-                    <Building2 className="h-4 w-4 mr-1" />
-                    On-Site Only
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={formData.availability_type === 'both' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFormData({...formData, availability_type: 'both'})}
-                    className={formData.availability_type === 'both' ? 'bg-[#2c4d5c] hover:bg-[#3a6275]' : ''}
-                  >
-                    <Monitor className="h-4 w-4 mr-1" />
-                    Both
-                  </Button>
-                </div>
-                <p className="text-sm text-gray-500">Choose how this service can be accessed by patients</p>
+              <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                <Label className="text-sm">Availability</Label>
+                <p className="text-sm text-gray-600">All services are available for both Online and On-Site appointments by default.</p>
               </div>
 
               <div className="space-y-2">
@@ -485,20 +446,9 @@ export function AdminServices() {
                       <Badge variant="secondary" className="text-xs">
                         {service.category}
                       </Badge>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${
-                          service.availability_type === 'online' 
-                            ? 'border-blue-500 text-blue-600 bg-blue-50' 
-                            : service.availability_type === 'on-site'
-                              ? 'border-green-500 text-green-600 bg-green-50'
-                              : 'border-purple-500 text-purple-600 bg-purple-50'
-                        }`}
-                      >
-                        {service.availability_type === 'online' && <Globe className="h-3 w-3 mr-1" />}
-                        {service.availability_type === 'on-site' && <Building2 className="h-3 w-3 mr-1" />}
-                        {service.availability_type === 'both' && <Monitor className="h-3 w-3 mr-1" />}
-                        {service.availability_type === 'online' ? 'Online' : service.availability_type === 'on-site' ? 'On-Site' : 'Both'}
+                      <Badge variant="outline" className="text-xs border-purple-500 text-purple-600 bg-purple-50">
+                        <Monitor className="h-3 w-3 mr-1" />
+                        Online & On-Site
                       </Badge>
                     </div>
                   </div>
