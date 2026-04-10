@@ -531,6 +531,25 @@ const updateBookingStatus = async (req, res) => {
     const isOnlineAppointment = booking.appointment_type === 'online';
     const manualMeetingLink = typeof video_call_link === 'string' ? video_call_link.trim() : '';
 
+    const bookingColumnsResult = await pool.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'bookings'
+         AND column_name = ANY($1::text[])`,
+      [[
+        'payment_approved_by',
+        'payment_approved_at',
+        'video_call_link',
+        'cancelled_by_type',
+        'cancelled_by_admin_id',
+        'cancelled_at',
+        'business_status',
+        'updated_at'
+      ]]
+    );
+    const bookingColumns = new Set(bookingColumnsResult.rows.map((row) => row.column_name));
+
     if (status === 'confirmed' && isOnlineAppointment) {
       if (!manualMeetingLink) {
         return res.status(400).json({
@@ -545,54 +564,74 @@ const updateBookingStatus = async (req, res) => {
       }
     }
 
-    // Build the update query based on status and appointment type
-    let updateQuery;
-    let queryParams;
+    // Build the update query based on status and available schema columns
+    const queryParams = [];
+    const setClauses = [];
+
+    const addParamClause = (sql, value) => {
+      queryParams.push(value);
+      setClauses.push(`${sql} = $${queryParams.length}`);
+    };
+
+    const addRawClause = (sql, rawValue) => {
+      setClauses.push(`${sql} = ${rawValue}`);
+    };
+
+    addParamClause('status', status);
 
     if (status === 'confirmed') {
-      if (isOnlineAppointment && manualMeetingLink) {
-        // Confirming online appointment - include manually provided meeting link
-        updateQuery = `UPDATE bookings 
-          SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
-              video_call_link = $3,
-              cancelled_by_type = NULL,
-              cancelled_by_admin_id = NULL,
-              cancelled_at = NULL,
-              updated_at = CURRENT_TIMESTAMP 
-          WHERE id = $4 RETURNING *`;
-        queryParams = [status, adminId, manualMeetingLink, id];
-      } else {
-        // Confirming booking without meeting link update
-        updateQuery = `UPDATE bookings 
-          SET status = $1, payment_approved_by = $2, payment_approved_at = CURRENT_TIMESTAMP, 
-              cancelled_by_type = NULL,
-              cancelled_by_admin_id = NULL,
-              cancelled_at = NULL,
-              updated_at = CURRENT_TIMESTAMP 
-          WHERE id = $3 RETURNING *`;
-        queryParams = [status, adminId, id];
+      if (bookingColumns.has('payment_approved_by')) {
+        addParamClause('payment_approved_by', adminId);
+      }
+      if (bookingColumns.has('payment_approved_at')) {
+        addRawClause('payment_approved_at', 'CURRENT_TIMESTAMP');
+      }
+      if (isOnlineAppointment && manualMeetingLink && bookingColumns.has('video_call_link')) {
+        addParamClause('video_call_link', manualMeetingLink);
+      }
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addRawClause('cancelled_by_admin_id', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'NULL');
       }
     } else if (status === 'cancelled') {
-      updateQuery = `UPDATE bookings 
-        SET status = $1,
-            business_status = 'cancelled',
-            cancelled_by_type = 'admin',
-            cancelled_by_admin_id = $2,
-            cancelled_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3 RETURNING *`;
-      queryParams = [status, adminId, id];
+      if (bookingColumns.has('business_status')) {
+        addRawClause('business_status', `'cancelled'`);
+      }
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', `'admin'`);
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addParamClause('cancelled_by_admin_id', adminId);
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'CURRENT_TIMESTAMP');
+      }
     } else {
-      // Other status changes (cancelled, completed, etc.)
-      updateQuery = `UPDATE bookings 
-        SET status = $1,
-            cancelled_by_type = CASE WHEN $1 = 'cancelled' THEN cancelled_by_type ELSE NULL END,
-            cancelled_by_admin_id = CASE WHEN $1 = 'cancelled' THEN cancelled_by_admin_id ELSE NULL END,
-            cancelled_at = CASE WHEN $1 = 'cancelled' THEN cancelled_at ELSE NULL END,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2 RETURNING *`;
-      queryParams = [status, id];
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addRawClause('cancelled_by_admin_id', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'NULL');
+      }
     }
+
+    if (bookingColumns.has('updated_at')) {
+      addRawClause('updated_at', 'CURRENT_TIMESTAMP');
+    }
+
+    queryParams.push(id);
+    const updateQuery = `UPDATE bookings
+      SET ${setClauses.join(', ')}
+      WHERE id = $${queryParams.length}
+      RETURNING *`;
 
     const result = await pool.query(updateQuery, queryParams);
 
