@@ -186,6 +186,20 @@ const checkAndMigrate = async () => {
     } else {
       console.log('✓ Database tables exist');
       tablesReady = true;
+
+      // Important: still run pending migrations on existing databases.
+      if (shouldAutoMigrate) {
+        console.log('⚙️  AUTO_MIGRATE enabled. Applying pending migrations...');
+        try {
+          await runMigrations();
+          console.log('✅ Pending migrations applied (if any)');
+        } catch (migrationError) {
+          console.error('❌ Failed to apply pending migrations at startup.');
+          console.error('Migration error:', migrationError?.message || migrationError);
+        }
+      } else {
+        console.log('ℹ️ AUTO_MIGRATE disabled. Skipping pending migrations check.');
+      }
     }
 
     if (tablesReady) {

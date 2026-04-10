@@ -428,29 +428,29 @@ const getBookings = async (req, res) => {
     queryParams.push(limit, offset);
 
     const result = await pool.query(
-      `SELECT b.id, b.user_id, b.service_id, b.status, b.business_status, b.notes, 
+  `SELECT b.id, b.user_id, b.service_id, b.status, b.business_status, b.notes, 
               b.appointment_type, b.payment_status, b.payment_method, 
         b.payment_reference, b.payment_receipt_url, b.amount_paid, b.created_at, b.updated_at,
-              b.video_call_link, b.admin_notes, b.completed_at, b.completed_by,
-              b.cancelled_by_type, b.cancelled_by_admin_id, b.cancelled_at,
+      b.video_call_link, b.admin_notes, b.completed_at, b.completed_by,
+      b.cancelled_by_type, b.cancelled_by_admin_id, b.cancelled_at,
               b.booking_date as slot_date,
               b.booking_time as slot_time,
               b.phone_number as booking_phone,
               b.phone_number as patient_phone,
-              b.reschedule_count, b.original_booking_date, b.original_booking_time,
-              b.rescheduled_at, b.rescheduled_by, b.reschedule_reason,
+      b.reschedule_count, b.original_booking_date, b.original_booking_time,
+      b.rescheduled_at, b.rescheduled_by, b.reschedule_reason,
               u.first_name, u.last_name, 
               u.email as patient_email,
               CONCAT(u.first_name, ' ', u.last_name) as patient_name,
               b.user_id as patient_id,
               s.name as service_name, s.duration_minutes, s.price,
-              admin_user.full_name as completed_by_name,
-              cancelled_admin.full_name as cancelled_by_name
+      admin_user.full_name as completed_by_name,
+      cancelled_admin.full_name as cancelled_by_name
        FROM bookings b
        JOIN users u ON b.user_id = u.id
        JOIN services s ON b.service_id = s.id
-       LEFT JOIN admin_users admin_user ON b.completed_by = admin_user.id
-       LEFT JOIN admin_users cancelled_admin ON b.cancelled_by_admin_id = cancelled_admin.id
+   LEFT JOIN admin_users admin_user ON b.completed_by = admin_user.id
+   LEFT JOIN admin_users cancelled_admin ON b.cancelled_by_admin_id = cancelled_admin.id
        ${whereClause}
        ORDER BY b.created_at DESC
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
