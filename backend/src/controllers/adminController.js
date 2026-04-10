@@ -1150,6 +1150,23 @@ const createAuditLog = async (adminId, action, resourceType, resourceId, oldValu
   }
 };
 
+const getShopOrderRecipientColumnSupport = async () => {
+  const result = await pool.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'shop_orders'
+       AND column_name = ANY($1::text[])`,
+    [['recipient_name', 'recipient_phone']]
+  );
+
+  const supported = new Set(result.rows.map((row) => row.column_name));
+  return {
+    hasRecipientName: supported.has('recipient_name'),
+    hasRecipientPhone: supported.has('recipient_phone')
+  };
+};
+
 // Get all shop orders for admin
 const getOrders = async (req, res) => {
   try {
@@ -1182,9 +1199,15 @@ const getOrders = async (req, res) => {
     const offsetParamIndex = paramIndex + 1;
     mainQueryParams.push(parseInt(limit), parseInt(offset));
 
+    const recipientColumnSupport = await getShopOrderRecipientColumnSupport();
+    const recipientNameExpr = recipientColumnSupport.hasRecipientName ? 'so.recipient_name' : 'NULL::text';
+    const recipientPhoneExpr = recipientColumnSupport.hasRecipientPhone ? 'so.recipient_phone' : 'NULL::text';
+
     const result = await pool.query(
       `SELECT so.*, 
               u.email, u.first_name, u.last_name,
+              COALESCE(${recipientNameExpr}, NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '')) AS recipient_name_display,
+              COALESCE(${recipientPhoneExpr}, pp.phone_number) AS recipient_phone_display,
               au.full_name as verified_by_name,
               (SELECT COUNT(*) FROM shop_order_items soi WHERE soi.order_id = so.id) as item_count,
               (SELECT json_agg(json_build_object(
@@ -1202,6 +1225,7 @@ const getOrders = async (req, res) => {
               ) as items
        FROM shop_orders so
        JOIN users u ON so.user_id = u.id
+  LEFT JOIN patient_profiles pp ON pp.user_id = so.user_id
        LEFT JOIN admin_users au ON so.payment_verified_by = au.id
        ${whereClause}
        ORDER BY so.created_at DESC
@@ -1229,11 +1253,18 @@ const getOrders = async (req, res) => {
 };
 
 const getOrderEmailDetails = async (orderId) => {
+  const recipientColumnSupport = await getShopOrderRecipientColumnSupport();
+  const recipientNameExpr = recipientColumnSupport.hasRecipientName ? 'so.recipient_name' : 'NULL::text';
+  const recipientPhoneExpr = recipientColumnSupport.hasRecipientPhone ? 'so.recipient_phone' : 'NULL::text';
+
   const orderResult = await pool.query(
     `SELECT so.*, 
-            u.email, u.first_name, u.last_name
+            u.email, u.first_name, u.last_name,
+            COALESCE(${recipientNameExpr}, NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '')) AS recipient_name_resolved,
+            COALESCE(${recipientPhoneExpr}, pp.phone_number) AS recipient_phone_resolved
      FROM shop_orders so
      JOIN users u ON so.user_id = u.id
+     LEFT JOIN patient_profiles pp ON pp.user_id = so.user_id
      WHERE so.id = $1`,
     [orderId]
   );
@@ -1274,8 +1305,8 @@ const getOrderEmailDetails = async (orderId) => {
     paymentVerified: order.payment_verified,
     totalAmount: order.total_amount,
     items: itemsResult.rows,
-    recipientName: order.recipient_name,
-    recipientPhone: order.recipient_phone,
+    recipientName: order.recipient_name_resolved,
+    recipientPhone: order.recipient_phone_resolved,
     deliveryAddress,
     paymentReceiptUrl: order.payment_receipt_url
   };
@@ -1322,6 +1353,7 @@ const updateOrderStatus = async (req, res) => {
     const statusEmailResult = orderEmailDetails
       ? await sendOrderLifecycleEmail({
           ...orderEmailDetails,
+          eventType: 'status_updated',
           status
         })
       : { success: false, skipped: true, reason: 'Order details not found for email' };
@@ -1384,6 +1416,7 @@ const verifyPayment = async (req, res) => {
       const paymentEmailResult = orderEmailDetails
         ? await sendOrderLifecycleEmail({
             ...orderEmailDetails,
+            eventType: 'payment_verified',
             paymentVerified: true
           })
         : { success: false, skipped: true, reason: 'Order details not found for email' };

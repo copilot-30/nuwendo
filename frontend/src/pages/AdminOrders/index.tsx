@@ -21,7 +21,7 @@ import {
   ArrowLeft,
   Package, ChevronLeft, ChevronRight,
   CheckCircle, Clock,
-  User, Mail, MapPin, Loader2, AlertCircle,
+  User, Mail, Phone, MapPin, Loader2, AlertCircle,
   DollarSign, Image, Download, X
 } from 'lucide-react'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -50,6 +50,8 @@ interface Order {
   payment_verified_at: string | null
   verified_by_name: string | null
   payment_receipt_url: string | null
+  recipient_name_display?: string | null
+  recipient_phone_display?: string | null
   delivery_region: string | null
   delivery_province: string | null
   delivery_city: string | null
@@ -416,11 +418,15 @@ export function AdminOrders() {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-gray-400" />
-                        <span>{selectedOrder.first_name} {selectedOrder.last_name}</span>
+                        <span>{selectedOrder.recipient_name_display || `${selectedOrder.first_name} ${selectedOrder.last_name}`}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Mail className="w-4 h-4 text-gray-400" />
                         <span>{selectedOrder.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span>{selectedOrder.recipient_phone_display || 'N/A'}</span>
                       </div>
                     </div>
                   </div>

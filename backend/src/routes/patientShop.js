@@ -257,7 +257,7 @@ router.post('/orders', authMiddleware, async (req, res) => {
       });
     }
 
-    const { items, payment_receipt_url, notes } = req.body;
+  const { items, payment_receipt_url, notes, recipient_name, recipient_phone } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ 
@@ -267,6 +267,21 @@ router.post('/orders', authMiddleware, async (req, res) => {
     }
 
     await client.query('BEGIN');
+
+    await client.query(`
+      ALTER TABLE shop_orders
+      ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS recipient_phone VARCHAR(30)
+    `);
+
+    const profileResult = await client.query(
+      `SELECT phone_number FROM patient_profiles WHERE user_id = $1 LIMIT 1`,
+      [req.user.userId]
+    );
+
+    const normalizedRecipientName = typeof recipient_name === 'string' ? recipient_name.trim() : '';
+    const normalizedRecipientPhone = typeof recipient_phone === 'string' ? recipient_phone.trim() : '';
+    const fallbackPhone = profileResult.rows[0]?.phone_number || null;
 
     // Calculate total amount
     let totalAmount = 0;
@@ -290,10 +305,17 @@ router.post('/orders', authMiddleware, async (req, res) => {
 
     // Create order
     const orderResult = await client.query(`
-      INSERT INTO shop_orders (user_id, total_amount, payment_receipt_url, notes)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO shop_orders (user_id, total_amount, payment_receipt_url, notes, recipient_name, recipient_phone)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [req.user.userId, totalAmount, payment_receipt_url, notes]);
+    `, [
+      req.user.userId,
+      totalAmount,
+      payment_receipt_url,
+      notes,
+      normalizedRecipientName || null,
+      normalizedRecipientPhone || fallbackPhone
+    ]);
 
     const orderId = orderResult.rows[0].id;
 

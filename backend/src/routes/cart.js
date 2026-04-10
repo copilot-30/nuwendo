@@ -197,7 +197,10 @@ router.post('/checkout', flexibleAuthMiddleware, async (req, res) => {
       notes, 
       payment_receipt_url,
       payment_qr_reference,
+      recipient_name,
+      recipient_phone,
       use_default_address,
+      delivery_address,
       delivery_province,
       delivery_city,
       delivery_barangay,
@@ -229,16 +232,41 @@ router.post('/checkout', flexibleAuthMiddleware, async (req, res) => {
       return sum + (item.quantity * parseFloat(item.variant_price || 0));
     }, 0);
 
+    // Ensure recipient columns exist on older production schemas.
+    await client.query(`
+      ALTER TABLE shop_orders
+      ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS recipient_phone VARCHAR(30),
+      ADD COLUMN IF NOT EXISTS delivery_address TEXT
+    `);
+
     // Create order with delivery address and payment info
+    const normalizedRecipientName = typeof recipient_name === 'string' ? recipient_name.trim() : '';
+    const normalizedRecipientPhone = typeof recipient_phone === 'string' ? recipient_phone.trim() : '';
+
     const orderResult = await client.query(
       `INSERT INTO shop_orders (
         user_id, total_amount, status, notes, payment_receipt_url, payment_qr_reference,
-        use_default_address, delivery_province, delivery_city, delivery_barangay, delivery_street_address
+        recipient_name, recipient_phone,
+        use_default_address, delivery_province, delivery_city, delivery_barangay, delivery_street_address, delivery_address
       )
-       VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [userId, total, notes, payment_receipt_url, payment_qr_reference,
-       use_default_address, delivery_province, delivery_city, delivery_barangay, delivery_street_address]
+      [
+        userId,
+        total,
+        notes,
+        payment_receipt_url,
+        payment_qr_reference,
+        normalizedRecipientName || null,
+        normalizedRecipientPhone || null,
+        use_default_address,
+        delivery_province,
+        delivery_city,
+        delivery_barangay,
+        delivery_street_address,
+        delivery_address || delivery_street_address || null
+      ]
     );
 
     const orderId = orderResult.rows[0].id;

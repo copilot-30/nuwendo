@@ -313,6 +313,7 @@ export const sendOrderLifecycleEmail = async ({
   firstName,
   orderId,
   createdAt,
+  eventType,
   status,
   paymentVerified,
   totalAmount,
@@ -329,7 +330,7 @@ export const sendOrderLifecycleEmail = async ({
   let title = 'Order Update';
   let body = `There is an update for your order <strong>${transactionRef}</strong>.`;
 
-  if (paymentVerified === true) {
+  if (eventType === 'payment_verified') {
     subject = `Payment approved for ${transactionRef}`;
     title = 'Payment Approved ✅';
     body = `Your payment for order <strong>${transactionRef}</strong> has been approved by our admin team.`;
@@ -341,6 +342,11 @@ export const sendOrderLifecycleEmail = async ({
     subject = `Order ${transactionRef} status: ${status}`;
     title = `Order Status Updated: ${status}`;
     body = `Your order <strong>${transactionRef}</strong> status is now <strong>${status}</strong>.`;
+  } else if (paymentVerified === true) {
+    // Backward-compatible fallback when legacy callers only pass paymentVerified.
+    subject = `Payment approved for ${transactionRef}`;
+    title = 'Payment Approved ✅';
+    body = `Your payment for order <strong>${transactionRef}</strong> has been approved by our admin team.`;
   }
 
   const normalizedItems = Array.isArray(items) ? items : [];
