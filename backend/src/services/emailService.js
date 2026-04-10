@@ -54,6 +54,20 @@ const formatCurrencyPhp = (value) => {
   }
 };
 
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const formatReadableStatus = (value) => {
+  if (!value) return 'N/A';
+  return String(value)
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const buildTransactionReference = (orderId, createdAt) => {
   const date = new Date(createdAt || new Date());
   const y = date.getFullYear();
@@ -206,11 +220,14 @@ export const sendPasswordResetEmail = async (email, resetLink) => {
 export const sendBookingLifecycleEmail = async ({
   to,
   firstName,
+  bookingId,
   serviceName,
   bookingDate,
   bookingTime,
   appointmentType,
   eventType,
+  status,
+  businessStatus,
   meetingLink,
   reason,
   oldDate,
@@ -252,6 +269,9 @@ export const sendBookingLifecycleEmail = async ({
   };
 
   const selected = eventMap[eventType] || eventMap.approved;
+  const bookingReference = bookingId ? `BK-${String(bookingId).padStart(6, '0')}` : 'N/A';
+  const currentStatus = formatReadableStatus(status || eventType);
+  const currentBusinessStatus = formatReadableStatus(businessStatus);
 
   const html = `
     <!DOCTYPE html>
@@ -265,9 +285,12 @@ export const sendBookingLifecycleEmail = async ({
             <p style="margin-top: 0;">Hi ${displayName},</p>
             <p>${selected.body}</p>
             <div style="margin: 16px 0; padding: 14px; border-radius: 10px; background: #f3f4f6;">
+              <p style="margin: 0 0 6px 0;"><strong>Booking Reference:</strong> ${bookingReference}</p>
               <p style="margin: 0 0 6px 0;"><strong>Service:</strong> ${serviceName}</p>
               <p style="margin: 0 0 6px 0;"><strong>Appointment Type:</strong> ${appointmentType || 'N/A'}</p>
-              <p style="margin: 0;"><strong>Date & Time:</strong> ${newWhen || when}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Date & Time:</strong> ${newWhen || when}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Status:</strong> ${currentStatus}</p>
+              <p style="margin: 0;"><strong>Appointment Lifecycle:</strong> ${currentBusinessStatus}</p>
             </div>
             ${meetingLink ? `<p><strong>Meeting Link:</strong> <a href="${meetingLink}" target="_blank" rel="noopener noreferrer">${meetingLink}</a></p>` : ''}
             ${reason ? `<p><strong>Note:</strong> ${reason}</p>` : ''}
@@ -292,7 +315,12 @@ export const sendOrderLifecycleEmail = async ({
   createdAt,
   status,
   paymentVerified,
-  totalAmount
+  totalAmount,
+  items = [],
+  recipientName,
+  recipientPhone,
+  deliveryAddress,
+  paymentReceiptUrl
 }) => {
   const displayName = firstName || 'Customer';
   const transactionRef = buildTransactionReference(orderId, createdAt);
@@ -315,6 +343,25 @@ export const sendOrderLifecycleEmail = async ({
     body = `Your order <strong>${transactionRef}</strong> status is now <strong>${status}</strong>.`;
   }
 
+  const normalizedItems = Array.isArray(items) ? items : [];
+  const itemRows = normalizedItems.length
+    ? normalizedItems.map((item) => {
+      const quantity = Number(item?.quantity || 0);
+      const unitPrice = Number(item?.price_at_purchase || 0);
+      const lineTotal = quantity * unitPrice;
+      const itemName = escapeHtml(item?.item_name || 'Item');
+      const variantName = item?.variant_name ? ` (${escapeHtml(item.variant_name)})` : '';
+      return `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${itemName}${variantName}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${quantity}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCurrencyPhp(unitPrice)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCurrencyPhp(lineTotal)}</td>
+        </tr>
+      `;
+    }).join('')
+    : '<tr><td colspan="4" style="padding: 10px; color: #6b7280; text-align: center;">No item details available for this update.</td></tr>';
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -328,8 +375,33 @@ export const sendOrderLifecycleEmail = async ({
             <p>${body}</p>
             <div style="margin: 16px 0; padding: 14px; border-radius: 10px; background: #f3f4f6;">
               <p style="margin: 0 0 6px 0;"><strong>Transaction Reference:</strong> ${transactionRef}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Order Status:</strong> ${formatReadableStatus(status || 'pending')}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Payment Verification:</strong> ${paymentVerified === true ? 'Verified' : 'Pending/Not Verified'}</p>
               ${typeof totalAmount !== 'undefined' ? `<p style="margin: 0;"><strong>Total:</strong> ${formatCurrencyPhp(totalAmount)}</p>` : ''}
             </div>
+            <div style="margin: 16px 0; padding: 14px; border-radius: 10px; background: #f9fafb; border: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 8px 0;"><strong>Delivery Details</strong></p>
+              <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> ${escapeHtml(recipientName || displayName)}</p>
+              <p style="margin: 0 0 4px 0;"><strong>Phone:</strong> ${escapeHtml(recipientPhone || 'N/A')}</p>
+              <p style="margin: 0;"><strong>Address:</strong> ${escapeHtml(deliveryAddress || 'N/A')}</p>
+            </div>
+            <div style="margin: 16px 0;">
+              <p style="margin: 0 0 8px 0;"><strong>Items Ordered</strong></p>
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; font-size: 14px;">
+                <thead style="background: #f3f4f6;">
+                  <tr>
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+                    <th style="padding: 8px; text-align: center; border-bottom: 1px solid #e5e7eb;">Qty</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Unit Price</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemRows}
+                </tbody>
+              </table>
+            </div>
+            ${paymentReceiptUrl ? `<p><strong>Payment Receipt:</strong> <a href="${paymentReceiptUrl}" target="_blank" rel="noopener noreferrer">View uploaded receipt</a></p>` : ''}
             <p style="margin-bottom: 0; color: #6b7280;">Thank you for shopping with Nuwendo.</p>
           </div>
         </div>

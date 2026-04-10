@@ -379,6 +379,7 @@ export const rescheduleBooking = async (req, res) => {
         const emailResult = await sendBookingLifecycleEmail({
           to: bookingEmailData.email,
           firstName: bookingEmailData.first_name,
+          bookingId,
           serviceName: bookingEmailData.service_name,
           bookingDate: bookingEmailData.booking_date,
           bookingTime: bookingEmailData.booking_time,

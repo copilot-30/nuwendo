@@ -330,11 +330,14 @@ const cancelBooking = async (req, res) => {
     const emailResult = await sendBookingLifecycleEmail({
       to: booking.email,
       firstName: booking.first_name,
+      bookingId: booking.id,
       serviceName: booking.service_name,
       bookingDate: booking.booking_date,
       bookingTime: booking.booking_time,
       appointmentType: booking.appointment_type,
-      eventType: 'cancelled'
+      eventType: 'cancelled',
+      status: 'cancelled',
+      businessStatus: 'cancelled'
     });
 
     if (!emailResult.success && !emailResult.skipped) {

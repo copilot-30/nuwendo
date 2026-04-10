@@ -494,7 +494,7 @@ const updateBookingStatus = async (req, res) => {
 
     // Get booking details including patient info and service details
     const oldResult = await pool.query(`
-      SELECT b.id, b.status, b.user_id, b.appointment_type, b.booking_date, b.booking_time,
+      SELECT b.id, b.status, b.business_status, b.user_id, b.appointment_type, b.booking_date, b.booking_time,
              u.email, u.first_name, u.last_name,
              s.name as service_name, s.duration_minutes
       FROM bookings b
@@ -626,11 +626,14 @@ const updateBookingStatus = async (req, res) => {
       const emailResult = await sendBookingLifecycleEmail({
         to: booking.email,
         firstName: booking.first_name,
+        bookingId: booking.id,
         serviceName: booking.service_name,
         bookingDate: booking.booking_date,
         bookingTime: booking.booking_time,
         appointmentType: booking.appointment_type,
         eventType,
+        status,
+        businessStatus: booking.business_status,
         meetingLink
       });
 
@@ -667,7 +670,7 @@ const updateBookingBusinessStatus = async (req, res) => {
 
     // Get current booking details
     const oldResult = await pool.query(`
-      SELECT b.id, b.business_status, b.user_id, b.booking_date, b.booking_time, b.appointment_type,
+      SELECT b.id, b.status, b.business_status, b.user_id, b.booking_date, b.booking_time, b.appointment_type,
              u.email, u.first_name, u.last_name,
              s.name as service_name
       FROM bookings b
@@ -750,10 +753,14 @@ const updateBookingBusinessStatus = async (req, res) => {
       const emailResult = await sendBookingLifecycleEmail({
         to: booking.email,
         firstName: booking.first_name,
+        bookingId: booking.id,
         serviceName: booking.service_name,
         bookingDate: booking.booking_date,
         bookingTime: booking.booking_time,
+        appointmentType: booking.appointment_type,
         eventType: business_status,
+        status: booking.status,
+        businessStatus: business_status,
         reason: admin_notes || undefined
       });
 
@@ -1174,6 +1181,59 @@ const getOrders = async (req, res) => {
   }
 };
 
+const getOrderEmailDetails = async (orderId) => {
+  const orderResult = await pool.query(
+    `SELECT so.*, 
+            u.email, u.first_name, u.last_name
+     FROM shop_orders so
+     JOIN users u ON so.user_id = u.id
+     WHERE so.id = $1`,
+    [orderId]
+  );
+
+  if (orderResult.rows.length === 0) {
+    return null;
+  }
+
+  const itemsResult = await pool.query(
+    `SELECT soi.quantity, soi.price_at_purchase,
+            si.name AS item_name,
+            siv.name AS variant_name
+     FROM shop_order_items soi
+     LEFT JOIN shop_items si ON soi.shop_item_id = si.id
+     LEFT JOIN shop_item_variants siv ON soi.variant_id = siv.id
+     WHERE soi.order_id = $1
+     ORDER BY soi.id ASC`,
+    [orderId]
+  );
+
+  const order = orderResult.rows[0];
+  const deliveryAddress = [
+    order.delivery_street_address,
+    order.delivery_barangay,
+    order.delivery_city,
+    order.delivery_province,
+    order.delivery_region,
+    order.delivery_address,
+    order.address
+  ].filter(Boolean).join(', ');
+
+  return {
+    to: order.email,
+    firstName: order.first_name,
+    orderId: order.id,
+    createdAt: order.created_at,
+    status: order.status,
+    paymentVerified: order.payment_verified,
+    totalAmount: order.total_amount,
+    items: itemsResult.rows,
+    recipientName: order.recipient_name,
+    recipientPhone: order.recipient_phone,
+    deliveryAddress,
+    paymentReceiptUrl: order.payment_receipt_url
+  };
+};
+
 // Update order status
 const updateOrderStatus = async (req, res) => {
   try {
@@ -1192,10 +1252,8 @@ const updateOrderStatus = async (req, res) => {
 
     // Get old status for audit log
     const oldResult = await pool.query(
-      `SELECT so.status, so.created_at, so.total_amount,
-              u.email, u.first_name, u.last_name
+      `SELECT so.status
        FROM shop_orders so
-       JOIN users u ON so.user_id = u.id
        WHERE so.id = $1`,
       [id]
     );
@@ -1213,15 +1271,13 @@ const updateOrderStatus = async (req, res) => {
     // Log the action
     await createAuditLog(adminId, `Updated order status from ${oldStatus} to ${status}`, 'shop_orders', id, { status: oldStatus }, { status });
 
-    const orderOwner = oldResult.rows[0];
-    const statusEmailResult = await sendOrderLifecycleEmail({
-      to: orderOwner.email,
-      firstName: orderOwner.first_name,
-      orderId: id,
-      createdAt: orderOwner.created_at,
-      status,
-      totalAmount: orderOwner.total_amount
-    });
+    const orderEmailDetails = await getOrderEmailDetails(id);
+    const statusEmailResult = orderEmailDetails
+      ? await sendOrderLifecycleEmail({
+          ...orderEmailDetails,
+          status
+        })
+      : { success: false, skipped: true, reason: 'Order details not found for email' };
 
     if (!statusEmailResult.success && !statusEmailResult.skipped) {
       console.warn(`⚠️ Order status email failed for order #${id}:`, statusEmailResult.error);
@@ -1247,10 +1303,8 @@ const verifyPayment = async (req, res) => {
 
     // Get old verification status for audit log
     const oldResult = await pool.query(
-      `SELECT so.payment_verified, so.created_at, so.total_amount,
-              u.email, u.first_name, u.last_name
+      `SELECT so.payment_verified
        FROM shop_orders so
-       JOIN users u ON so.user_id = u.id
        WHERE so.id = $1`,
       [id]
     );
@@ -1279,15 +1333,13 @@ const verifyPayment = async (req, res) => {
     await createAuditLog(adminId, payment_verified ? 'Verified order payment' : 'Unverified order payment', 'shop_orders', id, { payment_verified: oldVerified }, { payment_verified });
 
     if (payment_verified === true) {
-      const orderOwner = oldResult.rows[0];
-      const paymentEmailResult = await sendOrderLifecycleEmail({
-        to: orderOwner.email,
-        firstName: orderOwner.first_name,
-        orderId: id,
-        createdAt: orderOwner.created_at,
-        paymentVerified: true,
-        totalAmount: orderOwner.total_amount
-      });
+      const orderEmailDetails = await getOrderEmailDetails(id);
+      const paymentEmailResult = orderEmailDetails
+        ? await sendOrderLifecycleEmail({
+            ...orderEmailDetails,
+            paymentVerified: true
+          })
+        : { success: false, skipped: true, reason: 'Order details not found for email' };
 
       if (!paymentEmailResult.success && !paymentEmailResult.skipped) {
         console.warn(`⚠️ Order payment approval email failed for order #${id}:`, paymentEmailResult.error);
