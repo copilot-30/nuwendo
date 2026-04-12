@@ -556,13 +556,13 @@ export function AdminPayments() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
-            <p className="text-gray-500">Review pending payments and configure settings</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Payment Management</h1>
+            <p className="text-sm sm:text-base text-gray-500">Review pending payments and configure settings</p>
           </div>
-          <Button onClick={() => setShowSettingsModal(true)} variant="outline" className="gap-2">
+          <Button onClick={() => setShowSettingsModal(true)} variant="outline" className="gap-2 w-full sm:w-auto">
             <Settings className="h-4 w-4" />
             QR Code Settings
           </Button>
@@ -580,11 +580,11 @@ export function AdminPayments() {
           </div>
         )}
 
-        <div className="flex gap-2 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5 sm:mb-6">
           <Button
             variant={activePaymentTab === 'bookings' ? 'default' : 'outline'}
             onClick={() => setActivePaymentTab('bookings')}
-            className={activePaymentTab === 'bookings' ? 'bg-brand hover:bg-brand/90' : ''}
+            className={`${activePaymentTab === 'bookings' ? 'bg-brand hover:bg-brand/90' : ''} w-full`}
           >
             <CreditCard className="h-4 w-4 mr-2" />
             Booking Payments
@@ -595,7 +595,7 @@ export function AdminPayments() {
           <Button
             variant={activePaymentTab === 'orders' ? 'default' : 'outline'}
             onClick={() => setActivePaymentTab('orders')}
-            className={activePaymentTab === 'orders' ? 'bg-brand hover:bg-brand/90' : ''}
+            className={`${activePaymentTab === 'orders' ? 'bg-brand hover:bg-brand/90' : ''} w-full`}
           >
             <Package className="h-4 w-4 mr-2" />
             Shop Order Payments
@@ -630,7 +630,7 @@ export function AdminPayments() {
                   />
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
                   <Button
                     size="sm"
                     variant={dateFilter === 'all' ? 'default' : 'outline'}
@@ -847,7 +847,7 @@ export function AdminPayments() {
                   />
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
                   <Button
                     size="sm"
                     variant={shopDateFilter === 'all' ? 'default' : 'outline'}
@@ -963,7 +963,7 @@ export function AdminPayments() {
                         <div className="flex flex-col gap-2 xl:justify-self-end xl:w-full">
                           <Button
                             size="sm"
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-green-600 hover:bg-green-700 w-full"
                             onClick={() => handleApproveShopPayment(order.id)}
                             disabled={shopVerifyingId === order.id || shopRejectingId === order.id}
                           >
@@ -979,7 +979,7 @@ export function AdminPayments() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            className="border-red-200 text-red-600 hover:bg-red-50 w-full"
                             onClick={() => handleRejectShopPayment(order.id)}
                             disabled={shopVerifyingId === order.id || shopRejectingId === order.id}
                           >

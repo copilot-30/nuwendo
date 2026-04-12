@@ -447,19 +447,6 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Payment</h3>
 
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-sm mb-2">Payment Instructions</h4>
-              {paymentSettings.payment_instructions ? (
-                <p className="text-sm text-blue-900 whitespace-pre-line">{paymentSettings.payment_instructions}</p>
-              ) : (
-                <ol className="text-sm text-blue-900 space-y-1 list-decimal list-inside">
-                  <li>Scan the QR code below to pay</li>
-                  <li>Take a screenshot of your payment confirmation</li>
-                  <li>Upload your payment receipt for verification</li>
-                </ol>
-              )}
-            </div>
-
             <div className="border rounded-lg p-4 bg-gray-50">
               <h4 className="font-medium text-sm mb-2">Scan to Pay</h4>
               {paymentSettings.payment_qr_code ? (
@@ -469,12 +456,6 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                     alt="Payment QR Code" 
                     className="w-48 h-48 object-contain rounded-lg border bg-white"
                   />
-                  {paymentSettings.payment_account_name && (
-                    <p className="text-sm font-medium text-gray-700">{paymentSettings.payment_account_name}</p>
-                  )}
-                  {paymentSettings.payment_account_number && (
-                    <p className="text-sm text-gray-600">{paymentSettings.payment_account_number}</p>
-                  )}
                 </div>
               ) : (
                 <div className="bg-white p-4 rounded-lg border-2 border-dashed">
@@ -486,6 +467,23 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                   </p>
                 </div>
               )}
+
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Account Name</p>
+                  <p className="text-sm font-medium text-gray-900">{paymentSettings.payment_account_name || 'Not set'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Account Number</p>
+                  <p className="text-sm text-gray-900 break-all">{paymentSettings.payment_account_number || 'Not set'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Payment Instructions</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-line">
+                    {paymentSettings.payment_instructions || 'Scan the QR code below, complete payment, and upload your receipt for verification.'}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div>

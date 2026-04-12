@@ -170,8 +170,21 @@ export default function Payment() {
         {!uploadSuccess && <>
           <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 mb-6">
             <h3 className="font-semibold text-gray-900 mb-4 text-center">Scan to Pay</h3>
-            {paymentSettings?.payment_qr_code ? <div className="flex flex-col items-center"><div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100 mb-4"><img src={paymentSettings.payment_qr_code} alt="QR" className="w-40 h-40 sm:w-48 sm:h-48 object-contain" /></div>{paymentSettings.payment_account_name && <p className="text-sm font-medium text-gray-900 text-center">{paymentSettings.payment_account_name}</p>}{paymentSettings.payment_account_number && <p className="text-sm text-gray-600 text-center">{paymentSettings.payment_account_number}</p>}</div> : <div className="flex flex-col items-center py-8 text-gray-400"><AlertCircle className="w-12 h-12 mb-2" /><p className="text-sm">QR code not available</p></div>}
-            {paymentSettings?.payment_instructions && <div className="mt-4 p-4 bg-brand-50 rounded-xl"><p className="text-sm text-brand-700">{paymentSettings.payment_instructions}</p></div>}
+            {paymentSettings?.payment_qr_code ? <div className="flex flex-col items-center"><div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100 mb-4"><img src={paymentSettings.payment_qr_code} alt="QR" className="w-40 h-40 sm:w-48 sm:h-48 object-contain" /></div></div> : <div className="flex flex-col items-center py-8 text-gray-400"><AlertCircle className="w-12 h-12 mb-2" /><p className="text-sm">QR code not available</p></div>}
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Account Name</p>
+                <p className="text-sm font-medium text-gray-900">{paymentSettings?.payment_account_name || 'Not set'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Account Number</p>
+                <p className="text-sm text-gray-900 break-all">{paymentSettings?.payment_account_number || 'Not set'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-brand-700">Payment Instructions</p>
+                <p className="text-sm text-brand-700 whitespace-pre-line">{paymentSettings?.payment_instructions || 'No payment instructions set yet.'}</p>
+              </div>
+            </div>
           </div>
           <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 mb-6">
             <h3 className="font-semibold text-gray-900 mb-4">Upload Payment Receipt</h3>
