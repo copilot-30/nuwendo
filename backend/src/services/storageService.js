@@ -13,6 +13,19 @@ const getSupabaseClient = () => {
   return createClient(supabaseUrl, supabaseServiceKey);
 };
 
+const createValidationError = (message) => {
+  const error = new Error(message);
+  error.name = 'ValidationError';
+  return error;
+};
+
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+]);
+
 /**
  * Upload a file to Supabase Storage (retries once on timeout — handles cold-start paused projects)
  * @param {string} bucket - The storage bucket name
@@ -87,25 +100,56 @@ export const deleteFile = async (bucket, filePath) => {
  */
 export const uploadBase64Image = async (base64Data, folder = 'receipts') => {
   try {
-    // Remove data URI prefix if present (data:image/png;base64,...)
-    const base64String = base64Data.includes(',') 
-      ? base64Data.split(',')[1] 
-      : base64Data;
+    if (typeof base64Data !== 'string' || !base64Data.trim()) {
+      throw createValidationError('Invalid receipt format. Please upload a valid JPG, PNG, or WEBP image.');
+    }
 
-    // Convert base64 to buffer
-    const buffer = Buffer.from(base64String, 'base64');
+    const normalizedInput = base64Data.trim();
 
     // Detect content type from data URI or default to image/jpeg
     let contentType = 'image/jpeg';
-    if (base64Data.includes('data:')) {
-      const match = base64Data.match(/data:([^;]+);/);
-      if (match) contentType = match[1];
+    let base64String = normalizedInput;
+
+    if (normalizedInput.startsWith('data:')) {
+      const dataUriMatch = normalizedInput.match(/^data:([^;]+);base64,(.+)$/s);
+      if (!dataUriMatch) {
+        throw createValidationError('Invalid receipt format. Please upload a valid JPG, PNG, or WEBP image.');
+      }
+
+      contentType = dataUriMatch[1].toLowerCase();
+      base64String = dataUriMatch[2];
+    } else if (normalizedInput.includes(',')) {
+      base64String = normalizedInput.split(',').pop() || '';
+    }
+
+    if (!contentType.startsWith('image/') || !ALLOWED_IMAGE_MIME_TYPES.has(contentType)) {
+      throw createValidationError('Unsupported receipt image format. Please upload JPG, PNG, or WEBP.');
+    }
+
+    if (!base64String || !/^[A-Za-z0-9+/=\r\n]+$/.test(base64String)) {
+      throw createValidationError('Invalid receipt content. Please re-upload a clear image file (JPG, PNG, or WEBP).');
+    }
+
+    // Convert base64 to buffer
+    const buffer = Buffer.from(base64String, 'base64');
+    if (!buffer.length) {
+      throw createValidationError('Invalid receipt content. Please re-upload a clear image file (JPG, PNG, or WEBP).');
+    }
+
+    if (buffer.length > 5 * 1024 * 1024) {
+      throw createValidationError('Receipt image is too large. Please upload an image under 5MB.');
     }
 
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const extension = contentType.split('/')[1] || 'jpg';
+    const extensionByMimeType = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp'
+    };
+    const extension = extensionByMimeType[contentType] || 'jpg';
     const fileName = `${folder}/${timestamp}-${randomString}.${extension}`;
 
     // Upload to Supabase (using 'uploads' bucket)

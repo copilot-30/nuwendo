@@ -438,6 +438,21 @@ const uploadPaymentReceipt = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload receipt error:', error);
+
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({
+        message: error.message,
+        errorCode: 'INVALID_RECEIPT_FORMAT'
+      });
+    }
+
+    if (error?.message?.toLowerCase().includes('failed to upload file')) {
+      return res.status(502).json({
+        message: 'Receipt upload service is temporarily unavailable. Please try again in a moment.',
+        errorCode: 'RECEIPT_UPLOAD_UNAVAILABLE'
+      });
+    }
+
     res.status(500).json({ 
       message: 'Server error',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined

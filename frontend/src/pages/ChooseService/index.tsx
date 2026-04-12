@@ -140,9 +140,9 @@ export default function ChooseService() {
       className="min-h-screen bg-white"
     >
       {/* Full Width - Services Only */}
-      <div className="flex flex-col px-6 sm:px-12 lg:px-20 py-12 max-w-7xl mx-auto">
+  <div className="flex flex-col px-4 sm:px-12 lg:px-20 py-8 sm:py-12 max-w-7xl mx-auto">
         {/* Back Button & Logo */}
-        <div className="mb-8 flex items-center justify-between">
+  <div className="mb-6 sm:mb-8 flex items-center justify-between">
           <button
             onClick={handleBack}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -150,15 +150,15 @@ export default function ChooseService() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </button>
-          <img src="/9.svg" alt="Nuwendo" className="h-12 w-12" />
+          <img src="/9.svg" alt="Nuwendo" className="h-10 w-10 sm:h-12 sm:w-12" />
         </div>
 
         {/* Heading */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
             Choose a service
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-base sm:text-lg text-gray-600">
             Select the service you would like to book
           </p>
         </div>
@@ -180,11 +180,11 @@ export default function ChooseService() {
                 return (
                   <div key={category}>
                     {/* Category Header */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-brand" />
+                    <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-brand-100 flex items-center justify-center">
+                        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-brand" />
                       </div>
-                      <h2 className="text-xl font-semibold text-gray-900">{category}</h2>
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{category}</h2>
                     </div>
 
                     {/* Services in this category */}
@@ -195,7 +195,7 @@ export default function ChooseService() {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleServiceSelect(service)}
-                          className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                          className={`p-4 sm:p-5 rounded-xl border-2 cursor-pointer transition-all ${
                             selectedService?.id === service.id
                               ? 'border-brand bg-brand-50'
                               : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -203,16 +203,16 @@ export default function ChooseService() {
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="font-semibold text-lg text-gray-900">{service.name}</h3>
+                              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                                <h3 className="font-semibold text-base sm:text-lg text-gray-900">{service.name}</h3>
                                 {selectedService?.id === service.id && (
                                   <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center">
                                     <Check className="h-3 w-3 text-white" />
                                   </div>
                                 )}
                               </div>
-                              <p className="text-gray-600 mb-3">{service.description}</p>
-                              <div className="flex items-center gap-4 text-sm">
+                              <p className="text-sm sm:text-base text-gray-600 mb-3">{service.description}</p>
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                                 <span className="flex items-center gap-1 text-gray-500">
                                   <Clock className="h-4 w-4" />
                                   {service.duration_minutes} min
@@ -247,7 +247,7 @@ export default function ChooseService() {
           {/* Appointment Type Selection */}
           {selectedService && (
             <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Choose appointment type</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Choose appointment type</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Select how you want to attend this consultation.
               </p>
@@ -289,7 +289,7 @@ export default function ChooseService() {
           )}
 
         <Button 
-          className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+          className="w-full h-11 sm:h-12 text-sm sm:text-base bg-brand hover:bg-brand-600"
           disabled={!selectedService || !selectedAppointmentType}
           onClick={handleContinue}
         >

@@ -36,6 +36,7 @@ export default function ChooseSchedule() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
+  const [availabilityMessage, setAvailabilityMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [timeFilter, setTimeFilter] = useState<'AM' | 'PM'>('AM')
@@ -65,9 +66,18 @@ export default function ChooseSchedule() {
         const day = String(selectedDate.getDate()).padStart(2, '0')
         const dateStr = `${year}-${month}-${day}`
 
-  const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&serviceId=${serviceId}`)
+        const response = await fetch(`${BASE_URL}/api/availability?date=${dateStr}&serviceId=${serviceId}`)
         const data = await response.json()
+
+        if (!response.ok) {
+          setAvailableSlots([])
+          setAvailabilityMessage(data?.message || 'Unable to load slots for this date.')
+          setSelectedSlot(null)
+          return
+        }
+
         setAvailableSlots(data.availableSlots || [])
+        setAvailabilityMessage(data?.blockedByAdvanceWindow ? (data?.message || '') : '')
         setSelectedSlot(null)
 
         // Auto-select AM or PM based on available slots
@@ -88,6 +98,7 @@ export default function ChooseSchedule() {
         }
       } catch {
         setAvailableSlots([])
+        setAvailabilityMessage('Unable to load slots for this date. Please try again.')
       } finally {
         setIsLoading(false)
       }
@@ -194,9 +205,9 @@ export default function ChooseSchedule() {
       className="min-h-screen bg-white"
     >
       {/* Full Width - Calendar */}
-      <div className="flex flex-col px-6 sm:px-12 lg:px-20 py-12 max-w-5xl mx-auto">
+  <div className="flex flex-col px-4 sm:px-12 lg:px-20 py-8 sm:py-12 max-w-5xl mx-auto">
         {/* Back Button & Logo */}
-        <div className="mb-8 flex items-center justify-between">
+  <div className="mb-6 sm:mb-8 flex items-center justify-between">
           <button
             onClick={() => navigate('/choose-service')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -204,15 +215,15 @@ export default function ChooseSchedule() {
             <ArrowLeft className="w-5 h-5" />
             <span>Back</span>
           </button>
-          <img src="/9.svg" alt="Nuwendo" className="h-12 w-12" />
+          <img src="/9.svg" alt="Nuwendo" className="h-10 w-10 sm:h-12 sm:w-12" />
         </div>
 
           {/* Heading */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
               Pick a date & time
             </h1>
-            <p className="text-lg text-gray-600">
+            <p className="text-base sm:text-lg text-gray-600">
               Select when you'd like your appointment
             </p>
           </div>
@@ -225,15 +236,15 @@ export default function ChooseSchedule() {
           </div>
 
           {/* Calendar */}
-          <div className="bg-gray-50 rounded-2xl p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-gray-50 rounded-2xl p-3 sm:p-6 mb-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <button 
                 onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
                 className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <span className="font-semibold text-lg">
+              <span className="font-semibold text-base sm:text-lg">
                 {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </span>
               <button 
@@ -246,7 +257,7 @@ export default function ChooseSchedule() {
             
             <div className="grid grid-cols-7 gap-1 text-center mb-3">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                <div key={d} className="text-xs text-gray-500 font-medium py-2">{d}</div>
+                <div key={d} className="text-[10px] sm:text-xs text-gray-500 font-medium py-2">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1 justify-items-center">
@@ -257,7 +268,7 @@ export default function ChooseSchedule() {
           {/* Time Slots */}
           {selectedDate && (
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-gray-500" />
                   <span className="font-semibold text-gray-900">Available times</span>
@@ -265,7 +276,7 @@ export default function ChooseSchedule() {
                 
                 {/* AM/PM Toggle */}
                 {availableSlots.length > 0 && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {amSlots.length > 0 && (
                       <button
                         onClick={() => {
@@ -312,21 +323,21 @@ export default function ChooseSchedule() {
                 </div>
               ) : availableSlots.length === 0 ? (
                 <p className="text-center text-gray-500 py-8 bg-gray-50 rounded-xl">
-                  No available slots for this date
+                  {availabilityMessage || 'No available slots for this date'}
                 </p>
               ) : filteredSlots.length === 0 ? (
                 <p className="text-center text-gray-500 py-8 bg-gray-50 rounded-xl">
                   No {timeFilter} slots available. Try {timeFilter === 'AM' ? 'PM' : 'AM'}.
                 </p>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {filteredSlots.map((slot, index) => {
                     const isSelected = selectedSlot?.start_time === slot.start_time
                     return (
                       <button
                         key={slot.start_time || index}
                         onClick={() => setSelectedSlot(slot)}
-                        className={`p-3 text-sm font-medium rounded-xl border-2 transition-all duration-150
+                        className={`p-2.5 sm:p-3 text-xs sm:text-sm font-medium rounded-xl border-2 transition-all duration-150
                           ${isSelected
                             ? 'bg-brand border-brand text-white'
                             : 'bg-white border-brand text-brand hover:bg-brand hover:text-white'}
@@ -342,7 +353,7 @@ export default function ChooseSchedule() {
           )}
 
         <Button 
-          className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+          className="w-full h-11 sm:h-12 text-sm sm:text-base bg-brand hover:bg-brand-600"
           disabled={!selectedDate || !selectedSlot || !appointmentType}
           onClick={handleContinue}
         >

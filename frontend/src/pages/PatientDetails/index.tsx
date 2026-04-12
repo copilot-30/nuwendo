@@ -250,25 +250,25 @@ export default function PatientDetails() {
       className="min-h-screen flex"
     >
       {/* Left Side - Form */}
-      <div className="flex-1 flex flex-col px-6 sm:px-12 lg:px-20 py-12 bg-white overflow-auto">
+      <div className="flex-1 flex flex-col px-4 sm:px-12 lg:px-20 py-8 sm:py-12 bg-white overflow-auto">
         <div className="w-full max-w-2xl mx-auto">
           {/* Logo */}
-          <div className="mb-8 flex items-center justify-end">
-            <img src="/9.svg" alt="Nuwendo" className="h-12 w-12" />
+          <div className="mb-6 sm:mb-8 flex items-center justify-end">
+            <img src="/9.svg" alt="Nuwendo" className="h-10 w-10 sm:h-12 sm:w-12" />
           </div>
 
           {/* Heading */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 leading-tight mb-2">
               Tell us about yourself
             </h1>
-            <p className="text-lg text-gray-600">
+            <p className="text-base sm:text-lg text-gray-600">
               Help us personalize your healthcare experience
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
             {/* Name Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -395,7 +395,7 @@ export default function PatientDetails() {
             {/* Health Goals */}
             <div className="space-y-3">
               <Label>Health Goals * (Select all that apply)</Label>
-              <div className="space-y-3 bg-gray-50 rounded-xl p-4">
+              <div className="space-y-3 bg-gray-50 rounded-xl p-3 sm:p-4">
                 {healthGoalOptions.map((goal) => (
                   <div key={goal} className="flex items-start gap-3">
                     <Checkbox
@@ -424,7 +424,7 @@ export default function PatientDetails() {
 
             <Button
               type="submit"
-              className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+              className="w-full h-11 sm:h-12 text-sm sm:text-base bg-brand hover:bg-brand-600"
               disabled={isLoading}
             >
               {isLoading ? (

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, Calendar, Clock, Mail, Download, Monitor, Building2, ClockIcon } from 'lucide-react'
+import { CheckCircle, Calendar, Clock, Mail, Monitor, Building2, ClockIcon } from 'lucide-react'
 
 export default function Confirmation() {
   const navigate = useNavigate()
@@ -189,15 +189,6 @@ export default function Confirmation() {
               onClick={handleDone}
             >
               Done
-            </Button>
-            
-            <Button 
-              variant="outline"
-              className="w-full h-12 text-base"
-              onClick={() => {}}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Add to Calendar
             </Button>
           </div>
 

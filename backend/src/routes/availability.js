@@ -16,7 +16,31 @@ router.get('/types', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Date parameter is required' });
     }
 
+    // Respect min advance booking window: when blocked, expose no available types.
+    const settingsResult = await pool.query(
+      `SELECT setting_value FROM system_settings WHERE setting_key = 'min_advance_hours'`
+    );
+    const minAdvanceHours = settingsResult.rows.length > 0
+      ? parseInt(settingsResult.rows[0].setting_value)
+      : 24;
+
     const requestedDate = new Date(date);
+    const now = new Date();
+    const minBookingDate = new Date(now.getTime() + (minAdvanceHours * 60 * 60 * 1000));
+
+    if (requestedDate < minBookingDate) {
+      return res.json({
+        success: true,
+        date,
+        dayOfWeek: requestedDate.getDay(),
+        availableTypes: [],
+        blockedByAdvanceWindow: true,
+        minAdvanceHours,
+        message: `Bookings must be made at least ${minAdvanceHours} hours in advance.`
+      });
+    }
+
+    // requestedDate already computed above
     const dayOfWeek = requestedDate.getDay();
 
     // Use availability_windows as source of truth when it has canonical schedule data.
@@ -125,8 +149,14 @@ router.get('/', async (req, res) => {
     const minBookingDate = new Date(now.getTime() + (minAdvanceHours * 60 * 60 * 1000));
     
     if (requestedDate < minBookingDate) {
-      return res.status(400).json({
-        success: false,
+      return res.json({
+        success: true,
+        date,
+        dayOfWeek: requestedDate.getDay(),
+        serviceDuration,
+        availableSlots: [],
+        blockedByAdvanceWindow: true,
+        minAdvanceHours,
         message: `Bookings must be made at least ${minAdvanceHours} hours in advance.`
       });
     }
