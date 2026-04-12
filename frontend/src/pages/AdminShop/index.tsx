@@ -268,6 +268,7 @@ export function AdminShop() {
   }
 
   const resetForm = () => {
+    setEditingItem(null)
     setFormData({
       name: '',
       description: '',
@@ -280,6 +281,31 @@ export function AdminShop() {
     setShowItemForm(false)
     setShowCustomCategory(false)
     setCustomCategory('')
+  }
+
+  const openAddItemForm = () => {
+    setEditingItem(null)
+    setFormData({
+      name: '',
+      description: '',
+      category: '',
+      image_url: '',
+      stock_quantity: 0,
+      is_active: true
+    })
+    setVariants([{ name: '', price: '', is_active: true }])
+    setShowCustomCategory(false)
+    setCustomCategory('')
+    setShowItemForm(true)
+  }
+
+  const handleItemFormOpenChange = (open: boolean) => {
+    if (!open) {
+      resetForm()
+      return
+    }
+
+    setShowItemForm(true)
   }
 
   const handleEdit = (item: ShopItem) => {
@@ -330,19 +356,20 @@ export function AdminShop() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Page Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Shop Management</h1>
-              <p className="text-gray-500">Manage shop items and patient access</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Shop Management</h1>
+              <p className="text-sm sm:text-base text-gray-500">Manage shop items and patient access</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto">
             <Button 
               onClick={() => navigate('/admin/orders')} 
               variant="outline"
+              className="w-full"
             >
               <ClipboardList className="h-4 w-4 mr-2" />
               View Orders
@@ -350,12 +377,12 @@ export function AdminShop() {
             <Button 
               onClick={() => setShowAccessModal(true)} 
               variant="outline"
-              className="border-purple-200 text-purple-700 hover:bg-purple-50"
+              className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
             >
               <Users className="h-4 w-4 mr-2" />
               Manage Access
             </Button>
-            <Button onClick={() => setShowItemForm(true)} disabled={showItemForm} className="bg-brand hover:bg-brand/90">
+            <Button onClick={openAddItemForm} disabled={showItemForm} className="w-full bg-brand hover:bg-brand/90">
               <Plus className="h-4 w-4 mr-2" />
               Add Item
             </Button>
@@ -369,8 +396,8 @@ export function AdminShop() {
         )}
 
         {/* Item Form Modal */}
-        <Dialog open={showItemForm} onOpenChange={setShowItemForm}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+  <Dialog open={showItemForm} onOpenChange={handleItemFormOpenChange}>
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
               <DialogDescription>
@@ -403,7 +430,7 @@ export function AdminShop() {
 
               {/* Variants */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-2">
                   <Label>Variants (e.g. 50mg, 30mg, Per Shot) *</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addVariant}>
                     <Plus className="h-3 w-3 mr-1" /> Add Variant
@@ -411,7 +438,7 @@ export function AdminShop() {
                 </div>
                 <div className="space-y-2">
                   {variants.map((v, i) => (
-                    <div key={i} className="flex gap-2 items-center">
+                    <div key={i} className="flex flex-col sm:flex-row gap-2 sm:items-center">
                       <Input
                         placeholder="Name (e.g. 50mg)"
                         value={v.name}
@@ -426,10 +453,10 @@ export function AdminShop() {
                         value={v.price}
                         onChange={e => updateVariant(i, 'price', e.target.value)}
                         required
-                        className="w-36"
+                        className="w-full sm:w-36"
                       />
                       {variants.length > 1 && (
-                        <button type="button" onClick={() => removeVariant(i)} className="text-red-400 hover:text-red-600">
+                        <button type="button" onClick={() => removeVariant(i)} className="self-end sm:self-center text-red-400 hover:text-red-600">
                           <X className="h-4 w-4" />
                         </button>
                       )}
@@ -441,7 +468,7 @@ export function AdminShop() {
               <div>
                 <Label htmlFor="category">Category *</Label>
                 {!showCustomCategory ? (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       id="category"
                       value={formData.category}
@@ -464,7 +491,7 @@ export function AdminShop() {
                     </select>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       value={customCategory}
                       onChange={(e) => {
@@ -489,16 +516,6 @@ export function AdminShop() {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="image_url">Image URL</Label>
-                <Input
-                  id="image_url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -510,7 +527,7 @@ export function AdminShop() {
                 <Label htmlFor="is_active" className="!mb-0">Active (available for purchase)</Label>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button type="submit" className="flex-1 bg-brand hover:bg-brand/90">
                   <Save className="h-4 w-4 mr-2" />
                   {editingItem ? 'Update Item' : 'Add Item'}
@@ -530,7 +547,7 @@ export function AdminShop() {
 
         {/* Patient Access Modal */}
         <Dialog open={showAccessModal} onOpenChange={setShowAccessModal}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Manage Patient Shop Access</DialogTitle>
               <DialogDescription>
@@ -543,10 +560,10 @@ export function AdminShop() {
                 <p className="text-center py-8 text-gray-500">No patients found</p>
               ) : (
                 patients.map(patient => (
-                  <div key={patient.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                  <div key={patient.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg hover:bg-gray-50">
                     <div>
                       <p className="font-medium">{patient.first_name} {patient.last_name}</p>
-                      <p className="text-sm text-gray-500">{patient.email}</p>
+                      <p className="text-sm text-gray-500 break-all">{patient.email}</p>
                       {patient.has_shop_access && patient.granted_at && (
                         <p className="text-xs text-green-600 mt-1">
                           Access granted on {new Date(patient.granted_at).toLocaleDateString()}
@@ -557,7 +574,7 @@ export function AdminShop() {
                       size="sm"
                       variant={patient.has_shop_access ? 'destructive' : 'default'}
                       onClick={() => handleToggleAccess(patient.id, patient.has_shop_access)}
-                      className={!patient.has_shop_access ? 'bg-green-600 hover:bg-green-700' : ''}
+                      className={`w-full sm:w-auto ${!patient.has_shop_access ? 'bg-green-600 hover:bg-green-700' : ''}`}
                     >
                       {patient.has_shop_access ? 'Revoke Access' : 'Grant Access'}
                     </Button>
@@ -570,11 +587,11 @@ export function AdminShop() {
 
         {/* Category Filter */}
         <div className="mb-6">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-nowrap sm:flex-wrap overflow-x-auto pb-1">
             <Button
               variant={selectedCategory === 'all' ? 'default' : 'outline'}
               onClick={() => setSelectedCategory('all')}
-              className={selectedCategory === 'all' ? 'bg-brand hover:bg-brand/90' : ''}
+              className={`whitespace-nowrap ${selectedCategory === 'all' ? 'bg-brand hover:bg-brand/90' : ''}`}
             >
               All Items ({items.length})
             </Button>
@@ -585,7 +602,7 @@ export function AdminShop() {
                   key={category}
                   variant={selectedCategory === category ? 'default' : 'outline'}
                   onClick={() => setSelectedCategory(category)}
-                  className={selectedCategory === category ? 'bg-brand hover:bg-brand/90' : ''}
+                  className={`whitespace-nowrap ${selectedCategory === category ? 'bg-brand hover:bg-brand/90' : ''}`}
                 >
                   {category} ({count})
                 </Button>
@@ -600,7 +617,7 @@ export function AdminShop() {
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No items found</p>
             <Button 
-              onClick={() => setShowItemForm(true)} 
+              onClick={openAddItemForm} 
               variant="outline" 
               className="mt-4"
             >
@@ -608,7 +625,7 @@ export function AdminShop() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredItems.map((item) => (
               <Card key={item.id} className={`overflow-hidden ${!item.is_active && 'opacity-60'}`}>
                 <CardContent className="p-0">

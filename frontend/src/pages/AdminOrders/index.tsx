@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -105,7 +106,7 @@ export function AdminOrders() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [paymentFilter, setPaymentFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [receiptViewer, setReceiptViewer] = useState<ReceiptViewerState | null>(null)
@@ -117,7 +118,7 @@ export function AdminOrders() {
       return
     }
     fetchOrders()
-  }, [navigate, statusFilter, paymentFilter])
+  }, [navigate, statusFilter])
 
   useEffect(() => {
     if (!receiptViewer) return
@@ -143,9 +144,8 @@ export function AdminOrders() {
     setError('')
     try {
       const token = localStorage.getItem('adminToken')
-  const params = new URLSearchParams({ page: String(page), limit: '20', include_pending: 'false' })
+    const params = new URLSearchParams({ page: String(page), limit: '20', include_pending: 'false' })
       if (statusFilter !== 'all') params.append('status', statusFilter)
-      if (paymentFilter !== 'all') params.append('payment_verified', paymentFilter)
 
       const response = await fetch(`${API_URL}/admin/orders?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -237,6 +237,28 @@ export function AdminOrders() {
     return `TXN-${y}${m}${d}-${paddedId}`
   }
 
+  const normalizedSearch = searchQuery.trim().toLowerCase()
+  const filteredOrders = normalizedSearch
+    ? orders.filter((order) => {
+        const itemText = (order.items || [])
+          .map((item) => `${item.item_name} ${item.variant_name || ''}`)
+          .join(' ')
+          .toLowerCase()
+
+        const searchable = [
+          formatOrderReference(order.id, order.created_at),
+          `${order.first_name} ${order.last_name}`,
+          order.recipient_name_display || '',
+          order.email,
+          itemText,
+        ]
+          .join(' ')
+          .toLowerCase()
+
+        return searchable.includes(normalizedSearch)
+      })
+    : orders
+
   if (isLoading && orders.length === 0) {
     return (
       <AdminLayout>
@@ -249,14 +271,14 @@ export function AdminOrders() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Page Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
-            <p className="text-gray-600 mt-1">View and manage shop orders</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Order Management</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">View and manage shop orders</p>
           </div>
-          <Button variant="outline" onClick={() => navigate('/admin/shop')}>
+          <Button variant="outline" onClick={() => navigate('/admin/shop')} className="w-full sm:w-auto">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Shop
           </Button>
@@ -264,12 +286,22 @@ export function AdminOrders() {
 
         {/* Filters */}
         <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="order-search" className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
+                <Input
+                  id="order-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search name, email, item, or order ref"
+                  className="h-10 text-sm"
+                />
+              </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Order Status</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 text-sm">
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -278,19 +310,6 @@ export function AdminOrders() {
                     <SelectItem value="shipped">Shipped</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Payment Status</label>
-                <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All payments" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Payments</SelectItem>
-                    <SelectItem value="true">Verified</SelectItem>
-                    <SelectItem value="false">Unverified</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -308,25 +327,25 @@ export function AdminOrders() {
 
         {/* Orders List */}
         <div className="space-y-4">
-          {orders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-600">No orders found</p>
+                <p className="text-gray-600">No orders found{normalizedSearch ? ' for this search' : ''}</p>
               </CardContent>
             </Card>
           ) : (
-            orders.map((order) => (
+            filteredOrders.map((order) => (
               <Card key={order.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   {/** derived label keeps rejected shop payments clear in Orders view */}
                   {(() => {
                     const statusBadge = getOrderStatusBadge(order)
                     return (
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{formatOrderReference(order.id, order.created_at)}</h3>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 break-all">{formatOrderReference(order.id, order.created_at)}</h3>
                         <Badge className={statusBadge.className}>
                           {statusBadge.label}
                         </Badge>
@@ -347,14 +366,14 @@ export function AdminOrders() {
                           </Badge>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4" />
-                          <span>{order.first_name} {order.last_name}</span>
+                          <span className="break-words">{order.first_name} {order.last_name}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4" />
-                          <span>{order.email}</span>
+                          <span className="break-all">{order.email}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4" />
@@ -367,11 +386,11 @@ export function AdminOrders() {
                       </div>
                       <p className="text-xs text-gray-500 mt-2">Ordered: {formatDate(order.created_at)}</p>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full lg:w-auto">
                       <Button
                         onClick={() => setSelectedOrder(order)}
                         variant="outline"
-                        className="w-full"
+                        className="w-full lg:min-w-[140px]"
                       >
                         View Details
                       </Button>
@@ -379,7 +398,7 @@ export function AdminOrders() {
                         <Button
                           onClick={() => viewReceipt(order.payment_receipt_url!, `${formatOrderReference(order.id, order.created_at)} Receipt`)}
                           variant="outline"
-                          className="w-full"
+                          className="w-full lg:min-w-[140px]"
                         >
                           <Image className="w-4 h-4 mr-2" />
                           View Receipt
@@ -397,11 +416,11 @@ export function AdminOrders() {
 
         {/* Pagination */}
         {pagination && pagination.total_pages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-xs sm:text-sm text-gray-600">
               Showing {((pagination.current_page - 1) * pagination.per_page) + 1} - {Math.min(pagination.current_page * pagination.per_page, pagination.total_records)} of {pagination.total_records}
             </p>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <Button
                 onClick={() => fetchOrders(pagination.current_page - 1)}
                 disabled={pagination.current_page === 1}
@@ -410,7 +429,7 @@ export function AdminOrders() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="px-4 py-2 text-sm">
+              <span className="px-2 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap">
                 Page {pagination.current_page} of {pagination.total_pages}
               </span>
               <Button
@@ -427,7 +446,7 @@ export function AdminOrders() {
 
         {/* Order Details Dialog */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
             {selectedOrder && (
               <>
                 <DialogHeader>
@@ -480,7 +499,7 @@ export function AdminOrders() {
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Order Items</h3>
                     <div className="border rounded-lg divide-y">
                       {selectedOrder.items?.map((item) => (
-                        <div key={item.id} className="p-4 flex justify-between items-center">
+                        <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                           <div>
                             <p className="font-medium text-gray-900">{item.item_name}</p>
                             {item.variant_name && (
@@ -488,7 +507,7 @@ export function AdminOrders() {
                             )}
                             <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                           </div>
-                          <p className="font-semibold text-gray-900">{formatPrice(item.price_at_purchase * item.quantity)}</p>
+                          <p className="font-semibold text-gray-900 sm:text-right">{formatPrice(item.price_at_purchase * item.quantity)}</p>
                         </div>
                       ))}
                       <div className="p-4 bg-gray-50 flex justify-between items-center font-semibold">
@@ -568,21 +587,22 @@ export function AdminOrders() {
             onClick={() => setReceiptViewer(null)}
           >
             <div className="absolute inset-x-0 top-0 z-10 p-4 sm:p-6 bg-gradient-to-b from-black/80 to-transparent">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold text-lg text-white">{receiptViewer.title}</h3>
+                  <h3 className="font-semibold text-base sm:text-lg text-white break-words">{receiptViewer.title}</h3>
                   <p className="text-xs sm:text-sm text-white/75">
                     Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/20">Esc</kbd> to close
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={handleDownloadReceipt}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
                   >
                     <Download className="w-4 h-4" />
-                    Download Receipt
+                    <span className="hidden sm:inline">Download Receipt</span>
+                    <span className="sm:hidden">Download</span>
                   </button>
                   <Button
                     variant="ghost"
