@@ -8,25 +8,25 @@ const serviceCards = [
     number: '01',
     title: 'Nuwendo Starter',
     description: 'An entry-level program designed to kickstart your metabolic health journey with structured support and foundational interventions. Ideal for individuals beginning weight loss or metabolic optimization under guided care.',
-    image: '/9.png',
+    image: '/1.png',
   },
   {
     number: '02',
     title: 'Nutrition Plan',
     description: 'A personalized, evidence-based meal plan tailored to your metabolic profile, preferences, and health goals. Focuses on sustainable eating habits that support weight management and overall wellness.',
-    image: '/8.png',
+    image: '/2.png',
   },
   {
     number: '03',
     title: 'Metabolic Work-up',
     description: 'A comprehensive set of diagnostic tests and assessments to evaluate key metabolic markers such as glucose, insulin, lipids, and hormones. Provides data-driven insights to guide targeted and effective treatment plans.',
-    image: '/7.png',
+    image: '/3.png',
   },
   {
     number: '04',
     title: 'BeFit x Nuwendo',
     description: 'A collaborative program combining fitness training and medical metabolic care to deliver a holistic approach to weight loss and health optimization. Integrates structured exercise with personalized clinical guidance for more effective and sustainable results.',
-    image: '/6.png',
+    image: '/4.png',
     bookNowUrl: 'https://www.befit.ph/wellness-services',
   },
 ]
@@ -164,9 +164,9 @@ export function HomeSections() {
 
   <section className="py-12 md:py-16 bg-slate-50">
         <div className="container">
-          <div className="max-w-6xl mx-auto rounded-3xl bg-gradient-to-r from-[#173c50] via-[#133649] to-[#173c50] px-6 py-12 md:px-12 md:py-16 text-center shadow-xl">
+          <div className="max-w-6xl mx-auto rounded-3xl bg-accent px-6 py-12 md:px-12 md:py-16 text-center shadow-xl">
             <div className="flex justify-center">
-              <Quote className="h-14 w-14 md:h-16 md:w-16 text-brand-100/85 stroke-[2.5]" aria-hidden="true" />
+              <Quote className="h-14 w-14 md:h-16 md:w-16 text-accent-foreground/85 stroke-[2.5]" aria-hidden="true" />
             </div>
 
             <blockquote className="mt-5 text-xl md:text-[2.1rem] text-white/95 italic leading-[1.35] max-w-4xl mx-auto">
@@ -174,8 +174,8 @@ export function HomeSections() {
               weight safely, my energy is up, and I feel supported every step.”
             </blockquote>
 
-            <div className="mx-auto mt-8 h-1 w-16 rounded-full bg-brand-100/70" />
-            <p className="mt-6 text-xs md:text-sm uppercase tracking-[0.18em] text-brand-100/85 font-medium">
+            <div className="mx-auto mt-8 h-1 w-16 rounded-full bg-accent-foreground/70" />
+            <p className="mt-6 text-xs md:text-sm uppercase tracking-[0.18em] text-accent-foreground/85 font-medium">
               Why Patients Choose Nuwendo
             </p>
           </div>
