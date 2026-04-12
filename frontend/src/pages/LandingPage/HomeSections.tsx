@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Building2, HeartPulse, MessagesSquare, Monitor, Percent, Quote, UsersRound } from 'lucide-react'
+import { ArrowRight, Box, Building2, Heart, MessagesSquare, Monitor, Quote, Stethoscope } from 'lucide-react'
 
 const serviceCards = [
   {
@@ -201,7 +201,7 @@ export function HomeSections() {
             <div className="mt-12 grid lg:grid-cols-3 gap-4">
               <div className="bg-white p-4 md:p-5 border border-slate-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 h-full flex flex-col text-center">
                 <div className="mx-auto mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-                  <UsersRound className="h-6 w-6 text-brand" />
+                  <Stethoscope className="h-6 w-6 text-brand" />
                 </div>
                 <h4 className="text-[0.95rem] md:text-[1.05rem] lg:text-[1.2rem] font-semibold leading-snug tracking-tight text-brand-800 whitespace-nowrap min-h-[1.75rem] md:min-h-[2rem]">
                   Doctor-Led Care For Everyone
@@ -217,7 +217,7 @@ export function HomeSections() {
 
               <div className="bg-white p-4 md:p-5 border border-slate-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 h-full flex flex-col text-center">
                 <div className="mx-auto mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-                  <Percent className="h-6 w-6 text-brand" />
+                  <Box className="h-6 w-6 text-brand" />
                 </div>
                 <h4 className="text-[0.95rem] md:text-[1.05rem] lg:text-[1.2rem] font-semibold leading-snug tracking-tight text-brand-800 whitespace-nowrap min-h-[1.75rem] md:min-h-[2rem]">
                   Structured Programs & Packages
@@ -233,7 +233,7 @@ export function HomeSections() {
 
               <div className="bg-white p-4 md:p-5 border border-slate-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 h-full flex flex-col text-center">
                 <div className="mx-auto mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-                  <HeartPulse className="h-6 w-6 text-brand" />
+                  <Heart className="h-6 w-6 text-brand" />
                 </div>
                 <h4 className="text-[0.95rem] md:text-[1.05rem] lg:text-[1.2rem] font-semibold leading-snug tracking-tight text-brand-800 whitespace-nowrap min-h-[1.75rem] md:min-h-[2rem]">
                   Focus On Long-Term Health
