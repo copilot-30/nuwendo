@@ -141,6 +141,43 @@ export function AboutUs() {
                 <p className="text-slate-500 text-xl">IM - Endocrinology</p>
               </div>
             </div>
+
+            <div className="mt-14">
+              <h4 className="text-2xl md:text-3xl font-extrabold text-center text-accent leading-tight">
+                NUTRITIONIST-DIETITIANS
+              </h4>
+              <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-8 place-items-center">
+                {[
+                  {
+                    name: 'Angela Espinosa',
+                    image: '/Angela Espinosa.png',
+                  },
+                  {
+                    name: 'Charles Camion',
+                    image: '/Charles Camilon.png',
+                  },
+                  {
+                    name: 'Patricia Aquino',
+                    image: '/Patricia Aquino.png',
+                  },
+                  {
+                    name: 'William Celestial',
+                    image: '/William Celestial.png',
+                  },
+                ].map((member) => (
+                  <div key={member.name} className="text-center">
+                    <div className="w-36 h-36 md:w-40 md:h-40 rounded-full overflow-hidden mx-auto bg-slate-100 ring-8 ring-white shadow-2xl">
+                      <img
+                        src={member.image}
+                        alt={`${member.name}, RND`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="mt-5 font-extrabold text-xl md:text-2xl text-brand-800 whitespace-nowrap">{member.name}, RND</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
