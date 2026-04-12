@@ -321,6 +321,23 @@ router.post('/upload-receipt', flexibleAuthMiddleware, async (req, res) => {
     res.json({ success: true, url });
   } catch (error) {
     console.error('Error uploading shop receipt:', error);
+
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        errorCode: 'INVALID_RECEIPT_FORMAT'
+      });
+    }
+
+    if (error?.message?.toLowerCase().includes('failed to upload file')) {
+      return res.status(502).json({
+        success: false,
+        message: 'Receipt upload service is temporarily unavailable. Please try again in a moment.',
+        errorCode: 'RECEIPT_UPLOAD_UNAVAILABLE'
+      });
+    }
+
     res.status(500).json({ success: false, message: 'Failed to upload receipt' });
   }
 });

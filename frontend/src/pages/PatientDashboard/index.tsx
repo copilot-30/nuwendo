@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,6 @@ import {
   Phone,
   X,
   AlertCircle,
-  Bell,
   Pencil,
   Check,
   Loader2,
@@ -126,6 +125,7 @@ export default function PatientDashboard() {
   const [itemQuantity, setItemQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [cartMessage, setCartMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
+  const addToCartLockRef = useRef(false)
 
   // Order monitoring states
   const [showOrders, setShowOrders] = useState(false)
@@ -189,6 +189,12 @@ export default function PatientDashboard() {
       loadCartCount()
     }
   }, [activeTab, hasShopAccess])
+
+  useEffect(() => {
+    if (activeTab !== 'shop' && showOrders) {
+      setShowOrders(false)
+    }
+  }, [activeTab, showOrders])
 
   const checkShopAccess = async () => {
     try {
@@ -655,7 +661,7 @@ export default function PatientDashboard() {
   }
 
   const handleAddToCart = async () => {
-    if (!selectedShopItem || !selectedVariant) return
+    if (!selectedShopItem || !selectedVariant || addToCartLockRef.current || addingToCart) return
     
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
     if (!token) {
@@ -664,18 +670,22 @@ export default function PatientDashboard() {
     }
 
     try {
+      addToCartLockRef.current = true
       setAddingToCart(true)
       await cartService.addToCart(selectedShopItem.id, selectedVariant.id, itemQuantity)
       setCartMessage({ type: 'success', text: 'Added to cart!' })
       loadCartCount()
+      setSelectedShopItem(null)
+      setSelectedVariant(null)
+      setItemQuantity(1)
       setTimeout(() => {
-        setSelectedShopItem(null)
         setCartMessage(null)
-      }, 1500)
+      }, 1800)
     } catch (err: any) {
       setCartMessage({ type: 'error', text: err.message || 'Failed to add to cart' })
     } finally {
       setAddingToCart(false)
+      addToCartLockRef.current = false
     }
   }
 
@@ -797,14 +807,11 @@ export default function PatientDashboard() {
       {/* Header - Sticky like admin dashboard */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-14 sm:h-16">
             <div className="flex items-center gap-4">
-              <img src="/NUWENDO.svg" alt="Nuwendo Metabolic Clinic" className="h-12" />
+              <img src="/NUWENDO.svg" alt="Nuwendo Metabolic Clinic" className="h-10 sm:h-12" />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm">
-                <Bell className="h-4 w-4" />
-              </Button>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Logout</span>
@@ -816,13 +823,13 @@ export default function PatientDashboard() {
 
       {/* Tab Navigation */}
       <nav className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center">
-          <div className="inline-flex bg-gray-100 rounded-full p-1 my-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center overflow-x-auto">
+          <div className="inline-flex bg-gray-100 rounded-full p-1 my-3 sm:my-4 min-w-max">
             {(['home', 'services', ...(hasShopAccess ? ['shop' as const] : []), 'account'] as TabType[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-4 sm:px-6 py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                   activeTab === tab
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-600 hover:text-gray-900'
@@ -836,12 +843,12 @@ export default function PatientDashboard() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
         {activeTab === 'home' && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Welcome Message */}
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
                 Welcome back{profile?.first_name ? `, ${profile.first_name}` : ''}
               </h1>
             </div>
@@ -849,10 +856,10 @@ export default function PatientDashboard() {
             {/* Explore Card */}
             <div 
               onClick={handleNewAppointment}
-              className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-shadow"
             >
               <div className="relative z-10">
-                <h2 className="text-xl font-semibold text-white mb-1">Explore your options</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-white mb-1">Explore your options</h2>
                 <p className="text-white/80 text-sm mb-4">
                   See why thousands of Filipinos<br />
                   choose Nuwendo for their journey
@@ -897,13 +904,13 @@ export default function PatientDashboard() {
                   {appointments.slice(0, 3).map((apt) => (
                     <div
                       key={apt.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
+                      className="p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-start gap-3 sm:gap-4">
                         <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center">
                           <Calendar className="w-6 h-6 text-brand" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
                             {(apt.reschedule_count ?? 0) > 0 && (
@@ -922,7 +929,7 @@ export default function PatientDashboard() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="mt-3 sm:mt-0 flex items-center justify-between sm:justify-end gap-3 sm:pl-16">
                         <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                           apt.status === 'confirmed' 
                             ? 'bg-green-100 text-green-700' 
@@ -944,7 +951,7 @@ export default function PatientDashboard() {
 
         {activeTab === 'services' && (
           <div className="space-y-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Your Services</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Your Services</h1>
             
             {cancelError && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
@@ -969,12 +976,12 @@ export default function PatientDashboard() {
                       key={apt.id}
                       className="p-4 border border-gray-200 rounded-xl"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-start gap-3 sm:gap-4 min-w-0">
                           <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center">
                             <Calendar className="w-6 h-6 text-brand" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
                               {(apt.reschedule_count ?? 0) > 0 && (
@@ -993,7 +1000,7 @@ export default function PatientDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center flex-wrap gap-2 sm:gap-3 sm:justify-end">
                           <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                             apt.status === 'confirmed' 
                               ? 'bg-green-100 text-green-700' 
@@ -1040,7 +1047,7 @@ export default function PatientDashboard() {
                       
                       {/* Reschedule and Cancel buttons - policy-based */}
                       {apt.status !== 'cancelled' && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-2">
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:justify-end gap-2">
                           {canReschedule || canCancel ? (
                             <>
                               {canReschedule && (
@@ -1049,7 +1056,7 @@ export default function PatientDashboard() {
                                   size="sm"
                                   onClick={() => handleRescheduleClick(apt)}
                                   disabled={isCancelling}
-                                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  className="w-full sm:w-auto text-blue-600 border-blue-200 hover:bg-blue-50"
                                 >
                                   <CalendarClock className="w-4 h-4 mr-2" />
                                   Reschedule
@@ -1061,7 +1068,7 @@ export default function PatientDashboard() {
                                   size="sm"
                                   onClick={() => handleCancelAppointment(apt.id)}
                                   disabled={isCancelling}
-                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
                                 >
                                   {isCancelling ? (
                                     <>
@@ -1113,20 +1120,25 @@ export default function PatientDashboard() {
             )}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Shop</h1>
-                <p className="text-gray-600">Browse and purchase available products</p>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Shop</h1>
+                <p className="text-sm sm:text-base text-gray-600">Browse and purchase available products</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <Button
                   onClick={() => {
-                    setShowOrders(!showOrders)
-                    if (!showOrders && orders.length === 0) fetchOrders()
+                    const nextShowOrders = !showOrders
+                    setShowOrders(nextShowOrders)
+                    if (nextShowOrders && orders.length === 0) fetchOrders()
                   }}
                   variant={showOrders ? "default" : "outline"}
                   className={showOrders ? "bg-brand hover:bg-brand/90" : ""}
                 >
-                  <ClipboardList className="w-5 h-5 mr-2" />
-                  My Orders
+                  {showOrders ? (
+                    <ArrowLeft className="w-5 h-5 mr-2" />
+                  ) : (
+                    <ClipboardList className="w-5 h-5 mr-2" />
+                  )}
+                  {showOrders ? 'Shop' : 'My Orders'}
                 </Button>
                 <Button
                   onClick={() => setShowCartModal(true)}
@@ -1143,6 +1155,18 @@ export default function PatientDashboard() {
                 </Button>
               </div>
             </div>
+
+            {cartMessage && (
+              <div
+                className={`p-3 rounded-lg border ${
+                  cartMessage.type === 'success'
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
+                }`}
+              >
+                {cartMessage.text}
+              </div>
+            )}
 
             {/* Orders View */}
             {showOrders ? (
@@ -1450,20 +1474,21 @@ export default function PatientDashboard() {
           <div className="space-y-6">
             {/* About You */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="text-lg">About You</CardTitle>
                 {!isEditingProfile ? (
-                  <Button variant="outline" size="sm" onClick={startEditingProfile}>
+                  <Button variant="outline" size="sm" onClick={startEditingProfile} className="w-full sm:w-auto">
                     <Pencil className="w-4 h-4 mr-2" />
                     Edit
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={() => setIsEditingProfile(false)}
                       disabled={isSaving}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
@@ -1471,7 +1496,7 @@ export default function PatientDashboard() {
                       size="sm" 
                       onClick={handleSaveProfile}
                       disabled={isSaving}
-                      className="bg-brand hover:bg-brand-600"
+                      className="w-full sm:w-auto bg-brand hover:bg-brand-600"
                     >
                       {isSaving ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1638,20 +1663,21 @@ export default function PatientDashboard() {
 
             {/* Default Address */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="text-lg">Default Address</CardTitle>
                 {!isEditingAddress ? (
-                  <Button variant="outline" size="sm" onClick={startEditingAddress}>
+                  <Button variant="outline" size="sm" onClick={startEditingAddress} className="w-full sm:w-auto">
                     <Pencil className="w-4 h-4 mr-2" />
                     Edit
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={() => setIsEditingAddress(false)}
                       disabled={isSaving}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
@@ -1659,7 +1685,7 @@ export default function PatientDashboard() {
                       size="sm" 
                       onClick={handleSaveProfile}
                       disabled={isSaving}
-                      className="bg-brand hover:bg-brand-600"
+                      className="w-full sm:w-auto bg-brand hover:bg-brand-600"
                     >
                       {isSaving ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />

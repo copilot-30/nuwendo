@@ -22,6 +22,13 @@ interface PatientProfile {
   address?: string
 }
 
+const ALLOWED_RECEIPT_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+])
+
 export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -117,10 +124,19 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file')
+    if (!ALLOWED_RECEIPT_MIME_TYPES.has(file.type.toLowerCase())) {
+      setError('Invalid receipt format. Please upload a JPG, PNG, or WEBP image file.')
+      setReceiptFile(null)
+      setReceiptPreview(null)
       return
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Receipt image is too large. Please upload an image under 5MB.')
+      return
+    }
+
+    setError(null)
 
     const reader = new FileReader()
     reader.onloadend = () => {
@@ -478,7 +494,7 @@ export default function CheckoutFlow({ cart, onBack, onSuccess }: CheckoutFlowPr
                 <input
                   id="receipt-upload"
                   type="file"
-                  accept="image/*"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   onChange={(e) => handleFileChange(e)}
                   className="hidden"
                 />
