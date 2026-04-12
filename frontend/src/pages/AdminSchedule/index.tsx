@@ -323,23 +323,23 @@ export function AdminSchedule() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Page Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manage Schedule</h1>
-            <p className="text-gray-500">Set working hours for each day</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Manage Schedule</h1>
+            <p className="text-sm sm:text-base text-gray-500">Set working hours for each day</p>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:w-auto">
             <Button 
               onClick={() => setShowRescheduleSettings(true)} 
               variant="outline"
-              className="border-gray-300"
+              className="w-full border-gray-300"
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
-            <Button onClick={() => setShowForm(true)} disabled={showForm} className="bg-brand hover:bg-brand/90">
+            <Button onClick={() => setShowForm(true)} disabled={showForm} className="w-full bg-brand hover:bg-brand/90">
               <Plus className="h-4 w-4 mr-2" />
               Add Availability
             </Button>
@@ -352,9 +352,9 @@ export function AdminSchedule() {
         )}
 
         {/* Info banner */}
-        <div className="p-4 mb-6 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-3">
-          <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-          <div className="text-sm text-blue-900">
+        <div className="p-3 sm:p-4 mb-6 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-3">
+          <Info className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+          <div className="text-xs sm:text-sm text-blue-900">
             <p className="font-medium">How it works:</p>
             <p>Set your available hours for each day. The system dynamically calculates available slots based on service duration and existing bookings.</p>
           </div>
@@ -362,7 +362,7 @@ export function AdminSchedule() {
 
         {/* Form Modal */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingWindow ? 'Edit Availability' : 'Add Availability'}</DialogTitle>
               <DialogDescription>
@@ -371,7 +371,7 @@ export function AdminSchedule() {
             </DialogHeader>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="day">Day of Week *</Label>
                   <select
@@ -413,7 +413,7 @@ export function AdminSchedule() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Cancel
                 </Button>
@@ -427,7 +427,7 @@ export function AdminSchedule() {
         </Dialog>
 
         {/* Availability by Day */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {sortedDays.map((dayIndex) => {
             const dayWindows = windowsByDay[dayIndex] || []
             
@@ -436,7 +436,7 @@ export function AdminSchedule() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-brand" />
-                    <CardTitle className="text-lg">{dayNames[dayIndex]}</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">{dayNames[dayIndex]}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -464,7 +464,7 @@ export function AdminSchedule() {
                           {calculateHours(window.start_time, window.end_time)} available
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <button
                             onClick={() => handleToggleActive(window)}
                             className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
@@ -532,7 +532,7 @@ export function AdminSchedule() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-start sm:items-center justify-between gap-3">
                   <div>
                     <Label>Allow Patient Reschedule</Label>
                     <p className="text-xs text-gray-500">Enable patients to reschedule their appointments</p>
@@ -542,7 +542,7 @@ export function AdminSchedule() {
                       ...rescheduleSettings,
                       allow_patient_reschedule: !rescheduleSettings.allow_patient_reschedule
                     })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                       rescheduleSettings.allow_patient_reschedule ? 'bg-brand' : 'bg-gray-200'
                     }`}
                   >
@@ -576,7 +576,7 @@ export function AdminSchedule() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-start sm:items-center justify-between gap-3">
                   <div>
                     <Label>Allow Admin Reschedule</Label>
                     <p className="text-xs text-gray-500">Enable admins to reschedule appointments</p>
@@ -586,7 +586,7 @@ export function AdminSchedule() {
                       ...rescheduleSettings,
                       allow_admin_reschedule: !rescheduleSettings.allow_admin_reschedule
                     })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                       rescheduleSettings.allow_admin_reschedule ? 'bg-brand' : 'bg-gray-200'
                     }`}
                   >
@@ -643,7 +643,7 @@ export function AdminSchedule() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-start sm:items-center justify-between gap-3">
                   <div>
                     <Label>Allow Patient Cancellation</Label>
                     <p className="text-xs text-gray-500">Enable patients to cancel their appointments</p>
@@ -653,7 +653,7 @@ export function AdminSchedule() {
                       ...rescheduleSettings,
                       allow_patient_cancellation: !rescheduleSettings.allow_patient_cancellation
                     })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                       rescheduleSettings.allow_patient_cancellation ? 'bg-brand' : 'bg-gray-200'
                     }`}
                   >
@@ -686,7 +686,7 @@ export function AdminSchedule() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-start sm:items-center justify-between gap-3">
                   <div>
                     <Label>Allow Admin Cancellation</Label>
                     <p className="text-xs text-gray-500">Enable admins to cancel appointments</p>
@@ -696,7 +696,7 @@ export function AdminSchedule() {
                       ...rescheduleSettings,
                       allow_admin_cancellation: !rescheduleSettings.allow_admin_cancellation
                     })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
                       rescheduleSettings.allow_admin_cancellation ? 'bg-brand' : 'bg-gray-200'
                     }`}
                   >
@@ -712,7 +712,7 @@ export function AdminSchedule() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-2 px-6 py-4 border-t bg-white shrink-0">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-4 sm:px-6 py-4 border-t bg-white shrink-0">
               <Button
                 variant="outline"
                 onClick={() => setShowRescheduleSettings(false)}
