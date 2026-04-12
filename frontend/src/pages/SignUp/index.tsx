@@ -198,17 +198,13 @@ export default function SignUp() {
           <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-8 backdrop-blur-sm">
             <Heart className="w-12 h-12" />
           </div>
-          <h2 className="text-3xl font-bold mb-4">Healthcare made simple</h2>
+          <h2 className="text-3xl font-bold mb-4">Metabolism made simple</h2>
           <p className="text-lg text-white/80 max-w-md">
             Book appointments, access your records, and connect with healthcare providers all in one place.
           </p>
           
           {/* Stats */}
-          <div className="mt-12 grid grid-cols-3 gap-8">
-            <div>
-              <div className="text-4xl font-bold">500+</div>
-              <div className="text-sm text-white/70">Providers</div>
-            </div>
+          <div className="mt-12 grid grid-cols-2 gap-8">
             <div>
               <div className="text-4xl font-bold">50k+</div>
               <div className="text-sm text-white/70">Patients</div>

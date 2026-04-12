@@ -26,6 +26,7 @@ const services = [
     title: 'BeFit x Nuwendo',
     description: 'A collaborative program combining fitness training and medical metabolic care to deliver a holistic approach to weight loss and health optimization. Integrates structured exercise with personalized clinical guidance for more effective and sustainable results.',
     image: '/4.png',
+    bookNowUrl: 'https://www.befit.ph/wellness-services',
   },
 ]
 
@@ -91,10 +92,22 @@ export function Services() {
                 <p className="text-gray-600 text-sm md:text-base leading-relaxed flex-1">
                   {service.description}
                 </p>
-                <Link to="/signup" className="inline-flex items-center gap-2 text-brand text-base md:text-lg font-medium mt-6 hover:gap-3 transition-all">
-                  Book Now
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                {service.bookNowUrl ? (
+                  <a
+                    href={service.bookNowUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-brand text-base md:text-lg font-medium mt-6 hover:gap-3 transition-all"
+                  >
+                    Book Now
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                ) : (
+                  <Link to="/signup" className="inline-flex items-center gap-2 text-brand text-base md:text-lg font-medium mt-6 hover:gap-3 transition-all">
+                    Book Now
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             </motion.div>
           ))}

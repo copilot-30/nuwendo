@@ -27,6 +27,7 @@ const serviceCards = [
     title: 'BeFit x Nuwendo',
     description: 'A collaborative program combining fitness training and medical metabolic care to deliver a holistic approach to weight loss and health optimization. Integrates structured exercise with personalized clinical guidance for more effective and sustainable results.',
     image: '/6.png',
+    bookNowUrl: 'https://www.befit.ph/wellness-services',
   },
 ]
 
@@ -126,10 +127,22 @@ export function HomeSections() {
                         {service.title}
                       </h4>
                       <p className="mt-3 text-slate-600 leading-relaxed text-sm md:text-base">{service.description}</p>
-                      <Link to="/signup" className="inline-flex items-center gap-2 mt-auto pt-6 text-brand font-semibold hover:underline">
-                        Book Now
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
+                      {service.bookNowUrl ? (
+                        <a
+                          href={service.bookNowUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 mt-auto pt-6 text-brand font-semibold hover:underline"
+                        >
+                          Book Now
+                          <ArrowRight className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <Link to="/signup" className="inline-flex items-center gap-2 mt-auto pt-6 text-brand font-semibold hover:underline">
+                          Book Now
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      )}
                     </div>
                   </motion.article>
                 ))}
