@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -1714,30 +1714,33 @@ export default function PatientDashboard() {
             <p className="text-lg text-white/90">Your health always comes first</p>
           </div>
           
-          <div className="border-t border-gray-800 pt-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="border-t border-gray-800 pt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             <div>
               <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Pages</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-brand hover:text-brand-300">About Us</a></li>
-                <li><a href="#" className="text-brand hover:text-brand-300">Health Club</a></li>
-                <li><a href="#" className="text-brand hover:text-brand-300">FAQs</a></li>
-                <li><a href="#" className="text-brand hover:text-brand-300">Contact</a></li>
+                <li><Link to="/about-us" className="text-brand hover:text-brand-300">About Us</Link></li>
+                <li><Link to="/services" className="text-brand hover:text-brand-300">Our Services</Link></li>
+                <li><Link to="/signup" className="text-brand hover:text-brand-300">Book Now</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Learn</h4>
+              <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Our Services</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-brand hover:text-brand-300">Weight Loss</a></li>
-                <li><a href="#" className="text-brand hover:text-brand-300">Metabolic Health</a></li>
-                <li><a href="#" className="text-brand hover:text-brand-300">Nutrition</a></li>
+                <li><Link to="/services" className="text-brand hover:text-brand-300">Nuwendo Starter</Link></li>
+                <li><Link to="/services" className="text-brand hover:text-brand-300">Nutrition Plan</Link></li>
+                <li><Link to="/services" className="text-brand hover:text-brand-300">Metabolic Work-up</Link></li>
+                <li><Link to="/services" className="text-brand hover:text-brand-300">BeFit x Nuwendo</Link></li>
               </ul>
             </div>
-            <div className="col-span-2 md:col-span-2 md:text-right">
+            <div className="md:text-right">
               <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Contact Us</h4>
               <p className="text-brand text-sm">info.nuwendoph@gmail.com</p>
               <p className="text-brand text-sm flex items-center md:justify-end gap-2 mt-2">
                 <Phone className="w-4 h-4" />
-                (02) 8888-NUWE
+                (0906) 570 7915
+              </p>
+              <p className="text-brand text-sm mt-2 md:ml-auto max-w-xs">
+                1771 Nicanor Garcia Street, Makati City, NCR, Philippines.
               </p>
             </div>
           </div>
