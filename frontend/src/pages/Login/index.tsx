@@ -540,11 +540,7 @@ export default function Login() {
           </p>
           
           {/* Stats */}
-          <div className="mt-12 grid grid-cols-3 gap-8">
-            <div>
-              <div className="text-4xl font-bold">500+</div>
-              <div className="text-sm text-white/70">Providers</div>
-            </div>
+          <div className="mt-12 grid grid-cols-2 gap-8">
             <div>
               <div className="text-4xl font-bold">50k+</div>
               <div className="text-sm text-white/70">Patients</div>
