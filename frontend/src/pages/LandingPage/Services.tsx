@@ -36,8 +36,8 @@ export function Services() {
         {/* Section Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
           className="text-center mb-16"
         >
           <p className="text-brand font-medium mb-2">ONLINE & CLINIC CONSULTS</p>
@@ -67,8 +67,7 @@ export function Services() {
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
               className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full flex flex-col"
             >
@@ -100,6 +99,7 @@ export function Services() {
             </motion.div>
           ))}
         </div>
+
       </div>
     </section>
   )

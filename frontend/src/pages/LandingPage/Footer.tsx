@@ -3,6 +3,10 @@ import { Phone, Mail, MapPin, Facebook, Instagram } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function Footer() {
+  const handleFooterNavClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <footer className="bg-brand-800 text-white">
       {/* Main Footer */}
@@ -52,21 +56,15 @@ export function Footer() {
             <h4 className="text-lg font-semibold">Quick Links</h4>
             <ul className="space-y-3">
               <li>
-                <Link to="/about-us" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                <Link to="/about-us" onClick={handleFooterNavClick} className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
                   About Us
                 </Link>
               </li>
               <li>
-                <Link to="/services" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                <Link to="/services" onClick={handleFooterNavClick} className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
                   Our Services
-                </Link>
-              </li>
-              <li>
-                <Link to="/add-on" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
-                  Add On
                 </Link>
               </li>
               <li>
@@ -89,27 +87,27 @@ export function Footer() {
             <h4 className="text-lg font-semibold">Our Services</h4>
             <ul className="space-y-3">
               <li>
-                <Link to="/services/initial-consultation" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
-                  Initial Consultation
-                </Link>
-              </li>
-              <li>
-                <Link to="/services/nuwendo-starter" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                <Link to="/services" onClick={handleFooterNavClick} className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
                   Nuwendo Starter
                 </Link>
               </li>
               <li>
-                <Link to="/add-on/follow-up" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                <Link to="/services" onClick={handleFooterNavClick} className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
-                  Follow Up
+                  Nutrition Plan
                 </Link>
               </li>
               <li>
-                <Link to="/add-on/nutrition-plan" className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                <Link to="/services" onClick={handleFooterNavClick} className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
-                  Nutrition Plan
+                  Metabolic Work-up
+                </Link>
+              </li>
+              <li>
+                <Link to="/services" onClick={handleFooterNavClick} className="text-white/70 hover:text-brand-300 transition-colors flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-300" />
+                  BeFit x Nuwendo
                 </Link>
               </li>
             </ul>
@@ -126,9 +124,9 @@ export function Footer() {
             <h4 className="text-lg font-semibold">Contact Us</h4>
             <ul className="space-y-4">
               <li>
-                <a href="tel:09178084442" className="text-white/70 hover:text-brand-300 transition-colors flex items-start gap-3">
+                <a href="tel:+639065707915" className="text-white/70 hover:text-brand-300 transition-colors flex items-start gap-3">
                   <Phone className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />
-                  <span>0917 808 4442</span>
+                  <span>(0906) 570 7915</span>
                 </a>
               </li>
               <li>
@@ -139,7 +137,11 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-3 text-white/70">
                 <MapPin className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />
-                <span>Philippines</span>
+                <span>
+                  1771 Nicanor Garcia Street,
+                  <br />
+                  Makati City, NCR, Philippines.
+                </span>
               </li>
             </ul>
           </motion.div>
