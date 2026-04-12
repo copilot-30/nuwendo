@@ -107,8 +107,8 @@ export function AboutUs() {
           </div>
 
           <div className="mt-16 md:mt-20">
-            <h3 className="text-3xl md:text-5xl font-extrabold italic uppercase text-center text-red-500 leading-tight mb-6">
-              Proud of our team of doctor-led metabolic health specialists
+            <h3 className="text-3xl md:text-5xl font-extrabold text-center text-accent leading-tight mb-6">
+              PROUD OF OUR TEAM OF DOCTOR-LED METABOLIC HEALTH SPECIALISTS
             </h3>
             <p className="text-slate-700 leading-relaxed text-center max-w-4xl mx-auto">
               At Nuwendo, we’re led by board-certified doctors in endocrinology, nutrition, and internal medicine.
@@ -125,7 +125,7 @@ export function AboutUs() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <p className="mt-6 font-extrabold text-3xl italic uppercase text-brand-800 tracking-wide">Dr. Ivan Zapanta</p>
+                <p className="mt-6 font-extrabold text-3xl text-brand-800">Dr. Ivan Zapanta</p>
                 <p className="text-slate-500 text-xl">IM - Medical Nutrition</p>
               </div>
 
@@ -137,7 +137,7 @@ export function AboutUs() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <p className="mt-6 font-extrabold text-3xl italic uppercase text-brand-800 tracking-wide">Dr. Calvin Macrohon</p>
+                <p className="mt-6 font-extrabold text-3xl text-brand-800">Dr. Calvin Macrohon</p>
                 <p className="text-slate-500 text-xl">IM - Endocrinology</p>
               </div>
             </div>

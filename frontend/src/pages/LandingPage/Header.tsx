@@ -17,7 +17,7 @@ export function Header() {
               info.nuwendoph@gmail.com
             </a>
           </div>
-          <div className="text-gray-300">
+          <div className="text-white">
             Makati City, Philippines • Open 7:30 AM - 5:30 PM
           </div>
         </div>
