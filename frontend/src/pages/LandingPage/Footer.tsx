@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Phone, Mail, MapPin, Facebook, Instagram } from 'lucide-react'
+import { Mail, MapPin, Facebook, Instagram } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function Footer() {
@@ -123,12 +123,6 @@ export function Footer() {
           >
             <h4 className="text-lg font-semibold">Contact Us</h4>
             <ul className="space-y-4">
-              <li>
-                <a href="tel:+639065707915" className="text-white/70 hover:text-brand-300 transition-colors flex items-start gap-3">
-                  <Phone className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />
-                  <span>(0906) 570 7915</span>
-                </a>
-              </li>
               <li>
                 <a href="mailto:info.nuwendoph@gmail.com" className="text-white/70 hover:text-brand-300 transition-colors flex items-start gap-3">
                   <Mail className="h-5 w-5 text-brand-300 shrink-0 mt-0.5" />

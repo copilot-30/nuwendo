@@ -11,7 +11,6 @@ import {
   Calendar, 
   LogOut, 
   ChevronRight,
-  Phone,
   X,
   AlertCircle,
   Pencil,
@@ -1761,10 +1760,6 @@ export default function PatientDashboard() {
             <div className="md:text-right">
               <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Contact Us</h4>
               <p className="text-brand text-sm">info.nuwendoph@gmail.com</p>
-              <p className="text-brand text-sm flex items-center md:justify-end gap-2 mt-2">
-                <Phone className="w-4 h-4" />
-                (0906) 570 7915
-              </p>
               <p className="text-brand text-sm mt-2 md:ml-auto max-w-xs">
                 1771 Nicanor Garcia Street, Makati City, NCR, Philippines.
               </p>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Phone, Mail } from 'lucide-react'
+import { Menu, X, Mail } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export function Header() {
@@ -15,10 +15,6 @@ export function Header() {
             <a href="mailto:info.nuwendoph@gmail.com" className="flex items-center gap-2 hover:text-brand-200 transition-colors">
               <Mail className="h-4 w-4" />
               info.nuwendoph@gmail.com
-            </a>
-            <a href="tel:+639065707915" className="flex items-center gap-2 hover:text-brand-200 transition-colors">
-              <Phone className="h-4 w-4" />
-              (0906) 570 7915
             </a>
           </div>
           <div className="text-gray-300">
