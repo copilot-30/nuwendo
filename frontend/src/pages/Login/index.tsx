@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -274,7 +274,9 @@ export default function Login() {
         <div className="w-full max-w-lg mx-auto">
           {/* Logo */}
           <div className="mb-8 sm:mb-10">
-            <img src="/NUWENDO.svg" alt="Nuwendo Metabolic Clinic" className="h-12 sm:h-16" />
+            <Link to="/" aria-label="Go to homepage" className="inline-block">
+              <img src="/NUWENDO.svg" alt="Nuwendo Metabolic Clinic" className="h-12 sm:h-16" />
+            </Link>
           </div>
 
           {step === 'email' ? (
