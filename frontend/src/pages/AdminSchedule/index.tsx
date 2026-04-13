@@ -58,14 +58,10 @@ export function AdminSchedule() {
   const [showRescheduleSettings, setShowRescheduleSettings] = useState(false)
   const [rescheduleSettings, setRescheduleSettings] = useState({
     patient_min_hours_before: 24,
-    admin_min_hours_before: 1,
     max_reschedules_per_booking: 3,
     allow_patient_reschedule: true,
-    allow_admin_reschedule: true,
     patient_cancel_min_hours_before: 24,
-    admin_cancel_min_hours_before: 1,
-    allow_patient_cancellation: true,
-    allow_admin_cancellation: true
+    allow_patient_cancellation: true
   })
   const [savingSettings, setSavingSettings] = useState(false)
 
@@ -118,14 +114,10 @@ export function AdminSchedule() {
       if (data.success && data.settings) {
         setRescheduleSettings({
           patient_min_hours_before: data.settings.patient_min_hours_before,
-          admin_min_hours_before: data.settings.admin_min_hours_before,
           max_reschedules_per_booking: data.settings.max_reschedules_per_booking,
           allow_patient_reschedule: data.settings.allow_patient_reschedule,
-          allow_admin_reschedule: data.settings.allow_admin_reschedule,
           patient_cancel_min_hours_before: data.settings.patient_cancel_min_hours_before ?? 24,
-          admin_cancel_min_hours_before: data.settings.admin_cancel_min_hours_before ?? 1,
-          allow_patient_cancellation: data.settings.allow_patient_cancellation ?? true,
-          allow_admin_cancellation: data.settings.allow_admin_cancellation ?? true
+          allow_patient_cancellation: data.settings.allow_patient_cancellation ?? true
         })
       }
     } catch (err: any) {
@@ -522,10 +514,16 @@ export function AdminSchedule() {
                     type="number"
                     min="0"
                     value={rescheduleSettings.patient_min_hours_before}
-                    onChange={(e) => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      patient_min_hours_before: parseInt(e.target.value || '24')
-                    })}
+                    onChange={(e) => {
+                      const parsedValue = e.target.value === ''
+                        ? 0
+                        : Math.max(0, Number.parseInt(e.target.value, 10) || 0)
+
+                      setRescheduleSettings(prev => ({
+                        ...prev,
+                        patient_min_hours_before: parsedValue
+                      }))
+                    }}
                   />
                   <p className="text-xs text-gray-500">
                     Patients cannot reschedule within this many hours before the appointment
@@ -555,50 +553,6 @@ export function AdminSchedule() {
                 </div>
               </div>
 
-              {/* Admin Restrictions */}
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-medium text-gray-900">Admin Restrictions</h3>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="admin_hours">Minimum Hours Before Appointment</Label>
-                  <Input
-                    id="admin_hours"
-                    type="number"
-                    min="0"
-                    value={rescheduleSettings.admin_min_hours_before}
-                    onChange={(e) => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      admin_min_hours_before: parseInt(e.target.value || '1')
-                    })}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Admins cannot reschedule within this many hours before the appointment
-                  </p>
-                </div>
-
-                <div className="flex items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <Label>Allow Admin Reschedule</Label>
-                    <p className="text-xs text-gray-500">Enable admins to reschedule appointments</p>
-                  </div>
-                  <button
-                    onClick={() => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      allow_admin_reschedule: !rescheduleSettings.allow_admin_reschedule
-                    })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
-                      rescheduleSettings.allow_admin_reschedule ? 'bg-brand' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        rescheduleSettings.allow_admin_reschedule ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
               {/* General Restrictions */}
               <div className="space-y-4 pt-4 border-t">
                 <h3 className="font-medium text-gray-900">General Limits</h3>
@@ -611,10 +565,16 @@ export function AdminSchedule() {
                     min="1"
                     max="10"
                     value={rescheduleSettings.max_reschedules_per_booking}
-                    onChange={(e) => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      max_reschedules_per_booking: parseInt(e.target.value || '1')
-                    })}
+                    onChange={(e) => {
+                      const parsedValue = e.target.value === ''
+                        ? 1
+                        : Math.max(1, Number.parseInt(e.target.value, 10) || 1)
+
+                      setRescheduleSettings(prev => ({
+                        ...prev,
+                        max_reschedules_per_booking: parsedValue
+                      }))
+                    }}
                   />
                   <p className="text-xs text-gray-500">
                     Maximum number of times a booking can be rescheduled
@@ -633,10 +593,16 @@ export function AdminSchedule() {
                     type="number"
                     min="0"
                     value={rescheduleSettings.patient_cancel_min_hours_before}
-                    onChange={(e) => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      patient_cancel_min_hours_before: parseInt(e.target.value || '0')
-                    })}
+                    onChange={(e) => {
+                      const parsedValue = e.target.value === ''
+                        ? 0
+                        : Math.max(0, Number.parseInt(e.target.value, 10) || 0)
+
+                      setRescheduleSettings(prev => ({
+                        ...prev,
+                        patient_cancel_min_hours_before: parsedValue
+                      }))
+                    }}
                   />
                   <p className="text-xs text-gray-500">
                     Patients cannot cancel within this many hours before the appointment
@@ -660,49 +626,6 @@ export function AdminSchedule() {
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                         rescheduleSettings.allow_patient_cancellation ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-medium text-gray-900">Cancellation Restrictions (Admin)</h3>
-
-                <div className="space-y-2">
-                  <Label htmlFor="admin_cancel_hours">Minimum Hours Before Appointment</Label>
-                  <Input
-                    id="admin_cancel_hours"
-                    type="number"
-                    min="0"
-                    value={rescheduleSettings.admin_cancel_min_hours_before}
-                    onChange={(e) => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      admin_cancel_min_hours_before: parseInt(e.target.value || '0')
-                    })}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Admins cannot cancel within this many hours before the appointment
-                  </p>
-                </div>
-
-                <div className="flex items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <Label>Allow Admin Cancellation</Label>
-                    <p className="text-xs text-gray-500">Enable admins to cancel appointments</p>
-                  </div>
-                  <button
-                    onClick={() => setRescheduleSettings({
-                      ...rescheduleSettings,
-                      allow_admin_cancellation: !rescheduleSettings.allow_admin_cancellation
-                    })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${
-                      rescheduleSettings.allow_admin_cancellation ? 'bg-brand' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        rescheduleSettings.allow_admin_cancellation ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>

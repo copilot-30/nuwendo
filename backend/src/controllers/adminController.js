@@ -710,52 +710,145 @@ const updateBookingBusinessStatus = async (req, res) => {
     const booking = oldResult.rows[0];
     const oldBusinessStatus = booking.business_status;
 
-    // Build update query
-    let updateQuery;
-    let queryParams;
+    const bookingColumnsResult = await pool.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'bookings'
+         AND column_name = ANY($1::text[])`,
+      [[
+        'business_status',
+        'status',
+        'admin_notes',
+        'completed_at',
+        'completed_by',
+        'cancelled_by_type',
+        'cancelled_by_admin_id',
+        'cancelled_at',
+        'payment_status',
+        'updated_at'
+      ]]
+    );
+
+    const bookingColumns = new Set(bookingColumnsResult.rows.map((row) => row.column_name));
+
+    if (!bookingColumns.has('business_status')) {
+      return res.status(400).json({
+        message: 'Booking lifecycle fields are missing. Please run latest database migrations.'
+      });
+    }
+
+    const queryParams = [];
+    const setClauses = [];
+
+    const addParamClause = (sql, value) => {
+      queryParams.push(value);
+      setClauses.push(`${sql} = $${queryParams.length}`);
+    };
+
+    const addRawClause = (sql, rawValue) => {
+      setClauses.push(`${sql} = ${rawValue}`);
+    };
+
+    addParamClause('business_status', business_status);
+
+    if (bookingColumns.has('admin_notes')) {
+      addParamClause('admin_notes', admin_notes || null);
+    }
 
     if (business_status === 'completed') {
-      // Mark as completed with timestamp and admin who completed it
-      updateQuery = `
-        UPDATE bookings 
-        SET business_status = $1, 
-            status = 'confirmed',
-            admin_notes = $2, 
-            completed_at = CURRENT_TIMESTAMP,
-            completed_by = $3,
-            cancelled_by_type = NULL,
-            cancelled_by_admin_id = NULL,
-            cancelled_at = NULL,
-            updated_at = CURRENT_TIMESTAMP 
-        WHERE id = $4 
-        RETURNING *`;
-      queryParams = [business_status, admin_notes || null, adminId, id];
+      if (bookingColumns.has('status')) {
+        addRawClause('status', `'confirmed'`);
+      }
+      if (bookingColumns.has('completed_at')) {
+        addRawClause('completed_at', 'CURRENT_TIMESTAMP');
+      }
+      if (bookingColumns.has('completed_by')) {
+        addParamClause('completed_by', adminId);
+      }
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addRawClause('cancelled_by_admin_id', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'NULL');
+      }
     } else if (business_status === 'cancelled') {
-  updateQuery = `
-        UPDATE bookings 
-        SET business_status = $1,
-            status = 'cancelled',
-            payment_status = CASE WHEN payment_status IS NULL OR payment_status = 'pending' THEN 'rejected' ELSE payment_status END,
-            admin_notes = $2,
-            cancelled_by_type = 'admin',
-            cancelled_by_admin_id = $3,
-            cancelled_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4
-        RETURNING *`;
-      queryParams = [business_status, admin_notes || null, adminId, id];
+      if (bookingColumns.has('status')) {
+        addRawClause('status', `'cancelled'`);
+      }
+      if (bookingColumns.has('payment_status')) {
+        addRawClause('payment_status', `CASE WHEN payment_status IS NULL OR payment_status = 'pending' THEN 'rejected' ELSE payment_status END`);
+      }
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', `'admin'`);
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addParamClause('cancelled_by_admin_id', adminId);
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'CURRENT_TIMESTAMP');
+      }
+      if (bookingColumns.has('completed_at')) {
+        addRawClause('completed_at', 'NULL');
+      }
+      if (bookingColumns.has('completed_by')) {
+        addRawClause('completed_by', 'NULL');
+      }
+    } else if (business_status === 'no_show') {
+      if (bookingColumns.has('status')) {
+        addRawClause('status', `'confirmed'`);
+      }
+      if (bookingColumns.has('completed_at')) {
+        addRawClause('completed_at', 'NULL');
+      }
+      if (bookingColumns.has('completed_by')) {
+        addRawClause('completed_by', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addRawClause('cancelled_by_admin_id', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'NULL');
+      }
     } else {
-      // Other status changes
-      updateQuery = `
-        UPDATE bookings 
-        SET business_status = $1, 
-            status = CASE WHEN $1 = 'scheduled' THEN 'confirmed' ELSE status END,
-            admin_notes = $2,
-            updated_at = CURRENT_TIMESTAMP 
-        WHERE id = $3 
-        RETURNING *`;
-      queryParams = [business_status, admin_notes || null, id];
+      // scheduled
+      if (bookingColumns.has('status')) {
+        addRawClause('status', `'confirmed'`);
+      }
+      if (bookingColumns.has('completed_at')) {
+        addRawClause('completed_at', 'NULL');
+      }
+      if (bookingColumns.has('completed_by')) {
+        addRawClause('completed_by', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_type')) {
+        addRawClause('cancelled_by_type', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_by_admin_id')) {
+        addRawClause('cancelled_by_admin_id', 'NULL');
+      }
+      if (bookingColumns.has('cancelled_at')) {
+        addRawClause('cancelled_at', 'NULL');
+      }
     }
+
+    if (bookingColumns.has('updated_at')) {
+      addRawClause('updated_at', 'CURRENT_TIMESTAMP');
+    }
+
+    queryParams.push(id);
+
+    const updateQuery = `
+      UPDATE bookings
+      SET ${setClauses.join(', ')}
+      WHERE id = $${queryParams.length}
+      RETURNING *`;
 
     const result = await pool.query(updateQuery, queryParams);
 
@@ -775,22 +868,26 @@ const updateBookingBusinessStatus = async (req, res) => {
     );
 
     if (['completed', 'cancelled', 'no_show'].includes(business_status)) {
-      const emailResult = await sendBookingLifecycleEmail({
-        to: booking.email,
-        firstName: booking.first_name,
-        bookingId: booking.id,
-        serviceName: booking.service_name,
-        bookingDate: booking.booking_date,
-        bookingTime: booking.booking_time,
-        appointmentType: booking.appointment_type,
-        eventType: business_status,
-        status: booking.status,
-        businessStatus: business_status,
-        reason: admin_notes || undefined
-      });
+      try {
+        const emailResult = await sendBookingLifecycleEmail({
+          to: booking.email,
+          firstName: booking.first_name,
+          bookingId: booking.id,
+          serviceName: booking.service_name,
+          bookingDate: booking.booking_date,
+          bookingTime: booking.booking_time,
+          appointmentType: booking.appointment_type,
+          eventType: business_status,
+          status: result.rows[0]?.status || booking.status,
+          businessStatus: business_status,
+          reason: admin_notes || undefined
+        });
 
-      if (!emailResult.success && !emailResult.skipped) {
-        console.warn(`⚠️ Booking ${business_status} email failed for booking #${id}:`, emailResult.error);
+        if (!emailResult.success && !emailResult.skipped) {
+          console.warn(`⚠️ Booking ${business_status} email failed for booking #${id}:`, emailResult.error);
+        }
+      } catch (emailError) {
+        console.warn(`⚠️ Failed sending ${business_status} email for booking #${id}:`, emailError.message);
       }
     }
 
@@ -801,6 +898,16 @@ const updateBookingBusinessStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Update booking business status error:', error);
+    if (error?.code === '23514') {
+      return res.status(400).json({
+        message: 'Invalid booking status transition. Please refresh and try again.'
+      });
+    }
+    if (error?.code === '42703') {
+      return res.status(400).json({
+        message: 'Booking lifecycle fields are missing. Please run latest database migrations.'
+      });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 };

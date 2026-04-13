@@ -774,6 +774,8 @@ export default function PatientDashboard() {
   }
 
   const getAppointmentStatusLabel = (appointment: Appointment) => {
+    if (appointment.business_status === 'no_show') return 'no show'
+
     if (appointment.business_status === 'completed') return 'completed'
 
     if (appointment.status === 'cancelled' || appointment.business_status === 'cancelled') {
@@ -786,6 +788,20 @@ export default function PatientDashboard() {
     }
 
     return appointment.status
+  }
+
+  const getAppointmentStatusClassName = (appointment: Appointment) => {
+    const label = getAppointmentStatusLabel(appointment)
+
+    if (label === 'completed') return 'bg-green-100 text-green-700'
+    if (label === 'no show') return 'bg-orange-100 text-orange-700'
+    if (label === 'cancelled' || label === 'cancelled by admin' || label === 'cancelled by patient' || label === 'rejected') {
+      return 'bg-red-100 text-red-700'
+    }
+    if (label === 'pending') return 'bg-yellow-100 text-yellow-700'
+    if (label === 'confirmed') return 'bg-green-100 text-green-700'
+
+    return 'bg-gray-100 text-gray-700'
   }
 
   if (loading) {
@@ -931,13 +947,7 @@ export default function PatientDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            apt.status === 'confirmed' 
-                              ? 'bg-green-100 text-green-700' 
-                              : apt.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full ${getAppointmentStatusClassName(apt)}`}>
                             {getAppointmentStatusLabel(apt)}
                           </span>
                           <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -969,8 +979,9 @@ export default function PatientDashboard() {
             ) : (
               <div className="space-y-3">
                 {appointments.map((apt) => {
-                  const canCancel = apt.status !== 'cancelled' && canCancelAppointment(apt.booking_date, apt.booking_time)
-                  const canReschedule = apt.status !== 'cancelled' && canRescheduleAppointment(apt.booking_date, apt.booking_time)
+                  const isTerminalBusinessStatus = ['completed', 'cancelled', 'no_show'].includes(String(apt.business_status || '').toLowerCase())
+                  const canCancel = apt.status !== 'cancelled' && !isTerminalBusinessStatus && canCancelAppointment(apt.booking_date, apt.booking_time)
+                  const canReschedule = apt.status !== 'cancelled' && !isTerminalBusinessStatus && canRescheduleAppointment(apt.booking_date, apt.booking_time)
                   const isCancelling = cancellingId === apt.id
                   
                   return (
@@ -1003,15 +1014,7 @@ export default function PatientDashboard() {
                           </div>
                         </div>
                         <div className="flex items-center flex-wrap gap-2 sm:gap-3 sm:justify-end">
-                          <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            apt.status === 'confirmed' 
-                              ? 'bg-green-100 text-green-700' 
-                              : apt.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : apt.status === 'cancelled'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full ${getAppointmentStatusClassName(apt)}`}>
                             {getAppointmentStatusLabel(apt)}
                           </span>
                           <span className={`px-3 py-1 text-xs font-medium rounded-full ${
@@ -1025,7 +1028,7 @@ export default function PatientDashboard() {
                       </div>
                       
                       {/* Meeting Link for confirmed online appointments */}
-                      {apt.appointment_type === 'online' && apt.status === 'confirmed' && apt.video_call_link && (
+                      {apt.appointment_type === 'online' && apt.status === 'confirmed' && apt.business_status === 'scheduled' && apt.video_call_link && (
                         <div className="mt-4 pt-4 border-t border-gray-100">
                           <div className="flex items-start gap-3">
                             <div className="p-2 bg-green-100 rounded-lg">

@@ -401,7 +401,7 @@ export default function AdminBookings() {
     try {
       // Include appointment type from the selected booking
       const appointmentType = selectedBooking.appointment_type || 'on-site';
-      const response = await fetch(`${API_URL}/reschedule/available-slots?date=${date}&appointment_type=${appointmentType}`);
+  const response = await fetch(`${API_URL}/reschedule/available-slots?date=${date}&appointment_type=${appointmentType}`);
       const data = await response.json();
       
       if (data.success) {

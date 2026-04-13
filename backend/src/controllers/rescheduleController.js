@@ -1,6 +1,83 @@
 import pool from '../config/database.js';
 import { sendBookingLifecycleEmail } from '../services/emailService.js';
 
+const MANILA_TIME_ZONE = 'Asia/Manila';
+
+const timeToMinutes = (timeValue) => {
+  const [h = '0', m = '0'] = String(timeValue || '').split(':');
+  return Number(h) * 60 + Number(m);
+};
+
+const getNowInManila = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: MANILA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(new Date());
+
+  const map = parts.reduce((acc, part) => {
+    if (part.type !== 'literal') {
+      acc[part.type] = part.value;
+    }
+    return acc;
+  }, {});
+
+  return {
+    date: `${map.year}-${map.month}-${map.day}`,
+    hour: Number(map.hour || 0),
+    minute: Number(map.minute || 0),
+    second: Number(map.second || 0)
+  };
+};
+
+const normalizeUserType = (rawUserType) => {
+  const normalized = String(rawUserType || '').trim().toLowerCase();
+  if (normalized === 'admin' || normalized === 'super_admin') {
+    return 'admin';
+  }
+  return 'patient';
+};
+
+const normalizeBookingDate = (rawDate) => {
+  if (rawDate instanceof Date) {
+    if (Number.isNaN(rawDate.getTime())) return null;
+    return rawDate.toISOString().split('T')[0];
+  }
+
+  if (rawDate === null || rawDate === undefined) return null;
+
+  const asString = String(rawDate).trim();
+  if (!asString) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(asString)) {
+    return asString;
+  }
+
+  const parsed = new Date(asString);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().split('T')[0];
+};
+
+const normalizeBookingTime = (rawTime) => {
+  const asString = String(rawTime || '').trim();
+  if (!asString) return null;
+
+  const [hh = '00', mm = '00', ss = '00'] = asString.split(':');
+  const h = Number.parseInt(hh, 10);
+  const m = Number.parseInt(mm, 10);
+  const s = Number.parseInt(ss, 10);
+
+  if (![h, m, s].every(Number.isFinite)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59) return null;
+
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
 /**
  * Get reschedule settings
  */
@@ -49,26 +126,23 @@ export const updateRescheduleSettings = async (req, res) => {
 
     const {
       patient_min_hours_before,
-      admin_min_hours_before,
       max_reschedules_per_booking,
       allow_patient_reschedule,
-      allow_admin_reschedule,
       patient_cancel_min_hours_before,
-      admin_cancel_min_hours_before,
-      allow_patient_cancellation,
-      allow_admin_cancellation
+      allow_patient_cancellation
     } = req.body;
 
     const payload = {
       patient_min_hours_before: toSafeInt(patient_min_hours_before, 24),
-      admin_min_hours_before: toSafeInt(admin_min_hours_before, 1),
       max_reschedules_per_booking: toSafeInt(max_reschedules_per_booking, 3),
       allow_patient_reschedule: Boolean(allow_patient_reschedule),
-      allow_admin_reschedule: Boolean(allow_admin_reschedule),
       patient_cancel_min_hours_before: toSafeInt(patient_cancel_min_hours_before, 24),
-      admin_cancel_min_hours_before: toSafeInt(admin_cancel_min_hours_before, 1),
       allow_patient_cancellation: Boolean(allow_patient_cancellation),
-      allow_admin_cancellation: Boolean(allow_admin_cancellation)
+      // Admin cancellation/reschedule restrictions are intentionally disabled.
+      admin_min_hours_before: 0,
+      allow_admin_reschedule: true,
+      admin_cancel_min_hours_before: 0,
+      allow_admin_cancellation: true
     };
 
     const result = await pool.query(
@@ -117,6 +191,8 @@ export const updateRescheduleSettings = async (req, res) => {
  */
 const canReschedule = async (bookingId, userType) => {
   try {
+    const normalizedUserType = normalizeUserType(userType);
+
     // Get booking details
     const bookingResult = await pool.query(
       'SELECT * FROM bookings WHERE id = $1',
@@ -141,16 +217,12 @@ const canReschedule = async (bookingId, userType) => {
     const settings = settingsResult.rows[0];
 
     // Check if reschedule is globally allowed for user type
-    if (userType === 'patient' && !settings.allow_patient_reschedule) {
+    if (normalizedUserType === 'patient' && !settings.allow_patient_reschedule) {
       return { allowed: false, reason: 'Patient rescheduling is disabled' };
     }
 
-    if (userType === 'admin' && !settings.allow_admin_reschedule) {
-      return { allowed: false, reason: 'Admin rescheduling is disabled' };
-    }
-
-    // Check max reschedules
-    if (booking.reschedule_count >= settings.max_reschedules_per_booking) {
+    // Check max reschedules (patients only; admins have override leeway)
+    if (normalizedUserType !== 'admin' && booking.reschedule_count >= settings.max_reschedules_per_booking) {
       return { 
         allowed: false, 
         reason: `Maximum reschedules (${settings.max_reschedules_per_booking}) reached` 
@@ -158,19 +230,38 @@ const canReschedule = async (bookingId, userType) => {
     }
 
     // Check time restriction
-    const appointmentDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+    const normalizedBookingDate = normalizeBookingDate(booking.booking_date);
+    const normalizedBookingTime = normalizeBookingTime(booking.booking_time);
+
+    if (!normalizedBookingDate || !normalizedBookingTime) {
+      return {
+        allowed: false,
+        reason: 'Booking date/time is invalid. Please refresh and try again.'
+      };
+    }
+
+    const appointmentDateTime = new Date(`${normalizedBookingDate}T${normalizedBookingTime}`);
+    if (Number.isNaN(appointmentDateTime.getTime())) {
+      return {
+        allowed: false,
+        reason: 'Booking date/time is invalid. Please refresh and try again.'
+      };
+    }
+
     const now = new Date();
     const hoursUntilAppointment = (appointmentDateTime - now) / (1000 * 60 * 60);
 
-    const minHours = userType === 'admin' 
-      ? settings.admin_min_hours_before 
-      : settings.patient_min_hours_before;
+    if (normalizedUserType !== 'admin') {
+      const minHoursValue = settings.patient_min_hours_before;
+      const parsedMinHours = Number(minHoursValue);
+      const minHours = Number.isFinite(parsedMinHours) ? parsedMinHours : 24;
 
-    if (hoursUntilAppointment < minHours) {
-      return { 
-        allowed: false, 
-        reason: `Cannot reschedule within ${minHours} hour(s) of appointment` 
-      };
+      if (hoursUntilAppointment < minHours) {
+        return {
+          allowed: false,
+          reason: `Cannot reschedule within ${minHours} hour(s) of appointment`
+        };
+      }
     }
 
     // Check booking status - can't reschedule cancelled bookings
@@ -205,7 +296,7 @@ export const rescheduleBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { new_date, new_time, reason, rescheduled_by_email } = req.body;
-    const userType = req.user?.role || req.body.user_type; // 'admin' or 'patient'
+  const userType = normalizeUserType(req.admin?.role || req.user?.role || req.body.user_type); // 'admin' or 'patient'
 
     await client.query('BEGIN');
 
@@ -221,6 +312,38 @@ export const rescheduleBooking = async (req, res) => {
     }
 
     const booking = permission.booking;
+
+    if (!new_date || !new_time) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'New date and time are required.'
+      });
+    }
+
+    const selectedDate = String(new_date).slice(0, 10);
+    const selectedDateTime = new Date(`${selectedDate}T${new_time}`);
+
+    if (Number.isNaN(selectedDateTime.getTime())) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date or time selected.'
+      });
+    }
+
+    const nowManila = getNowInManila();
+    const selectedMinutes = timeToMinutes(new_time);
+    const currentMinutes = nowManila.hour * 60 + nowManila.minute;
+
+    if (selectedDate < nowManila.date || (selectedDate === nowManila.date && selectedMinutes <= currentMinutes)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot reschedule to a past time. Please choose a future date/time.',
+        invalid_timeslot: true
+      });
+    }
 
     // ✅ Validate that the service exists and is active
     const serviceCheck = await client.query(
@@ -291,14 +414,8 @@ export const rescheduleBooking = async (req, res) => {
 
     // Validate that the selected time is within working hours range
     const workingHours = workingHoursCheck.rows[0];
-    const toMinutes = (timeValue) => {
-      const [h = '0', m = '0'] = String(timeValue).split(':');
-      return Number(h) * 60 + Number(m);
-    };
-
-    const selectedMinutes = toMinutes(new_time);
-    const workingStartMinutes = toMinutes(workingHours.start_time);
-    const workingEndMinutes = toMinutes(workingHours.end_time);
+    const workingStartMinutes = timeToMinutes(workingHours.start_time);
+    const workingEndMinutes = timeToMinutes(workingHours.end_time);
 
     // Check if selected time falls within working hours range
     if (selectedMinutes < workingStartMinutes || selectedMinutes >= workingEndMinutes) {
@@ -443,7 +560,7 @@ export const getRescheduleHistory = async (req, res) => {
 export const checkReschedulePermission = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userType = req.user?.role || req.query.user_type;
+    const userType = normalizeUserType(req.admin?.role || req.user?.role || req.query.user_type);
 
     const permission = await canReschedule(bookingId, userType);
 
@@ -560,8 +677,16 @@ export const getAvailableTimeSlotsForReschedule = async (req, res) => {
 
     const bookedTimes = bookedResult.rows.map(row => row.booking_time);
 
+    const nowManila = getNowInManila();
+    const requestedDate = String(date).slice(0, 10);
+    const currentMinutes = nowManila.hour * 60 + nowManila.minute;
+
+    const futureSlots = requestedDate === nowManila.date
+      ? allSlots.filter(slot => timeToMinutes(slot.start_time) > currentMinutes)
+      : allSlots;
+
     // Filter out booked slots
-    const availableSlots = allSlots.filter(slot => {
+    const availableSlots = futureSlots.filter(slot => {
       return !bookedTimes.includes(slot.start_time);
     });
 
