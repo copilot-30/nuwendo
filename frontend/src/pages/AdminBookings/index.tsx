@@ -60,7 +60,7 @@ interface Booking {
   slot_date: string;
   slot_time: string;
   duration_minutes: number;
-  appointment_type: 'online' | 'in-person';
+  appointment_type: 'online' | 'in-person' | 'on-site' | 'onsite';
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   payment_status?: string;
   business_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
@@ -266,6 +266,7 @@ export default function AdminBookings() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode] = useState<'list' | 'calendar'>('list');
@@ -342,14 +343,57 @@ export default function AdminBookings() {
     };
   }, [receiptViewer]);
 
+  const normalizeAppointmentType = (rawType: string) => {
+    const normalized = String(rawType || '').trim().toLowerCase();
+    if (normalized === 'online') return 'online';
+    if (normalized === 'on-site' || normalized === 'onsite' || normalized === 'in-person' || normalized === 'in_person') {
+      return 'on-site';
+    }
+    return normalized;
+  };
+
+  const toLocalDate = (rawDate: string) => {
+    const datePart = String(rawDate || '').split('T')[0];
+    const [year, month, day] = datePart.split('-').map(Number);
+
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return null;
+    }
+
+    return new Date(year, month - 1, day);
+  };
+
+  const isSameDay = (a: Date, b: Date) => {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  };
+
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
       booking.service_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.patient_email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || booking.business_status === statusFilter;
-    const matchesType = typeFilter === 'all' || booking.appointment_type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    const matchesType = typeFilter === 'all' || normalizeAppointmentType(booking.appointment_type) === typeFilter;
+
+    const bookingDate = toLocalDate(booking.slot_date);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const matchesDate = (() => {
+      if (!bookingDate) return false;
+      if (dateFilter === 'all') return true;
+      if (dateFilter === 'today') return isSameDay(bookingDate, today);
+      if (dateFilter === 'next_week') {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextWeekBoundary = new Date(today);
+        nextWeekBoundary.setDate(nextWeekBoundary.getDate() + 7);
+        return bookingDate >= tomorrow && bookingDate <= nextWeekBoundary;
+      }
+      return true;
+    })();
+
+    return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
 
   const handleBookingClick = (booking: Booking) => {
@@ -693,7 +737,17 @@ export default function AdminBookings() {
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="in-person">In-Person</SelectItem>
+              <SelectItem value="on-site">On-Site</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Dates</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="next_week">Next Week</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -723,7 +777,7 @@ export default function AdminBookings() {
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900">No bookings found</h3>
             <p className="text-gray-500">
-              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || dateFilter !== 'all'
                 ? 'Try adjusting your filters'
                 : 'No bookings have been made yet'}
             </p>
