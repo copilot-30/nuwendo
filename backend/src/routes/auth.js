@@ -9,7 +9,9 @@ import {
   updateProfile,
   patientLoginSendCode,
   patientLoginVerifyCode,
-  adminPasswordLogin
+  adminPasswordLogin,
+  adminForgotPasswordSendCode,
+  adminForgotPasswordVerifyCode
 } from '../controllers/authController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -51,6 +53,8 @@ router.post('/patient-login/verify-code', verifyCodeValidation, patientLoginVeri
 
 // Public routes - Admin Login (with password)
 router.post('/admin-login', loginValidation, adminPasswordLogin);
+router.post('/admin-login/forgot-password/send-code', sendCodeValidation, adminForgotPasswordSendCode);
+router.post('/admin-login/forgot-password/verify-code', verifyCodeValidation, adminForgotPasswordVerifyCode);
 
 // Public routes - Login
 router.post('/login', loginValidation, login);

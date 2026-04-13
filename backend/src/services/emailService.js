@@ -113,29 +113,7 @@ const parseEmailList = (rawValue) => {
     .filter(Boolean);
 };
 
-const normalizeAdminRecipient = (email) => {
-  const normalized = String(email || '').trim();
-  if (!normalized) return '';
-
-  if (normalized.toLowerCase() === 'nuwendomc@gmail.com') {
-    return 'nuwendoph@gmail.com';
-  }
-
-  return normalized;
-};
-
 const resolveAdminNotificationRecipients = async () => {
-  const envRecipients = [
-    ...parseEmailList(process.env.ADMIN_NOTIFICATION_EMAILS),
-    ...parseEmailList(process.env.ADMIN_EMAIL)
-  ]
-    .map(normalizeAdminRecipient)
-    .filter(Boolean);
-
-  if (envRecipients.length > 0) {
-    return Array.from(new Set(envRecipients));
-  }
-
   try {
     const adminResult = await pool.query(
       `SELECT email
@@ -146,13 +124,32 @@ const resolveAdminNotificationRecipients = async () => {
     );
 
     const dbRecipients = adminResult.rows
-      .map((row) => normalizeAdminRecipient(row.email))
+      .map((row) => String(row.email || '').trim())
       .filter(Boolean);
 
-    return Array.from(new Set(dbRecipients));
+    if (dbRecipients.length > 0) {
+      return Array.from(new Set(dbRecipients));
+    }
+
+    const envRecipients = [
+      ...parseEmailList(process.env.ADMIN_NOTIFICATION_EMAILS),
+      ...parseEmailList(process.env.ADMIN_EMAIL)
+    ]
+      .map((email) => String(email || '').trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(envRecipients));
   } catch (error) {
     console.warn('⚠️ Unable to resolve admin notification recipients:', error.message);
-    return [];
+
+    const envRecipients = [
+      ...parseEmailList(process.env.ADMIN_NOTIFICATION_EMAILS),
+      ...parseEmailList(process.env.ADMIN_EMAIL)
+    ]
+      .map((email) => String(email || '').trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(envRecipients));
   }
 };
 
@@ -286,6 +283,66 @@ export const sendVerificationEmail = async (email, code) => {
   } catch (error) {
     console.error('❌ Email sending error:', error.message);
     throw new Error('Failed to send verification email: ' + error.message);
+  }
+};
+
+export const sendAdminPasswordResetCodeEmail = async (email, code) => {
+  if (!resend) {
+    console.error('❌ Resend API key not configured');
+    throw new Error('Email service not configured');
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: getEmailFrom(),
+      to: email,
+      subject: 'Admin Password Reset Code - Nuwendo',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 24px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+            .code-box { background: white; border: 2px dashed #f97316; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+            .code { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #ea580c; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">Nuwendo Admin Security</h1>
+              <p style="margin: 10px 0 0 0;">Password Reset Verification</p>
+            </div>
+            <div class="content">
+              <p>Hello Admin,</p>
+              <p>We received a request to reset your admin password. Use this code to continue:</p>
+
+              <div class="code-box">
+                <p style="margin: 0 0 10px 0; color: #6b7280;">Your Reset Code</p>
+                <div class="code">${code}</div>
+              </div>
+
+              <p>This code expires in <strong>10 minutes</strong>.</p>
+              <p>If you did not request this reset, you can ignore this message.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error('❌ Resend error:', error);
+      throw new Error(`Failed to send email: ${error.message}`);
+    }
+
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error('❌ Admin reset code email sending error:', error.message);
+    throw new Error('Failed to send admin reset code email: ' + error.message);
   }
 };
 

@@ -854,8 +854,7 @@ export default function PatientDashboard() {
 
             {/* Explore Card */}
             <div 
-              onClick={handleNewAppointment}
-              className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-4 sm:p-6"
             >
               <div className="relative z-10">
                 <h2 className="text-lg sm:text-xl font-semibold text-white mb-1">Explore your options</h2>
@@ -871,7 +870,7 @@ export default function PatientDashboard() {
                     handleNewAppointment()
                   }}
                 >
-                  Get Started
+                  Book a Service
                 </Button>
               </div>
               {/* Decorative image placeholder */}
@@ -903,42 +902,46 @@ export default function PatientDashboard() {
                   {appointments.slice(0, 3).map((apt) => (
                     <div
                       key={apt.id}
-                      className="p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
+                      onClick={() => setActiveTab('services')}
+                      className="p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors cursor-pointer"
                     >
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center">
-                          <Calendar className="w-6 h-6 text-brand" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
-                            {(apt.reschedule_count ?? 0) > 0 && (
-                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
-                                ↻ Rescheduled
-                              </span>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                          <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center shrink-0">
+                            <Calendar className="w-6 h-6 text-brand" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-medium text-gray-900">{apt.service_name}</h3>
+                              {(apt.reschedule_count ?? 0) > 0 && (
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+                                  ↻ Rescheduled
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {formatDate(apt.booking_date)} at {formatTime(apt.booking_time)} - {formatTime(getEndTime(apt.booking_time, apt.duration_minutes || 30))}
+                            </p>
+                            {(apt.reschedule_count ?? 0) > 0 && apt.original_booking_date && (
+                              <p className="text-xs text-orange-600 mt-1">
+                                Originally: {formatDate(apt.original_booking_date)} at {formatTime(apt.original_booking_time || '')}
+                              </p>
                             )}
                           </div>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(apt.booking_date)} at {formatTime(apt.booking_time)} - {formatTime(getEndTime(apt.booking_time, apt.duration_minutes || 30))}
-                          </p>
-                          {(apt.reschedule_count ?? 0) > 0 && apt.original_booking_date && (
-                            <p className="text-xs text-orange-600 mt-1">
-                              Originally: {formatDate(apt.original_booking_date)} at {formatTime(apt.original_booking_time || '')}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                      <div className="mt-3 sm:mt-0 flex items-center justify-between sm:justify-end gap-3 sm:pl-16">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          apt.status === 'confirmed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : apt.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {getAppointmentStatusLabel(apt)}
-                        </span>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                            apt.status === 'confirmed' 
+                              ? 'bg-green-100 text-green-700' 
+                              : apt.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {getAppointmentStatusLabel(apt)}
+                          </span>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </div>
                       </div>
                     </div>
                   ))}

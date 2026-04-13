@@ -16,7 +16,6 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  DollarSign, 
   Clock, 
   Save,
   ToggleLeft,
@@ -238,11 +237,11 @@ export function AdminServices() {
   }
 
   const formatPrice = (price: string) => {
+    const amount = Number.parseFloat(price)
     return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0
-    }).format(parseFloat(price))
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(Number.isFinite(amount) ? amount : 0)
   }
 
   // Filter services by category
@@ -454,8 +453,8 @@ export function AdminServices() {
         {/* Services List */}
         <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredServices.map((service) => (
-            <Card key={service.id} className={service.is_active ? '' : 'opacity-60'}>
-              <CardContent className="p-4 sm:p-6">
+            <Card key={service.id} className={`h-full ${service.is_active ? '' : 'opacity-60'}`}>
+              <CardContent className="p-4 sm:p-6 h-full flex flex-col">
                 <div className="flex items-start justify-between mb-4">
                   <div className="min-w-0">
                     <h3 className="font-semibold text-base sm:text-lg mb-1 break-words">{service.name}</h3>
@@ -483,51 +482,53 @@ export function AdminServices() {
 
                 <p className="text-sm text-gray-600 mb-4 break-words">{service.description}</p>
 
-                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span>{service.duration_minutes} min</span>
+                <div className="mt-auto">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span>{service.duration_minutes} min</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-brand font-semibold">₱</span>
+                      <span className="font-semibold text-brand">
+                        {formatPrice(service.price)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4 text-brand" />
-                    <span className="font-semibold text-brand">
-                      {formatPrice(service.price)}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => startEdit(service)}
-                    disabled={showForm}
-                    className="flex-1"
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleDelete(service.id)}
-                    className="flex-1"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-
-                {service.updated_by_name && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                    Last updated by {service.updated_by_name}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => startEdit(service)}
+                      disabled={showForm}
+                      className="flex-1"
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleDelete(service.id)}
+                      className="flex-1"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
                   </div>
-                )}
+
+                  {service.updated_by_name && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                      Last updated by {service.updated_by_name}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
-
+ 
         {filteredServices.length === 0 && !showForm && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">

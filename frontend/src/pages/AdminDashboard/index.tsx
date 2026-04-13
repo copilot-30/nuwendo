@@ -41,6 +41,10 @@ interface DashboardStats {
   todayAppointments: number;
   thisWeekAppointments: number;
   monthlyRevenue: number;
+  bookingOverview?: {
+    online: number;
+    onSite: number;
+  };
   pendingBookingApprovalsCount?: number;
   pendingShopApprovalsCount?: number;
   pendingApprovalsCount?: number;
@@ -401,16 +405,16 @@ export default function AdminDashboard() {
                     <span className="text-sm font-medium text-blue-900">Online</span>
                   </div>
                   <span className="text-lg font-bold text-blue-600">
-                    {stats?.recentBookings.filter((b) => b.service_name.toLowerCase().includes('online')).length || 0}
+                    {stats?.bookingOverview?.online ?? 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-900">In-Person</span>
+                    <span className="text-sm font-medium text-green-900">On-Site</span>
                   </div>
                   <span className="text-lg font-bold text-green-600">
-                    {(stats?.recentBookings.length || 0) - (stats?.recentBookings.filter((b) => b.service_name.toLowerCase().includes('online')).length || 0)}
+                    {stats?.bookingOverview?.onSite ?? 0}
                   </span>
                 </div>
               </CardContent>

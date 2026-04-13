@@ -27,6 +27,7 @@ import { AdminAuditLog } from '@/pages/AdminAuditTrail'
 import AdminBookings from '@/pages/AdminBookings'
 import { AdminOrders } from '@/pages/AdminOrders'
 import AdminReports from '@/pages/AdminReports'
+import { AdminAccount } from '@/pages/AdminAccount'
 
 function AppRoutes() {
   const location = useLocation()
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="/admin/payments" element={hasAdminSession ? <AdminPayments /> : <Navigate to="/login" replace />} />
         <Route path="/admin/bookings" element={hasAdminSession ? <AdminBookings /> : <Navigate to="/login" replace />} />
         <Route path="/admin/users" element={hasAdminSession ? <AdminUsers /> : <Navigate to="/login" replace />} />
+  <Route path="/admin/account" element={hasAdminSession ? <AdminAccount /> : <Navigate to="/login" replace />} />
         <Route path="/admin/orders" element={hasAdminSession ? <AdminOrders /> : <Navigate to="/login" replace />} />
         <Route path="/admin/audit-logs" element={hasAdminSession ? <AdminAuditLog /> : <Navigate to="/login" replace />} />
   <Route path="/admin/reports" element={hasAdminSession ? <AdminReports /> : <Navigate to="/login" replace />} />

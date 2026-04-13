@@ -9,7 +9,7 @@ import { BASE_URL } from '@/config/api'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<'email' | 'code' | 'password'>('email')
+  const [step, setStep] = useState<'email' | 'code' | 'password' | 'adminResetCode'>('email')
   const [email, setEmail] = useState(sessionStorage.getItem('loginEmail') || '')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -21,7 +21,7 @@ export default function Login() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
-    if (step === 'code') {
+    if (step === 'code' || step === 'adminResetCode') {
       inputRefs.current[0]?.focus()
       
       const timer = setInterval(() => {
@@ -203,6 +203,103 @@ export default function Login() {
       setError(err.message || 'Invalid verification code')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleAdminForgotPassword = async () => {
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/admin-login/forgot-password/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send password reset code')
+      }
+
+      if (data.data?.code) {
+        alert(`Email service is temporarily down. Your admin reset code is: ${data.data.code}`)
+        setCode(data.data.code.split(''))
+      } else {
+        setCode(['', '', '', '', '', ''])
+      }
+
+      setStep('adminResetCode')
+      setTimeLeft(60)
+    } catch (err: any) {
+      setError(err.message || 'Failed to send password reset code')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAdminResetCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const fullCode = code.join('')
+    if (fullCode.length !== 6) return
+
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/admin-login/forgot-password/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: fullCode })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Invalid verification code')
+      }
+
+      localStorage.setItem('adminToken', data.data.token)
+      localStorage.setItem('adminUser', JSON.stringify(data.data.admin))
+      localStorage.setItem('adminForcePasswordChange', 'true')
+
+      navigate('/admin/account?forcePasswordChange=1', { replace: true })
+    } catch (err: any) {
+      setError(err.message || 'Invalid verification code')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleResendAdminResetCode = async () => {
+    setIsResending(true)
+    setError('')
+
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/admin-login/forgot-password/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to resend reset code')
+      }
+
+      if (data.data?.code) {
+        alert(`Email service is temporarily down. Your admin reset code is: ${data.data.code}`)
+        setCode(data.data.code.split(''))
+      } else {
+        setCode(['', '', '', '', '', ''])
+      }
+
+      setTimeLeft(60)
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend reset code')
+    } finally {
+      setIsResending(false)
     }
   }
 
@@ -412,6 +509,16 @@ export default function Login() {
                 <Button
                   type="button"
                   variant="ghost"
+                  onClick={handleAdminForgotPassword}
+                  className="w-full text-brand hover:text-brand-600"
+                  disabled={isLoading}
+                >
+                  Forgot password?
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
                   onClick={() => {
                     setStep('email')
                     setPassword('')
@@ -422,6 +529,97 @@ export default function Login() {
                   Back to email
                 </Button>
               </form>
+            </>
+          ) : step === 'adminResetCode' ? (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
+                  Verify admin reset code
+                </h1>
+                <p className="text-base sm:text-lg text-gray-600">
+                  We sent a 6-digit code to{' '}
+                  <span className="font-medium text-gray-900">{email}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleAdminResetCodeSubmit} className="space-y-6">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                    Enter verification code
+                  </Label>
+                  <div className="flex gap-2 sm:gap-3 justify-between" onPaste={handlePaste}>
+                    {code.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => { inputRefs.current[index] = el }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleChange(index, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-semibold border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all"
+                        disabled={isLoading}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 text-base bg-brand hover:bg-brand-600"
+                  disabled={isLoading || code.join('').length !== 6}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify code'
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-8 text-center">
+                {timeLeft > 0 ? (
+                  <p className="text-sm text-gray-500">
+                    Resend code in <span className="font-medium text-gray-900">{timeLeft}s</span>
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleResendAdminResetCode}
+                    disabled={isResending}
+                    className="inline-flex items-center gap-2 text-sm text-brand hover:text-brand-600 font-medium disabled:opacity-50"
+                  >
+                    {isResending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Resend reset code
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => {
+                    setStep('password')
+                    setCode(['', '', '', '', '', ''])
+                    setError('')
+                  }}
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  ← Back to admin password login
+                </button>
+              </div>
             </>
           ) : (
             <>

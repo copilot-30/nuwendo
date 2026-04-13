@@ -21,7 +21,8 @@ import {
   BarChart3,
   ChevronDown,
   Wrench,
-  Building2
+  Building2,
+  User
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { API_URL } from '@/config/api'
@@ -49,6 +50,7 @@ const operationsItems = [
 
 const managementItems = [
   { path: '/admin/users', label: 'Users', icon: Users },
+  { path: '/admin/account', label: 'Account', icon: User },
   { path: '/admin/audit-logs', label: 'Logs', icon: FileText },
   { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]

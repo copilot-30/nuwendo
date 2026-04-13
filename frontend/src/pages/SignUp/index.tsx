@@ -43,7 +43,7 @@ export default function SignUp() {
         // If user already exists, redirect to login
         if (data.shouldLogin) {
           setError('')
-          setSuccessMessage('Account already exists! Redirecting to login...')
+          setSuccessMessage(data.message || 'Account already exists! Redirecting to login...')
           // Store email and redirect to login
           sessionStorage.setItem('loginEmail', email)
           setTimeout(() => {

@@ -2,12 +2,43 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
 import pool from '../config/database.js';
-import { generateVerificationCode, sendVerificationEmail } from '../services/emailService.js';
+import { generateVerificationCode, sendVerificationEmail, sendAdminPasswordResetCodeEmail } from '../services/emailService.js';
+
+const checkActiveAdminEmail = async (email) => {
+  try {
+    const adminResult = await pool.query(
+      'SELECT id FROM admin_users WHERE LOWER(email) = LOWER($1) AND is_active = true LIMIT 1',
+      [email]
+    );
+    return adminResult.rows.length > 0;
+  } catch (error) {
+    if (error?.code === '42P01') {
+      // admin_users table not yet created
+      return false;
+    }
+    throw error;
+  }
+};
 
 // Generate JWT Token
 const generateToken = (userId, email) => {
   return jwt.sign(
     { userId, email },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '7d' }
+  );
+};
+
+const buildAdminResetSessionToken = (adminId, code) => `admin-reset:${adminId}:${code}`;
+
+const generateAdminSessionToken = (admin) => {
+  return jwt.sign(
+    {
+      adminId: admin.id,
+      username: admin.username,
+      role: admin.role,
+      email: admin.email
+    },
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '7d' }
   );
@@ -25,6 +56,15 @@ export const sendVerificationCode = async (req, res) => {
     }
 
     const { email } = req.body;
+
+    const isAdminEmail = await checkActiveAdminEmail(email);
+    if (isAdminEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email is reserved for admin login. Please sign in instead.',
+        shouldLogin: true
+      });
+    }
 
     // Check if user already exists and is verified (patient account)
     const existingUser = await pool.query(
@@ -118,6 +158,14 @@ export const verifyCode = async (req, res) => {
 
     const { email, code } = req.body;
 
+    const isAdminEmail = await checkActiveAdminEmail(email);
+    if (isAdminEmail) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin email cannot be used for patient signup.'
+      });
+    }
+
     // Find user with matching email and code
     const result = await pool.query(
       `SELECT * FROM users 
@@ -184,6 +232,14 @@ export const completeRegistration = async (req, res) => {
     }
 
     const { email, code, password, firstName, lastName } = req.body;
+
+    const isAdminEmail = await checkActiveAdminEmail(email);
+    if (isAdminEmail) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin email cannot be used for patient signup.'
+      });
+    }
 
     // Verify code again
     const result = await pool.query(
@@ -566,16 +622,7 @@ export const adminPasswordLogin = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      { 
-        adminId: admin.id, 
-        username: admin.username,
-        role: admin.role,
-        email: admin.email
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
+    const token = generateAdminSessionToken(admin);
 
     // Create session in database
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -610,6 +657,169 @@ export const adminPasswordLogin = async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Server error during admin login' 
+    });
+  }
+};
+
+// Admin Forgot Password - Send verification code
+export const adminForgotPasswordSendCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { email } = req.body;
+
+    const adminResult = await pool.query(
+      'SELECT id, username, email, full_name, role, is_active FROM admin_users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [email]
+    );
+
+    if (adminResult.rows.length === 0 || !adminResult.rows[0].is_active) {
+      return res.status(404).json({
+        success: false,
+        message: 'No active admin account found for this email.'
+      });
+    }
+
+    const admin = adminResult.rows[0];
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const resetSessionToken = buildAdminResetSessionToken(admin.id, code);
+
+    await pool.query(
+      `DELETE FROM admin_sessions
+       WHERE admin_id = $1
+         AND token LIKE 'admin-reset:%'`,
+      [admin.id]
+    );
+
+    await pool.query(
+      `INSERT INTO admin_sessions (admin_id, token, expires_at)
+       VALUES ($1, $2, $3)`,
+      [admin.id, resetSessionToken, expiresAt]
+    );
+
+    let emailSent = false;
+    try {
+      await sendAdminPasswordResetCodeEmail(admin.email, code);
+      emailSent = true;
+    } catch (emailError) {
+      console.error('Admin forgot-password email error:', emailError.message);
+    }
+
+    return res.json({
+      success: true,
+      message: emailSent
+        ? 'Password reset code sent to your admin email.'
+        : 'Email service temporarily unavailable. Code provided in response.',
+      data: {
+        email: admin.email,
+        expiresIn: 600,
+        code: !emailSent ? code : undefined
+      }
+    });
+  } catch (error) {
+    console.error('Admin forgot-password send code error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error sending reset code'
+    });
+  }
+};
+
+// Admin Forgot Password - Verify code and create session
+export const adminForgotPasswordVerifyCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { email, code } = req.body;
+
+    const adminResult = await pool.query(
+      'SELECT id, username, email, full_name, role, is_active FROM admin_users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [email]
+    );
+
+    if (adminResult.rows.length === 0 || !adminResult.rows[0].is_active) {
+      return res.status(404).json({
+        success: false,
+        message: 'No active admin account found for this email.'
+      });
+    }
+
+    const admin = adminResult.rows[0];
+    const resetSessionToken = buildAdminResetSessionToken(admin.id, code);
+
+    const resetCodeResult = await pool.query(
+      `SELECT id
+       FROM admin_sessions
+       WHERE admin_id = $1
+         AND token = $2
+         AND expires_at > CURRENT_TIMESTAMP
+       LIMIT 1`,
+      [admin.id, resetSessionToken]
+    );
+
+    if (resetCodeResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code.'
+      });
+    }
+
+    await pool.query(
+      `DELETE FROM admin_sessions
+       WHERE admin_id = $1
+         AND token LIKE 'admin-reset:%'`,
+      [admin.id]
+    );
+
+    const token = generateAdminSessionToken(admin);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO admin_sessions (admin_id, token, expires_at)
+       VALUES ($1, $2, $3)`,
+      [admin.id, token, expiresAt]
+    );
+
+    await pool.query(
+      'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [admin.id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Code verified successfully',
+      data: {
+        token,
+        admin: {
+          id: admin.id,
+          username: admin.username,
+          email: admin.email,
+          fullName: admin.full_name,
+          role: admin.role
+        },
+        requirePasswordChange: true
+      }
+    });
+  } catch (error) {
+    console.error('Admin forgot-password verify code error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error verifying reset code'
     });
   }
 };
