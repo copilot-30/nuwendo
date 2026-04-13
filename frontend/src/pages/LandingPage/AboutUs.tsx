@@ -153,7 +153,7 @@ export function AboutUs() {
                     image: '/Angela Espinosa.png',
                   },
                   {
-                    name: 'Charles Camion',
+                    name: 'Charles Camilon',
                     image: '/Charles Camilon.png',
                   },
                   {
